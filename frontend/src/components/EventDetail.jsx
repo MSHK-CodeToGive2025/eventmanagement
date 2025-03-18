@@ -164,9 +164,7 @@ const EventDetail = () => {
                     key={participant.id}
                     className="p-3 bg-gray-50 rounded-lg"
                   >
-                    <p className="font-medium">
-                      {participant.firstName} {participant.lastName}
-                    </p>
+                    <p className="font-medium">{participant.name}</p>
                     <p className="text-sm text-gray-600">{participant.email}</p>
                   </div>
                 ))}

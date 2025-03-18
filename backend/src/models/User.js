@@ -14,20 +14,15 @@ const userSchema = new mongoose.Schema({
     required: true,
     minlength: 6
   },
+  name: {
+    type: String,
+    required: true,
+    trim: true
+  },
   role: {
     type: String,
     enum: ['admin', 'volunteer', 'participant'],
     default: 'participant'
-  },
-  firstName: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  lastName: {
-    type: String,
-    required: true,
-    trim: true
   },
   phoneNumber: {
     type: String,
