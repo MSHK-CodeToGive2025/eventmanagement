@@ -14,6 +14,8 @@ const EventForm = ({ onSubmit, initialData = {}, isEditing = false }) => {
     status: initialData.status || 'upcoming'
   });
 
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(initialData.imageUrl || null);
   const [error, setError] = useState('');
   const navigate = useNavigate();
 
@@ -25,14 +27,40 @@ const EventForm = ({ onSubmit, initialData = {}, isEditing = false }) => {
     }));
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        setError('Image size should be less than 5MB');
+        return;
+      }
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload an image file');
+        return;
+      }
+      setSelectedImage(file);
+      setImagePreview(URL.createObjectURL(file));
+      setError('');
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const eventData = {
-        ...formData,
-        date: new Date(formData.date).toISOString(),
-      };
-      await onSubmit(eventData);
+      const formDataToSend = new FormData();
+      Object.keys(formData).forEach(key => {
+        if (key === 'date') {
+          formDataToSend.append(key, new Date(formData[key]).toISOString());
+        } else {
+          formDataToSend.append(key, formData[key]);
+        }
+      });
+
+      if (selectedImage) {
+        formDataToSend.append('image', selectedImage);
+      }
+
+      await onSubmit(formDataToSend);
       navigate('/events');
     } catch (err) {
       setError(err.message || 'Something went wrong. Please try again.');
@@ -58,6 +86,49 @@ const EventForm = ({ onSubmit, initialData = {}, isEditing = false }) => {
           </div>
         </div>
       )}
+
+      <div>
+        <label htmlFor="image" className={labelClasses}>
+          Event Image
+        </label>
+        <div className="mt-2 flex items-center space-x-4">
+          <input
+            type="file"
+            id="image"
+            name="image"
+            accept="image/*"
+            onChange={handleImageChange}
+            className="hidden"
+          />
+          <label
+            htmlFor="image"
+            className="px-4 py-2 bg-zubin-primary text-zubin-text rounded-md cursor-pointer hover:bg-zubin-accent transition-colors"
+          >
+            {isEditing ? 'Change Image' : 'Upload Image'}
+          </label>
+          {imagePreview && (
+            <div className="relative">
+              <img
+                src={imagePreview}
+                alt="Preview"
+                className="h-20 w-20 object-cover rounded-lg"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedImage(null);
+                  setImagePreview(null);
+                }}
+                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       <div>
         <label htmlFor="title" className={labelClasses}>

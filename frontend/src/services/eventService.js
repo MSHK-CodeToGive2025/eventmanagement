@@ -30,7 +30,7 @@ const eventService = {
     const response = await axios.post(`${API_URL}/events`, eventData, {
       headers: {
         ...authHeader(),
-        'Content-Type': 'application/json',
+        ...(eventData instanceof FormData ? {} : { 'Content-Type': 'application/json' })
       },
     });
     return response.data;
@@ -41,7 +41,7 @@ const eventService = {
     const response = await axios.put(`${API_URL}/events/${id}`, eventData, {
       headers: {
         ...authHeader(),
-        'Content-Type': 'application/json',
+        ...(eventData instanceof FormData ? {} : { 'Content-Type': 'application/json' })
       },
     });
     return response.data;

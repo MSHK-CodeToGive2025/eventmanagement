@@ -2,8 +2,25 @@ import express from 'express';
 import auth from '../middleware/auth.js';
 import Event from '../models/Event.js';
 import User from '../models/User.js';
+import multer from 'multer';
 
 const router = express.Router();
+
+// Configure multer for handling file uploads
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Not an image! Please upload an image.'), false);
+    }
+  }
+});
 
 // Get all events
 router.get('/', async (req, res) => {
@@ -36,27 +53,40 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create event (requires auth)
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, upload.single('image'), async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user || (user.role !== 'admin' && user.role !== 'volunteer')) {
       return res.status(403).json({ message: 'Not authorized to create events' });
     }
 
-    const event = new Event({
-      ...req.body,
-      organizer: req.user.userId
-    });
+    const eventData = { ...req.body, organizer: req.user.userId };
+    
+    // Add image data if an image was uploaded
+    if (req.file) {
+      eventData.image = {
+        data: req.file.buffer,
+        contentType: req.file.mimetype
+      };
+    }
 
+    const event = new Event(eventData);
     await event.save();
-    res.status(201).json(event);
+    
+    // Don't send image data in response
+    const eventResponse = event.toObject();
+    if (eventResponse.image) {
+      delete eventResponse.image.data;
+    }
+    
+    res.status(201).json(eventResponse);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
 
 // Update event (requires auth)
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, upload.single('image'), async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     const event = await Event.findById(req.params.id);
@@ -69,13 +99,29 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
 
+    const updateData = { ...req.body };
+    
+    // Add image data if an image was uploaded
+    if (req.file) {
+      updateData.image = {
+        data: req.file.buffer,
+        contentType: req.file.mimetype
+      };
+    }
+
     const updatedEvent = await Event.findByIdAndUpdate(
       req.params.id,
-      { ...req.body },
+      updateData,
       { new: true, runValidators: true }
     );
 
-    res.json(updatedEvent);
+    // Don't send image data in response
+    const eventResponse = updatedEvent.toObject();
+    if (eventResponse.image) {
+      delete eventResponse.image.data;
+    }
+
+    res.json(eventResponse);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -168,6 +214,21 @@ router.post('/:id/unregister', auth, async (req, res) => {
 
     await event.save();
     res.json(event);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Add route to get event image
+router.get('/:id/image', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event || !event.image || !event.image.data) {
+      return res.status(404).json({ message: 'Image not found' });
+    }
+
+    res.set('Content-Type', event.image.contentType);
+    res.send(event.image.data);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

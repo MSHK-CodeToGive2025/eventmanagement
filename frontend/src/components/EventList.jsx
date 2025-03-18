@@ -77,6 +77,14 @@ const EventList = () => {
             key={event._id}
             className="bg-white rounded-lg shadow-lg overflow-hidden transform transition duration-300 hover:shadow-xl hover:-translate-y-1"
           >
+            <div className="aspect-w-16 aspect-h-9">
+              <img
+                src={event.image ? `/api/events/${event._id}/image` : '/default-event-image.jpg'}
+                alt={event.title}
+                className="w-full h-48 object-cover"
+              />
+            </div>
+            
             <div className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <span className="px-3 py-1 text-sm font-medium bg-zubin-secondary text-zubin-text rounded-full">
