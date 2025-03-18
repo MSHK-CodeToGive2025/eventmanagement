@@ -50,7 +50,7 @@ npm install
 
 Create a `.env` file in the backend directory with the following variables:
 ```env
-PORT=5000
+PORT=5050
 MONGODB_URI=mongodb://localhost:27017/zubin-foundation
 JWT_SECRET=your-secret-key-here
 NODE_ENV=development
@@ -75,7 +75,7 @@ npm run dev
 
 The application will be available at:
 - Frontend: http://localhost:3000
-- Backend API: http://localhost:5000
+- Backend API: http://localhost:5050
 
 ## Project Structure
 
