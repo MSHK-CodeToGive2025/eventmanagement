@@ -15,7 +15,7 @@ const EventList = () => {
 
   const fetchEvents = async () => {
     try {
-      const data = await eventService.getAllEvents();
+      const data = await eventService.getEvents();
       setEvents(data);
       setError(null);
     } catch (err) {
@@ -65,15 +65,14 @@ const EventList = () => {
                 {new Date(event.date).toLocaleDateString()}
               </p>
               <p className="text-sm text-gray-500">
-                <span className="font-medium">Time:</span> {event.startTime} -{' '}
-                {event.endTime}
+                <span className="font-medium">Time:</span> {event.time}
               </p>
               <p className="text-sm text-gray-500">
                 <span className="font-medium">Location:</span> {event.location}
               </p>
               <p className="text-sm text-gray-500">
                 <span className="font-medium">Available Spots:</span>{' '}
-                {event.availableSpots}
+                {event.capacity - (event.registeredParticipants?.length || 0)}
               </p>
             </div>
             <div className="flex justify-between items-center">
@@ -85,14 +84,14 @@ const EventList = () => {
               </Link>
               {user && (
                 <div>
-                  {event.registeredParticipants.includes(user.id) ? (
+                  {event.registeredParticipants?.includes(user.id) ? (
                     <button
                       onClick={() => handleUnregister(event._id)}
                       className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
                     >
                       Unregister
                     </button>
-                  ) : event.waitlist.includes(user.id) ? (
+                  ) : event.waitlist?.includes(user.id) ? (
                     <button
                       onClick={() => handleUnregister(event._id)}
                       className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700"
@@ -103,9 +102,9 @@ const EventList = () => {
                     <button
                       onClick={() => handleRegister(event._id)}
                       className="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700"
-                      disabled={event.isFull}
+                      disabled={event.registeredParticipants?.length >= event.capacity}
                     >
-                      {event.isFull ? 'Join Waitlist' : 'Register'}
+                      {event.registeredParticipants?.length >= event.capacity ? 'Join Waitlist' : 'Register'}
                     </button>
                   )}
                 </div>

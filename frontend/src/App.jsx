@@ -6,6 +6,7 @@ import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
 import EventList from './components/EventList'
 import EventDetail from './components/EventDetail'
+import CreateEvent from './pages/CreateEvent'
 import PrivateRoute from './components/PrivateRoute'
 
 function App() {
@@ -29,6 +30,14 @@ function App() {
                 />
                 <Route path="/events" element={<EventList />} />
                 <Route path="/events/:id" element={<EventDetail />} />
+                <Route
+                  path="/events/create"
+                  element={
+                    <PrivateRoute>
+                      <CreateEvent />
+                    </PrivateRoute>
+                  }
+                />
                 <Route path="/" element={<EventList />} />
               </Routes>
             </div>
