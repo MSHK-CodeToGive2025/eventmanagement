@@ -3,6 +3,8 @@ import { AuthProvider } from './context/AuthContext'
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
+import EventList from './components/EventList'
+import EventDetail from './components/EventDetail'
 import PrivateRoute from './components/PrivateRoute'
 
 function App() {
@@ -30,7 +32,9 @@ function App() {
                     </PrivateRoute>
                   }
                 />
-                <Route path="/" element={<Login />} />
+                <Route path="/events" element={<EventList />} />
+                <Route path="/events/:id" element={<EventDetail />} />
+                <Route path="/" element={<EventList />} />
               </Routes>
             </div>
           </main>
