@@ -67,6 +67,7 @@ const EventDetail = () => {
   const isOrganizer = user && (user.role === 'admin' || event.organizer.id === user.id);
   const isRegistered = user && event.registeredParticipants.some(p => p.id === user.id);
   const isWaitlisted = user && event.waitlist.some(p => p.id === user.id);
+  const canRegister = user && user.role === 'participant';
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -111,7 +112,11 @@ const EventDetail = () => {
           {user && (
             <div className="flex justify-between items-center">
               <div>
-                {isRegistered ? (
+                {!canRegister && user.role !== 'participant' ? (
+                  <p className="text-zubin-gray text-sm italic">
+                    Only participants can register for events
+                  </p>
+                ) : isRegistered ? (
                   <button
                     onClick={handleUnregister}
                     className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700"
@@ -128,7 +133,7 @@ const EventDetail = () => {
                 ) : (
                   <button
                     onClick={handleRegister}
-                    className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700"
+                    className="bg-zubin-primary text-zubin-text px-6 py-2 rounded-lg hover:bg-zubin-accent"
                     disabled={event.isFull && !event.waitlist}
                   >
                     {event.isFull ? 'Join Waitlist' : 'Register'}

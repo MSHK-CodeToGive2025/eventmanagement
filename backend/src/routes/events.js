@@ -105,6 +105,14 @@ router.delete('/:id', auth, async (req, res) => {
 // Register for event (requires auth)
 router.post('/:id/register', auth, async (req, res) => {
   try {
+    // Check if user is a participant
+    const user = await User.findById(req.user.userId);
+    if (!user || user.role !== 'participant') {
+      return res.status(403).json({ 
+        message: 'Only participants can register for events' 
+      });
+    }
+
     const event = await Event.findById(req.params.id);
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });

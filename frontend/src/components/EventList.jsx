@@ -78,30 +78,26 @@ const EventList = () => {
             className="bg-white rounded-lg shadow-lg overflow-hidden transform transition duration-300 hover:shadow-xl hover:-translate-y-1"
           >
             <div className="p-6">
-              <div className="mb-4">
-                <span className="inline-block px-3 py-1 text-xs font-semibold text-zubin-text bg-zubin-secondary rounded-full">
+              <div className="flex items-center justify-between mb-4">
+                <span className="px-3 py-1 text-sm font-medium bg-zubin-secondary text-zubin-text rounded-full">
                   {event.category}
                 </span>
-              </div>
-              <h3 className="text-xl font-bold text-zubin-text mb-3">{event.title}</h3>
-              <p className="text-zubin-gray mb-4 line-clamp-2">{event.description}</p>
-              
-              <div className="space-y-2 mb-6">
-                <div className="flex items-center text-sm text-zubin-gray">
-                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                  </svg>
+                <span className="text-sm text-zubin-gray">
                   {new Date(event.date).toLocaleDateString()}
-                </div>
+                </span>
+              </div>
+
+              <h3 className="text-xl font-bold text-zubin-text mb-2">
+                {event.title}
+              </h3>
+              <p className="text-zubin-gray mb-4 line-clamp-2">
+                {event.description}
+              </p>
+
+              <div className="space-y-2 mb-4">
                 <div className="flex items-center text-sm text-zubin-gray">
                   <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                  </svg>
-                  {event.startTime} - {event.endTime}
-                </div>
-                <div className="flex items-center text-sm text-zubin-gray">
-                  <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                    <path fillRule="evenodd" d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 100-12 6 6 0 000 12zm1-6a1 1 0 11-2 0 1 1 0 012 0z" clipRule="evenodd" />
                   </svg>
                   {event.location}
                 </div>
@@ -122,28 +118,34 @@ const EventList = () => {
                 </Link>
                 {user && (
                   <div>
-                    {event.registeredParticipants?.includes(user.id) ? (
-                      <button
-                        onClick={() => handleUnregister(event._id)}
-                        className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-opacity-90 transition-colors"
-                      >
-                        Unregister
-                      </button>
-                    ) : event.waitlist?.includes(user.id) ? (
-                      <button
-                        onClick={() => handleUnregister(event._id)}
-                        className="bg-zubin-accent text-zubin-text px-4 py-2 rounded-full text-sm font-medium hover:bg-zubin-primary transition-colors"
-                      >
-                        Leave Waitlist
-                      </button>
+                    {user.role === 'participant' ? (
+                      event.registeredParticipants?.includes(user.id) ? (
+                        <button
+                          onClick={() => handleUnregister(event._id)}
+                          className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-opacity-90 transition-colors"
+                        >
+                          Unregister
+                        </button>
+                      ) : event.waitlist?.includes(user.id) ? (
+                        <button
+                          onClick={() => handleUnregister(event._id)}
+                          className="bg-zubin-accent text-zubin-text px-4 py-2 rounded-full text-sm font-medium hover:bg-zubin-primary transition-colors"
+                        >
+                          Leave Waitlist
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleRegister(event._id)}
+                          className="bg-zubin-primary text-zubin-text px-4 py-2 rounded-full text-sm font-medium hover:bg-zubin-accent transition-colors"
+                          disabled={event.registeredParticipants?.length >= event.capacity}
+                        >
+                          {event.registeredParticipants?.length >= event.capacity ? 'Join Waitlist' : 'Register'}
+                        </button>
+                      )
                     ) : (
-                      <button
-                        onClick={() => handleRegister(event._id)}
-                        className="bg-zubin-primary text-zubin-text px-4 py-2 rounded-full text-sm font-medium hover:bg-zubin-accent transition-colors"
-                        disabled={event.registeredParticipants?.length >= event.capacity}
-                      >
-                        {event.registeredParticipants?.length >= event.capacity ? 'Join Waitlist' : 'Register'}
-                      </button>
+                      <span className="text-zubin-gray text-sm italic">
+                        Only participants can register
+                      </span>
                     )}
                   </div>
                 )}
