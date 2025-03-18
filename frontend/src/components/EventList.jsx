@@ -126,14 +126,14 @@ const EventList = () => {
                 </Link>
                 {user ? (
                   <div>
-                    {event.registeredParticipants?.some(p => p._id === user.userId) ? (
+                    {event.registeredParticipants?.some(p => p._id === user.userId || p === user.userId) ? (
                       <button
                         onClick={() => handleUnregister(event._id)}
                         className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-opacity-90 transition-colors"
                       >
                         Unregister
                       </button>
-                    ) : event.waitlist?.some(p => p._id === user.userId) ? (
+                    ) : event.waitlist?.some(p => p._id === user.userId || p === user.userId) ? (
                       <button
                         onClick={() => handleUnregister(event._id)}
                         className="bg-zubin-accent text-zubin-text px-4 py-2 rounded-full text-sm font-medium hover:bg-zubin-primary transition-colors"

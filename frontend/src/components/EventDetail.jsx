@@ -65,8 +65,11 @@ const EventDetail = () => {
   if (!event) return <div>Event not found</div>;
 
   const canManageEvent = user && (user.role === 'admin' || event.organizer._id === user.userId);
-  const isRegistered = user && event.registeredParticipants.some(p => p._id === user.userId);
-  const isWaitlisted = user && event.waitlist.some(p => p._id === user.userId);
+  const isRegistered = user && event.registeredParticipants.some(p => p._id === user.userId || p === user.userId);
+  const isWaitlisted = user && event.waitlist.some(p => p._id === user.userId || p === user.userId);
+
+  console.log('Current user:', user?.userId);
+  console.log('Registered participants:', event.registeredParticipants.map(p => p._id || p));
 
   return (
     <div className="max-w-4xl mx-auto p-6">
