@@ -79,7 +79,7 @@ const EventList = () => {
           >
             <div className="aspect-w-16 aspect-h-9">
               <img
-                src={event.image ? `/api/events/${event._id}/image` : '/default-event-image.jpg'}
+                src={event.image ? `/api/events/${event._id}/image` : '/Events.webp'}
                 alt={event.title}
                 className="w-full h-48 object-cover"
               />

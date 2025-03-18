@@ -64,7 +64,7 @@ const EventDetail = () => {
   if (error) return <div className="text-red-600">{error}</div>;
   if (!event) return <div>Event not found</div>;
 
-  const isOrganizer = user && (user.role === 'admin' || event.organizer.id === user.id);
+  const canManageEvent = user && (user.role === 'admin' || event.organizer.id === user.id);
   const isRegistered = user && event.registeredParticipants.some(p => p.id === user.id);
   const isWaitlisted = user && event.waitlist.some(p => p.id === user.id);
   const canRegister = user && user.role === 'participant';
@@ -74,14 +74,22 @@ const EventDetail = () => {
       <div className="bg-white rounded-lg shadow-lg overflow-hidden">
         <div className="aspect-w-16 aspect-h-9">
           <img
-            src={event.image ? `/api/events/${event._id}/image` : '/default-event-image.jpg'}
+            src={event.image ? `/api/events/${event._id}/image` : '/Events.webp'}
             alt={event.title}
             className="w-full h-64 object-cover"
           />
         </div>
 
         <div className="p-8">
-          <h2 className="text-3xl font-bold mb-4">{event.title}</h2>
+          <div className="flex justify-between items-start mb-4">
+            <h2 className="text-3xl font-bold">{event.title}</h2>
+            {event.organizer && (
+              <p className="text-sm text-gray-600">
+                Organized by: {event.organizer.firstName} {event.organizer.lastName}
+              </p>
+            )}
+          </div>
+          
           <p className="text-gray-600 mb-6">{event.description}</p>
 
           <div className="grid grid-cols-2 gap-6 mb-8">
@@ -149,7 +157,7 @@ const EventDetail = () => {
                 )}
               </div>
 
-              {isOrganizer && (
+              {canManageEvent && (
                 <div className="space-x-4">
                   <button
                     onClick={() => navigate(`/events/${id}/edit`)}

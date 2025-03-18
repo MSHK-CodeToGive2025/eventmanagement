@@ -95,6 +95,7 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
+    // Only admin or event creator can update
     if (!user || (user.role !== 'admin' && event.organizer.toString() !== req.user.userId)) {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
@@ -137,6 +138,7 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
+    // Only admin or event creator can delete
     if (!user || (user.role !== 'admin' && event.organizer.toString() !== req.user.userId)) {
       return res.status(403).json({ message: 'Not authorized to delete this event' });
     }
