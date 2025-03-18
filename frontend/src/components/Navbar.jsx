@@ -10,7 +10,12 @@ const Navbar = () => {
       <nav className="container mx-auto px-4 bg-white shadow-md">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center space-x-8">
-            <Link to="/" className="flex items-center">
+            <Link to="/" className="flex items-center space-x-3">
+              <img
+                src="https://zubinfoundation.org/wp-content/uploads/2022/07/TZF-logo-svg-img.svg"
+                alt="The Zubin Foundation Logo"
+                className="h-12 w-auto"
+              />
               <span className="text-2xl font-heading font-bold text-zubin-text hover:text-zubin-accent transition-colors">
                 The Zubin Foundation
               </span>

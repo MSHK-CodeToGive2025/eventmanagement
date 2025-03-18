@@ -18,8 +18,8 @@ export default {
         }
       },
       fontFamily: {
-        'sans': ['Helvetica Neue', 'Arial', 'sans-serif'],
-        'heading': ['Georgia', 'serif'],
+        'sans': ['Poppins', 'sans-serif'],
+        'heading': ['Poppins', 'sans-serif'],
       },
       spacing: {
         '128': '32rem',
