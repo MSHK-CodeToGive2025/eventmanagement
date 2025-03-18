@@ -124,38 +124,36 @@ const EventList = () => {
                 >
                   View Details →
                 </Link>
-                {user && (
+                {user ? (
                   <div>
-                    {user.role === 'participant' ? (
-                      event.registeredParticipants?.includes(user.id) ? (
-                        <button
-                          onClick={() => handleUnregister(event._id)}
-                          className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-opacity-90 transition-colors"
-                        >
-                          Unregister
-                        </button>
-                      ) : event.waitlist?.includes(user.id) ? (
-                        <button
-                          onClick={() => handleUnregister(event._id)}
-                          className="bg-zubin-accent text-zubin-text px-4 py-2 rounded-full text-sm font-medium hover:bg-zubin-primary transition-colors"
-                        >
-                          Leave Waitlist
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => handleRegister(event._id)}
-                          className="bg-zubin-primary text-zubin-text px-4 py-2 rounded-full text-sm font-medium hover:bg-zubin-accent transition-colors"
-                          disabled={event.registeredParticipants?.length >= event.capacity}
-                        >
-                          {event.registeredParticipants?.length >= event.capacity ? 'Join Waitlist' : 'Register'}
-                        </button>
-                      )
+                    {event.registeredParticipants?.some(p => p._id === user.userId) ? (
+                      <button
+                        onClick={() => handleUnregister(event._id)}
+                        className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-opacity-90 transition-colors"
+                      >
+                        Unregister
+                      </button>
+                    ) : event.waitlist?.some(p => p._id === user.userId) ? (
+                      <button
+                        onClick={() => handleUnregister(event._id)}
+                        className="bg-zubin-accent text-zubin-text px-4 py-2 rounded-full text-sm font-medium hover:bg-zubin-primary transition-colors"
+                      >
+                        Leave Waitlist
+                      </button>
                     ) : (
-                      <span className="text-zubin-gray text-sm italic">
-                        Only participants can register
-                      </span>
+                      <button
+                        onClick={() => handleRegister(event._id)}
+                        className="bg-zubin-primary text-zubin-text px-4 py-2 rounded-full text-sm font-medium hover:bg-zubin-accent transition-colors"
+                        disabled={event.registeredParticipants?.length >= event.capacity}
+                      >
+                        {event.registeredParticipants?.length >= event.capacity ? 'Join Waitlist' : 'Register'}
+                      </button>
                     )}
                   </div>
+                ) : (
+                  <span className="text-zubin-gray text-sm italic">
+                    Login to register for events
+                  </span>
                 )}
               </div>
             </div>

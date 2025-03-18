@@ -64,10 +64,9 @@ const EventDetail = () => {
   if (error) return <div className="text-red-600">{error}</div>;
   if (!event) return <div>Event not found</div>;
 
-  const canManageEvent = user && (user.role === 'admin' || event.organizer.id === user.id);
-  const isRegistered = user && event.registeredParticipants.some(p => p.id === user.id);
-  const isWaitlisted = user && event.waitlist.some(p => p.id === user.id);
-  const canRegister = user && user.role === 'participant';
+  const canManageEvent = user && (user.role === 'admin' || event.organizer._id === user.userId);
+  const isRegistered = user && event.registeredParticipants.some(p => p._id === user.userId);
+  const isWaitlisted = user && event.waitlist.some(p => p._id === user.userId);
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -125,14 +124,10 @@ const EventDetail = () => {
             </div>
           </div>
 
-          {user && (
+          {user ? (
             <div className="flex justify-between items-center">
               <div>
-                {!canRegister && user.role !== 'participant' ? (
-                  <p className="text-zubin-gray text-sm italic">
-                    Only participants can register for events
-                  </p>
-                ) : isRegistered ? (
+                {isRegistered ? (
                   <button
                     onClick={handleUnregister}
                     className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700"
@@ -174,6 +169,10 @@ const EventDetail = () => {
                 </div>
               )}
             </div>
+          ) : (
+            <p className="text-zubin-gray text-sm italic">
+              Login to register for events
+            </p>
           )}
 
           {event.registeredParticipants.length > 0 && isOrganizer && (

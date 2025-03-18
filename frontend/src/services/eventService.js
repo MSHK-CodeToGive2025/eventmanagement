@@ -65,7 +65,7 @@ const eventService = {
 
   // Unregister from event
   async unregisterFromEvent(id) {
-    const response = await axios.delete(`${API_URL}/events/${id}/unregister`, {
+    const response = await axios.post(`${API_URL}/events/${id}/unregister`, {}, {
       headers: authHeader(),
     });
     return response.data;

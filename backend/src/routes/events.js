@@ -153,26 +153,30 @@ router.delete('/:id', auth, async (req, res) => {
 // Register for event (requires auth)
 router.post('/:id/register', auth, async (req, res) => {
   try {
-    // Check if user is a participant
+    // Check if user exists
     const user = await User.findById(req.user.userId);
-    if (!user || user.role !== 'participant') {
+    if (!user) {
       return res.status(403).json({ 
-        message: 'Only participants can register for events' 
+        message: 'User not found' 
       });
     }
 
-    const event = await Event.findById(req.params.id);
+    const event = await Event.findById(req.params.id)
+      .populate('organizer', 'firstName lastName email')
+      .populate('registeredParticipants', 'firstName lastName email')
+      .populate('waitlist', 'firstName lastName email');
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
 
     // Check if user is already registered
-    if (event.registeredParticipants.includes(req.user.userId)) {
+    if (event.registeredParticipants.some(p => p._id.toString() === req.user.userId)) {
       return res.status(400).json({ message: 'Already registered for this event' });
     }
 
     // Check if user is on waitlist
-    if (event.waitlist.includes(req.user.userId)) {
+    if (event.waitlist.some(p => p._id.toString() === req.user.userId)) {
       return res.status(400).json({ message: 'Already on waitlist for this event' });
     }
 
@@ -183,7 +187,14 @@ router.post('/:id/register', auth, async (req, res) => {
     }
 
     await event.save();
-    res.json(event);
+
+    // Populate the response data
+    const populatedEvent = await Event.findById(event._id)
+      .populate('organizer', 'firstName lastName email')
+      .populate('registeredParticipants', 'firstName lastName email')
+      .populate('waitlist', 'firstName lastName email');
+
+    res.json(populatedEvent);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -192,30 +203,44 @@ router.post('/:id/register', auth, async (req, res) => {
 // Unregister from event (requires auth)
 router.post('/:id/unregister', auth, async (req, res) => {
   try {
-    const event = await Event.findById(req.params.id);
+    let event = await Event.findById(req.params.id)
+      .populate('organizer', 'firstName lastName email')
+      .populate('registeredParticipants', 'firstName lastName email')
+      .populate('waitlist', 'firstName lastName email');
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
     }
 
+    // Get the raw event document for modifications
+    const rawEvent = await Event.findById(req.params.id);
+
     // Remove from registered participants
-    event.registeredParticipants = event.registeredParticipants.filter(
+    rawEvent.registeredParticipants = rawEvent.registeredParticipants.filter(
       id => id.toString() !== req.user.userId
     );
 
     // Remove from waitlist
-    event.waitlist = event.waitlist.filter(
+    rawEvent.waitlist = rawEvent.waitlist.filter(
       id => id.toString() !== req.user.userId
     );
 
     // If there was a spot opened and there are people on waitlist, move first person from waitlist
-    if (event.registeredParticipants.length < event.capacity && event.waitlist.length > 0) {
-      const nextParticipant = event.waitlist[0];
-      event.registeredParticipants.push(nextParticipant);
-      event.waitlist = event.waitlist.slice(1);
+    if (rawEvent.registeredParticipants.length < rawEvent.capacity && rawEvent.waitlist.length > 0) {
+      const nextParticipant = rawEvent.waitlist[0];
+      rawEvent.registeredParticipants.push(nextParticipant);
+      rawEvent.waitlist = rawEvent.waitlist.slice(1);
     }
 
-    await event.save();
-    res.json(event);
+    await rawEvent.save();
+    
+    // Get the updated populated event
+    const populatedEvent = await Event.findById(rawEvent._id)
+      .populate('organizer', 'firstName lastName email')
+      .populate('registeredParticipants', 'firstName lastName email')
+      .populate('waitlist', 'firstName lastName email');
+
+    res.json(populatedEvent);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
