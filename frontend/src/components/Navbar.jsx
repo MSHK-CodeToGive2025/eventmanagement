@@ -5,45 +5,49 @@ const Navbar = () => {
   const { user, logout } = useAuth();
 
   return (
-    <nav className="bg-white shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link to="/" className="text-xl font-bold text-indigo-600">
-              Zubin Foundation
+    <div className="bg-white">
+      {/* Main navigation */}
+      <nav className="container mx-auto px-4 bg-white shadow-md">
+        <div className="flex justify-between items-center h-20">
+          <div className="flex items-center space-x-8">
+            <Link to="/" className="flex items-center">
+              <span className="text-2xl font-heading font-bold text-zubin-text hover:text-zubin-accent transition-colors">
+                The Zubin Foundation
+              </span>
             </Link>
-            <div className="ml-10 flex items-baseline space-x-4">
+            <div className="hidden md:flex items-center space-x-6">
               <Link
                 to="/events"
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                className="text-zubin-text hover:text-zubin-accent px-3 py-2 text-sm font-medium transition-colors"
               >
                 Events
               </Link>
               {user && (user.role === 'admin' || user.role === 'volunteer') && (
-                <Link
-                  to="/events/create"
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  Create Event
-                </Link>
-              )}
-            </div>
-          </div>
-          <div className="flex items-center">
-            {user ? (
-              <div className="flex items-center space-x-4">
-                <span className="text-gray-600">{user.name}</span>
-                {(user.role === 'admin' || user.role === 'volunteer') && (
+                <>
+                  <Link
+                    to="/events/create"
+                    className="text-zubin-text hover:text-zubin-accent px-3 py-2 text-sm font-medium transition-colors"
+                  >
+                    Create Event
+                  </Link>
                   <Link
                     to="/dashboard"
-                    className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                    className="text-zubin-text hover:text-zubin-accent px-3 py-2 text-sm font-medium transition-colors"
                   >
                     Dashboard
                   </Link>
-                )}
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <div className="flex items-center space-x-4">
+                <span className="text-zubin-gray text-sm">Welcome, {user.name}</span>
                 <button
                   onClick={logout}
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
+                  className="bg-zubin-accent text-zubin-text px-6 py-2 rounded-full text-sm font-medium hover:bg-zubin-primary transition-colors"
                 >
                   Logout
                 </button>
@@ -52,13 +56,13 @@ const Navbar = () => {
               <div className="flex items-center space-x-4">
                 <Link
                   to="/login"
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                  className="text-zubin-text hover:text-zubin-accent px-3 py-2 text-sm font-medium transition-colors"
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
-                  className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
+                  className="bg-zubin-primary text-zubin-text px-6 py-2 rounded-full text-sm font-medium hover:bg-zubin-accent transition-colors"
                 >
                   Register
                 </Link>
@@ -66,8 +70,13 @@ const Navbar = () => {
             )}
           </div>
         </div>
+      </nav>
+
+      {/* Mobile menu - can be expanded if needed */}
+      <div className="md:hidden">
+        {/* Add mobile menu implementation here if needed */}
       </div>
-    </nav>
+    </div>
   );
 };
 
