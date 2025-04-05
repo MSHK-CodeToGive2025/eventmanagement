@@ -2,7 +2,7 @@
 
 ## 1. Project Overview
 
-The Zubin Foundation Event Management System is a web-based platform designed to streamline the management of events for Hong Kong's ethnic minorities. The system will support the foundation's mission to improve the lives of ethnic minorities by facilitating event organization, participant registration, and communication between volunteers and participants.
+The Zubin Foundation Event Management System is a web-based platform designed to streamline the management of events for Hong Kong's ethnic minorities. The system will support the foundation's mission to improve the lives of ethnic minorities by facilitating event organization, participant registration, and communication between staff and participants.
 
 ## 2. Organization Background
 

@@ -1,10 +1,10 @@
 # Zubin Foundation Event Management System
 
-A web-based platform designed to streamline the management of events for Hong Kong's ethnic minorities. This system supports the Zubin Foundation's mission to improve the lives of ethnic minorities by facilitating event organization, participant registration, and communication between volunteers and participants.
+A web-based platform designed to streamline the management of events for Hong Kong's ethnic minorities. This system supports the Zubin Foundation's mission to improve the lives of ethnic minorities by facilitating event organization, participant registration, and communication between staff and participants.
 
 ## Features
 
-- User Authentication and Role Management (Admin, Volunteers, Participants)
+- User Authentication and Role Management (Admin, Staff, Participants)
 - Event Management (Create, Read, Update, Delete)
 - Participant Registration System
 - WhatsApp Integration for Communication

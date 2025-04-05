@@ -33,7 +33,7 @@ const Dashboard = () => {
             </h2>
             <p className="text-gray-600">
               This is a placeholder for the dashboard content. The actual content
-              will be implemented based on the user's role (Admin, Volunteer, or
+              will be implemented based on the user's role (Admin, Staff, or
               Participant).
             </p>
           </div>

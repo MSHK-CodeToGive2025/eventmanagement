@@ -27,7 +27,7 @@ const Navbar = () => {
               >
                 Events
               </Link>
-              {user && (user.role === 'admin' || user.role === 'volunteer') && (
+              {user && (user.role === 'admin' || user.role === 'staff') && (
                 <>
                   <Link
                     to="/events/create"

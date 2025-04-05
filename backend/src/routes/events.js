@@ -56,7 +56,7 @@ router.get('/:id', async (req, res) => {
 router.post('/', auth, upload.single('image'), async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || (user.role !== 'admin' && user.role !== 'volunteer')) {
+    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
       return res.status(403).json({ message: 'Not authorized to create events' });
     }
 
