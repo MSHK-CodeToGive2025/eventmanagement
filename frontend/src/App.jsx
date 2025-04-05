@@ -8,6 +8,7 @@ import EventList from './components/EventList'
 import EventDetail from './components/EventDetail'
 import CreateEvent from './pages/CreateEvent'
 import PrivateRoute from './components/PrivateRoute'
+import UserManagement from './pages/UserManagement'
 
 function App() {
   return (
@@ -38,6 +39,7 @@ function App() {
                     </PrivateRoute>
                   }
                 />
+                <Route path="/user-management" element={<UserManagement />} />
                 <Route path="/" element={<EventList />} />
               </Routes>
             </div>
