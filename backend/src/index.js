@@ -4,6 +4,7 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import authRoutes from './routes/auth.js';
 import eventRoutes from './routes/events.js';
+import usersRoutes from './routes/users.js';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
+app.use('/api/users', usersRoutes);
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)

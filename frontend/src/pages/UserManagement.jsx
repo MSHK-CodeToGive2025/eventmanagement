@@ -10,7 +10,9 @@ const UserManagement = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    role: 'participant'
+    phoneNumber: '',
+    role: 'participant',
+    password: ''
   });
 
   useEffect(() => {
@@ -27,7 +29,8 @@ const UserManagement = () => {
       setUsers(response.data);
       setLoading(false);
     } catch (error) {
-      toast.error('Failed to fetch users');
+      console.error('Error fetching users:', error);
+      toast.error(error.response?.data?.message || 'Failed to fetch users');
       setLoading(false);
     }
   };
@@ -53,7 +56,8 @@ const UserManagement = () => {
       setShowModal(false);
       fetchUsers();
     } catch (error) {
-      toast.error('Operation failed');
+      console.error('Error saving user:', error);
+      toast.error(error.response?.data?.message || 'Operation failed');
     }
   };
 
@@ -68,7 +72,8 @@ const UserManagement = () => {
         toast.success('User deleted successfully');
         fetchUsers();
       } catch (error) {
-        toast.error('Failed to delete user');
+        console.error('Error deleting user:', error);
+        toast.error(error.response?.data?.message || 'Failed to delete user');
       }
     }
   };
@@ -78,7 +83,9 @@ const UserManagement = () => {
     setFormData({
       name: user.name,
       email: user.email,
-      role: user.role
+      phoneNumber: user.phoneNumber,
+      role: user.role,
+      password: ''
     });
     setShowModal(true);
   };
@@ -90,7 +97,13 @@ const UserManagement = () => {
         <button
           onClick={() => {
             setSelectedUser(null);
-            setFormData({ name: '', email: '', role: 'participant' });
+            setFormData({
+              name: '',
+              email: '',
+              phoneNumber: '',
+              role: 'participant',
+              password: ''
+            });
             setShowModal(true);
           }}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
@@ -113,6 +126,9 @@ const UserManagement = () => {
                   Email
                 </th>
                 <th className="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  Phone
+                </th>
+                <th className="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                   Role
                 </th>
                 <th className="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
@@ -125,6 +141,7 @@ const UserManagement = () => {
                 <tr key={user._id}>
                   <td className="px-6 py-4 border-b border-gray-200">{user.name}</td>
                   <td className="px-6 py-4 border-b border-gray-200">{user.email}</td>
+                  <td className="px-6 py-4 border-b border-gray-200">{user.phoneNumber}</td>
                   <td className="px-6 py-4 border-b border-gray-200">{user.role}</td>
                   <td className="px-6 py-4 border-b border-gray-200">
                     <button
@@ -180,6 +197,17 @@ const UserManagement = () => {
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  value={formData.phoneNumber}
+                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                  className="w-full px-3 py-2 border rounded"
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2">
                   Role
                 </label>
                 <select
@@ -193,6 +221,20 @@ const UserManagement = () => {
                   <option value="admin">Admin</option>
                 </select>
               </div>
+              {!selectedUser && (
+                <div className="mb-4">
+                  <label className="block text-gray-700 text-sm font-bold mb-2">
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full px-3 py-2 border rounded"
+                    required={!selectedUser}
+                  />
+                </div>
+              )}
               <div className="flex justify-end">
                 <button
                   type="button"
