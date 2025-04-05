@@ -114,21 +114,6 @@ const Register = () => {
                 onChange={handleChange}
               />
             </div>
-            <div>
-              <label htmlFor="role" className="block text-sm font-medium text-zubin-text">
-                Role
-              </label>
-              <select
-                id="role"
-                name="role"
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 rounded-lg placeholder-gray-500 text-zubin-text focus:outline-none focus:ring-2 focus:ring-zubin-primary focus:border-zubin-accent sm:text-sm"
-                value={formData.role}
-                onChange={handleChange}
-              >
-                <option value="participant">Participant</option>
-                <option value="staff">Staff</option>
-              </select>
-            </div>
           </div>
 
           <div>
