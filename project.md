@@ -18,9 +18,9 @@ The Zubin Foundation is an integrated service provider for Hong Kong's ethnic mi
 - Access to comprehensive dashboards and analytics
 - User management (create, modify, delete)
 - Event management (create, modify, delete)
-- Volunteer management
+- Staff management
 
-### 3.2 Volunteers
+### 3.2 Staff
 - Create and manage events
 - View participant information for their events
 - Send messages and reminders to participants
@@ -67,7 +67,7 @@ The Zubin Foundation is an integrated service provider for Hong Kong's ethnic mi
 - Admin dashboard with key metrics
 - Event attendance reports
 - Participant engagement analytics
-- Volunteer activity tracking
+- Staff activity tracking
 
 ## 5. Technical Architecture
 
@@ -86,7 +86,7 @@ The Zubin Foundation is an integrated service provider for Hong Kong's ethnic mi
 - WhatsApp Business API integration for messaging
 
 ### 5.3 Database Schema (Key Collections)
-- Users (Admin, Volunteers, Participants)
+- Users (Admin, Staff, Participants)
 - Events
 - Registrations
 - Messages
