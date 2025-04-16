@@ -2,11 +2,23 @@ import React from 'react';
 import EventForm from '../components/EventForm';
 import eventService from '../services/eventService';
 
-const CreateEvent = () => {
-  const handleCreateEvent = async (eventData) => {
+interface EventData {
+  title: string;
+  description: string;
+  date: string;
+  time: string;
+  location: string;
+  capacity: number;
+  category: string;
+  registrationDeadline: string;
+  status: 'draft' | 'published' | 'cancelled';
+}
+
+const CreateEvent: React.FC = () => {
+  const handleCreateEvent = async (eventData: EventData) => {
     try {
       return await eventService.createEvent(eventData);
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(error.response?.data?.message || 'Failed to create event');
     }
   };

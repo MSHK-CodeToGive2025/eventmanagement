@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="700" viewBox="0 0 1200 700">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#003366;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00A7E1;stop-opacity:0.8" />
+    </linearGradient>
+    <linearGradient id="highlightGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#FFE94E;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#FFD700;stop-opacity:1" />
+    </linearGradient>
+    <pattern id="pattern1" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
+      <circle cx="30" cy="30" r="2" fill="#ffffff" opacity="0.3" />
+    </pattern>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="700" fill="url(#bgGradient)"/>
+  <rect width="1200" height="700" fill="url(#pattern1)"/>
+  
+  <!-- Abstract shapes representing diversity -->
+  <g opacity="0.7">
+    <!-- Yellow circle representing the sun/light -->
+    <circle cx="950" cy="150" r="120" fill="url(#highlightGradient)" opacity="0.8"/>
+    
+    <!-- Flowing shapes representing community and connection -->
+    <path d="M-100,500 C100,450 300,650 500,550 C700,450 900,500 1100,400 C1300,300 1400,450 1500,400" 
+          stroke="#FFE94E" stroke-width="8" fill="none" opacity="0.5"/>
+    <path d="M-100,550 C100,500 300,700 500,600 C700,500 900,550 1100,450 C1300,350 1400,500 1500,450" 
+          stroke="#ffffff" stroke-width="4" fill="none" opacity="0.3"/>
+    
+    <!-- Diverse people silhouettes -->
+    <g transform="translate(200, 500)">
+      <circle cx="0" cy="-40" r="20" fill="#ffffff"/>
+      <path d="M-15,-20 L15,-20 L15,40 L-15,40 Z" fill="#ffffff"/>
+    </g>
+    <g transform="translate(250, 500)">
+      <circle cx="0" cy="-35" r="18" fill="#ffffff"/>
+      <path d="M-12,-17 L12,-17 L18,40 L-18,40 Z" fill="#ffffff"/>
+    </g>
+    <g transform="translate(300, 500)">
+      <circle cx="0" cy="-38" r="19" fill="#ffffff"/>
+      <path d="M-14,-19 L14,-19 L10,40 L-10,40 Z" fill="#ffffff"/>
+    </g>
+    <g transform="translate(350, 500)">
+      <circle cx="0" cy="-42" r="21" fill="#ffffff"/>
+      <path d="M-16,-21 L16,-21 L20,40 L-20,40 Z" fill="#ffffff"/>
+    </g>
+    <g transform="translate(400, 500)">
+      <circle cx="0" cy="-36" r="18" fill="#ffffff"/>
+      <path d="M-13,-18 L13,-18 L16,40 L-16,40 Z" fill="#ffffff"/>
+    </g>
+  </g>
+  
+  <!-- Overlay elements -->
+  <g opacity="0.9">
+    <!-- Buildings silhouette representing Hong Kong -->
+    <path d="M0,700 L0,500 L50,500 L50,550 L100,550 L100,450 L150,450 L150,550 L200,550 L200,600 L250,600 L250,500 
+             L300,500 L300,450 L350,450 L350,550 L400,550 L400,650 L450,650 L450,500 L500,500 L500,400 L550,400 
+             L550,500 L600,500 L600,450 L650,450 L650,550 L700,550 L700,600 L750,600 L750,500 L800,500 L800,450 
+             L850,450 L850,550 L900,550 L900,650 L950,650 L950,500 L1000,500 L1000,400 L1050,400 L1050,500 L1100,500 
+             L1100,450 L1150,450 L1150,550 L1200,550 L1200,700 Z" 
+          fill="#000000" opacity="0.5"/>
+  </g>
+  
+  <!-- Floating elements -->
+  <g>
+    <circle cx="200" cy="200" r="8" fill="#FFE94E" opacity="0.8">
+      <animate attributeName="cy" from="200" to="190" dur="3s" repeatCount="indefinite" values="200; 190; 200" keyTimes="0; 0.5; 1"/>
+    </circle>
+    <circle cx="300" cy="150" r="6" fill="#FFE94E" opacity="0.8">
+      <animate attributeName="cy" from="150" to="140" dur="2.5s" repeatCount="indefinite" values="150; 140; 150" keyTimes="0; 0.5; 1"/>
+    </circle>
+    <circle cx="400" cy="250" r="10" fill="#FFE94E" opacity="0.8">
+      <animate attributeName="cy" from="250" to="240" dur="4s" repeatCount="indefinite" values="250; 240; 250" keyTimes="0; 0.5; 1"/>
+    </circle>
+    <circle cx="500" cy="180" r="7" fill="#FFE94E" opacity="0.8">
+      <animate attributeName="cy" from="180" to="170" dur="3.5s" repeatCount="indefinite" values="180; 170; 180" keyTimes="0; 0.5; 1"/>
+    </circle>
+    <circle cx="600" cy="220" r="9" fill="#FFE94E" opacity="0.8">
+      <animate attributeName="cy" from="220" to="210" dur="3s" repeatCount="indefinite" values="220; 210; 220" keyTimes="0; 0.5; 1"/>
+    </circle>
+  </g>
+  
+  <!-- Text elements -->
+  <g>
+    <text x="600" y="200" font-family="Arial, sans-serif" font-size="60" font-weight="bold" text-anchor="middle" fill="#ffffff" opacity="0.1">
+      DIVERSITY
+    </text>
+    <text x="600" y="280" font-family="Arial, sans-serif" font-size="60" font-weight="bold" text-anchor="middle" fill="#ffffff" opacity="0.1">
+      INCLUSION
+    </text>
+    <text x="600" y="360" font-family="Arial, sans-serif" font-size="60" font-weight="bold" text-anchor="middle" fill="#ffffff" opacity="0.1">
+      COMMUNITY
+    </text>
+  </g>
+</svg>
+

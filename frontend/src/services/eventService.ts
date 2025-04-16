@@ -2,15 +2,57 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5050/api';
 
+interface Event {
+  _id: string;
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  category: string;
+  capacity: number;
+  image?: string;
+  organizer: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+  };
+  registeredParticipants: Array<{
+    _id: string;
+    name: string;
+    email: string;
+  } | string>;
+  waitlist: Array<{
+    _id: string;
+    name: string;
+    email: string;
+  } | string>;
+  availableSpots: number;
+  isFull: boolean;
+}
+
+interface EventFormData {
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  category: string;
+  capacity: number;
+  image?: File;
+}
+
 // Add auth token to requests
-const authHeader = () => {
+const authHeader = (): { Authorization?: string } => {
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 };
 
 const eventService = {
   // Get all events
-  async getEvents() {
+  async getEvents(): Promise<Event[]> {
     const response = await axios.get(`${API_URL}/events`, {
       headers: authHeader(),
     });
@@ -18,7 +60,7 @@ const eventService = {
   },
 
   // Get single event
-  async getEvent(id) {
+  async getEvent(id: string): Promise<Event> {
     const response = await axios.get(`${API_URL}/events/${id}`, {
       headers: authHeader(),
     });
@@ -26,7 +68,7 @@ const eventService = {
   },
 
   // Create event
-  async createEvent(eventData) {
+  async createEvent(eventData: EventFormData | FormData): Promise<Event> {
     const response = await axios.post(`${API_URL}/events`, eventData, {
       headers: {
         ...authHeader(),
@@ -37,7 +79,7 @@ const eventService = {
   },
 
   // Update event
-  async updateEvent(id, eventData) {
+  async updateEvent(id: string, eventData: EventFormData | FormData): Promise<Event> {
     const response = await axios.put(`${API_URL}/events/${id}`, eventData, {
       headers: {
         ...authHeader(),
@@ -48,15 +90,14 @@ const eventService = {
   },
 
   // Delete event
-  async deleteEvent(id) {
-    const response = await axios.delete(`${API_URL}/events/${id}`, {
+  async deleteEvent(id: string): Promise<void> {
+    await axios.delete(`${API_URL}/events/${id}`, {
       headers: authHeader(),
     });
-    return response.data;
   },
 
   // Register for event
-  async registerForEvent(id) {
+  async registerForEvent(id: string): Promise<Event> {
     const response = await axios.post(`${API_URL}/events/${id}/register`, {}, {
       headers: authHeader(),
     });
@@ -64,7 +105,7 @@ const eventService = {
   },
 
   // Unregister from event
-  async unregisterFromEvent(id) {
+  async unregisterFromEvent(id: string): Promise<Event> {
     const response = await axios.post(`${API_URL}/events/${id}/unregister`, {}, {
       headers: authHeader(),
     });
