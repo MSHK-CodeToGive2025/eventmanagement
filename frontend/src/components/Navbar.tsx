@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Button } from '@/components/ui/button';
 
-const Navbar = () => {
+const Navbar: React.FC = () => {
   const { user, logout } = useAuth();
 
   return (
@@ -79,6 +80,7 @@ const Navbar = () => {
                 >
                   Register
                 </Link>
+                <Button variant="outline">Test</Button>
               </div>
             )}
           </div>

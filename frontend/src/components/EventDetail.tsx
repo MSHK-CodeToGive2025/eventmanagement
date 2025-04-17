@@ -3,19 +3,53 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import eventService from '../services/eventService';
 
-const EventDetail = () => {
-  const [event, setEvent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const { id } = useParams();
+interface Participant {
+  _id: string;
+  id?: string;
+  name?: string;
+  email?: string;
+}
+
+interface Organizer {
+  _id: string;
+  firstName: string;
+  lastName: string;
+}
+
+interface Event {
+  _id: string;
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  category: string;
+  capacity: number;
+  image?: string;
+  organizer: Organizer;
+  registeredParticipants: Array<Participant | string>;
+  waitlist: Array<Participant | string>;
+  availableSpots: number;
+  isFull: boolean;
+}
+
+const EventDetail: React.FC = () => {
+  const [event, setEvent] = useState<Event | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
 
   useEffect(() => {
-    fetchEvent();
+    if (id) {
+      fetchEvent();
+    }
   }, [id]);
 
   const fetchEvent = async () => {
+    if (!id) return;
     try {
       const data = await eventService.getEvent(id);
       setEvent(data);
@@ -29,6 +63,7 @@ const EventDetail = () => {
   };
 
   const handleRegister = async () => {
+    if (!id) return;
     try {
       await eventService.registerForEvent(id);
       fetchEvent();
@@ -39,6 +74,7 @@ const EventDetail = () => {
   };
 
   const handleUnregister = async () => {
+    if (!id) return;
     try {
       await eventService.unregisterFromEvent(id);
       fetchEvent();
@@ -49,6 +85,7 @@ const EventDetail = () => {
   };
 
   const handleDelete = async () => {
+    if (!id) return;
     if (window.confirm('Are you sure you want to delete this event?')) {
       try {
         await eventService.deleteEvent(id);
@@ -64,12 +101,14 @@ const EventDetail = () => {
   if (error) return <div className="text-red-600">{error}</div>;
   if (!event) return <div>Event not found</div>;
 
-  const canManageEvent = user && (user.role === 'admin' || event.organizer._id === user.userId);
-  const isRegistered = user && event.registeredParticipants.some(p => p._id === user.userId || p === user.userId);
-  const isWaitlisted = user && event.waitlist.some(p => p._id === user.userId || p === user.userId);
-
-  console.log('Current user:', user?.userId);
-  console.log('Registered participants:', event.registeredParticipants.map(p => p._id || p));
+  const canManageEvent = user && (user.role === 'admin' || event.organizer._id === user.id);
+  const isRegistered = user && event.registeredParticipants.some(p => 
+    typeof p === 'string' ? p === user.id : p._id === user.id
+  );
+  const isWaitlisted = user && event.waitlist.some(p => 
+    typeof p === 'string' ? p === user.id : p._id === user.id
+  );
+  const isOrganizer = user && event.organizer._id === user.id;
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -182,15 +221,18 @@ const EventDetail = () => {
             <div className="mt-8">
               <h3 className="text-lg font-semibold mb-4">Registered Participants</h3>
               <div className="grid grid-cols-2 gap-4">
-                {event.registeredParticipants.map((participant) => (
-                  <div
-                    key={participant.id}
-                    className="p-3 bg-gray-50 rounded-lg"
-                  >
-                    <p className="font-medium">{participant.name}</p>
-                    <p className="text-sm text-gray-600">{participant.email}</p>
-                  </div>
-                ))}
+                {event.registeredParticipants.map((participant) => {
+                  if (typeof participant === 'string') return null;
+                  return (
+                    <div
+                      key={participant.id || participant._id}
+                      className="p-3 bg-gray-50 rounded-lg"
+                    >
+                      <p className="font-medium">{participant.name}</p>
+                      <p className="text-sm text-gray-600">{participant.email}</p>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

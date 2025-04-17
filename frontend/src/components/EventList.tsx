@@ -3,10 +3,27 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import eventService from '../services/eventService';
 
-const EventList = () => {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+interface Participant {
+  _id: string;
+}
+
+interface Event {
+  _id: string;
+  title: string;
+  description: string;
+  date: string;
+  location: string;
+  category: string;
+  capacity: number;
+  image?: string;
+  registeredParticipants: Array<Participant | string>;
+  waitlist: Array<Participant | string>;
+}
+
+const EventList: React.FC = () => {
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -26,7 +43,7 @@ const EventList = () => {
     }
   };
 
-  const handleRegister = async (eventId) => {
+  const handleRegister = async (eventId: string) => {
     try {
       await eventService.registerForEvent(eventId);
       fetchEvents();
@@ -36,7 +53,7 @@ const EventList = () => {
     }
   };
 
-  const handleUnregister = async (eventId) => {
+  const handleUnregister = async (eventId: string) => {
     try {
       await eventService.unregisterFromEvent(eventId);
       fetchEvents();
@@ -44,6 +61,18 @@ const EventList = () => {
       setError('Failed to unregister from event');
       console.error('Error unregistering from event:', err);
     }
+  };
+
+  const isUserRegistered = (event: Event) => {
+    return event.registeredParticipants.some(p => 
+      typeof p === 'string' ? p === user?.id : p._id === user?.id
+    );
+  };
+
+  const isUserWaitlisted = (event: Event) => {
+    return event.waitlist.some(p => 
+      typeof p === 'string' ? p === user?.id : p._id === user?.id
+    );
   };
 
   if (loading) return (
@@ -113,7 +142,7 @@ const EventList = () => {
                   <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                   </svg>
-                  {event.capacity - (event.registeredParticipants?.length || 0)} spots available
+                  {event.capacity - event.registeredParticipants.length} spots available
                 </div>
               </div>
 
@@ -126,14 +155,14 @@ const EventList = () => {
                 </Link>
                 {user ? (
                   <div>
-                    {event.registeredParticipants?.some(p => p._id === user.userId || p === user.userId) ? (
+                    {isUserRegistered(event) ? (
                       <button
                         onClick={() => handleUnregister(event._id)}
                         className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-opacity-90 transition-colors"
                       >
                         Unregister
                       </button>
-                    ) : event.waitlist?.some(p => p._id === user.userId || p === user.userId) ? (
+                    ) : isUserWaitlisted(event) ? (
                       <button
                         onClick={() => handleUnregister(event._id)}
                         className="bg-zubin-accent text-zubin-text px-4 py-2 rounded-full text-sm font-medium hover:bg-zubin-primary transition-colors"
@@ -144,9 +173,9 @@ const EventList = () => {
                       <button
                         onClick={() => handleRegister(event._id)}
                         className="bg-zubin-primary text-zubin-text px-4 py-2 rounded-full text-sm font-medium hover:bg-zubin-accent transition-colors"
-                        disabled={event.registeredParticipants?.length >= event.capacity}
+                        disabled={event.registeredParticipants.length >= event.capacity}
                       >
-                        {event.registeredParticipants?.length >= event.capacity ? 'Join Waitlist' : 'Register'}
+                        {event.registeredParticipants.length >= event.capacity ? 'Join Waitlist' : 'Register'}
                       </button>
                     )}
                   </div>

@@ -1,13 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent, ChangeEvent } from 'react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
-const UserManagement = () => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [formData, setFormData] = useState({
+interface User {
+  _id: string;
+  name: string;
+  email: string;
+  phoneNumber: string;
+  role: 'participant' | 'staff' | 'admin';
+}
+
+interface FormData {
+  name: string;
+  email: string;
+  phoneNumber: string;
+  role: 'participant' | 'staff' | 'admin';
+  password: string;
+}
+
+const UserManagement: React.FC = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [showModal, setShowModal] = useState<boolean>(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     email: '',
     phoneNumber: '',
@@ -21,21 +37,21 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('/api/users', {
+      const response = await axios.get<User[]>('/api/users', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
       });
       setUsers(response.data);
       setLoading(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error);
       toast.error(error.response?.data?.message || 'Failed to fetch users');
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       if (selectedUser) {
@@ -55,13 +71,13 @@ const UserManagement = () => {
       }
       setShowModal(false);
       fetchUsers();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving user:', error);
       toast.error(error.response?.data?.message || 'Operation failed');
     }
   };
 
-  const handleDelete = async (userId) => {
+  const handleDelete = async (userId: string) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
         await axios.delete(`/api/users/${userId}`, {
@@ -71,14 +87,14 @@ const UserManagement = () => {
         });
         toast.success('User deleted successfully');
         fetchUsers();
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error deleting user:', error);
         toast.error(error.response?.data?.message || 'Failed to delete user');
       }
     }
   };
 
-  const handleEdit = (user) => {
+  const handleEdit = (user: User) => {
     setSelectedUser(user);
     setFormData({
       name: user.name,
@@ -88,6 +104,14 @@ const UserManagement = () => {
       password: ''
     });
     setShowModal(true);
+  };
+
+  const handleInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   return (
@@ -177,8 +201,9 @@ const UserManagement = () => {
                 </label>
                 <input
                   type="text"
+                  name="name"
                   value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded"
                   required
                 />
@@ -189,8 +214,9 @@ const UserManagement = () => {
                 </label>
                 <input
                   type="email"
+                  name="email"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded"
                   required
                 />
@@ -201,8 +227,9 @@ const UserManagement = () => {
                 </label>
                 <input
                   type="tel"
+                  name="phoneNumber"
                   value={formData.phoneNumber}
-                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded"
                 />
               </div>
@@ -211,8 +238,9 @@ const UserManagement = () => {
                   Role
                 </label>
                 <select
+                  name="role"
                   value={formData.role}
-                  onChange={(e) => setFormData({ ...formData, role: e.target.value })}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded"
                   required
                 >
@@ -228,8 +256,9 @@ const UserManagement = () => {
                   </label>
                   <input
                     type="password"
+                    name="password"
                     value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded"
                     required={!selectedUser}
                   />

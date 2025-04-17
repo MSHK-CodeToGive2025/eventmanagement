@@ -1,32 +1,40 @@
-import { useState } from 'react';
+import { useState, ChangeEvent, FormEvent } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const Register = () => {
-  const [formData, setFormData] = useState({
+interface FormData {
+  email: string;
+  password: string;
+  name: string;
+  phoneNumber: string;
+  role: 'participant' | 'staff' | 'admin';
+}
+
+const Register: React.FC = () => {
+  const [formData, setFormData] = useState<FormData>({
     email: '',
     password: '',
     name: '',
     phoneNumber: '',
     role: 'participant'
   });
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string>('');
   const navigate = useNavigate();
   const { register } = useAuth();
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       await register(formData);
       navigate('/dashboard');
-    } catch (error) {
+    } catch (error: any) {
       setError(error.response?.data?.message || 'An error occurred');
     }
   };

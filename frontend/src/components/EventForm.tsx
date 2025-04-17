@@ -1,8 +1,27 @@
-import React, { useState } from 'react';
+import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const EventForm = ({ onSubmit, initialData = {}, isEditing = false }) => {
-  const [formData, setFormData] = useState({
+interface EventFormData {
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  capacity: string | number;
+  category: 'educational' | 'cultural' | 'social' | 'other';
+  status: 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
+  imageUrl?: string;
+}
+
+interface EventFormProps {
+  onSubmit: (formData: FormData) => Promise<void>;
+  initialData?: Partial<EventFormData>;
+  isEditing?: boolean;
+}
+
+const EventForm: React.FC<EventFormProps> = ({ onSubmit, initialData = {}, isEditing = false }) => {
+  const [formData, setFormData] = useState<EventFormData>({
     title: initialData.title || '',
     description: initialData.description || '',
     date: initialData.date || '',
@@ -14,12 +33,12 @@ const EventForm = ({ onSubmit, initialData = {}, isEditing = false }) => {
     status: initialData.status || 'upcoming'
   });
 
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(initialData.imageUrl || null);
-  const [error, setError] = useState('');
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(initialData.imageUrl || null);
+  const [error, setError] = useState<string>('');
   const navigate = useNavigate();
 
-  const handleChange = (e) => {
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
@@ -27,8 +46,8 @@ const EventForm = ({ onSubmit, initialData = {}, isEditing = false }) => {
     }));
   };
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0];
+  const handleImageChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) { // 5MB limit
         setError('Image size should be less than 5MB');
@@ -44,15 +63,16 @@ const EventForm = ({ onSubmit, initialData = {}, isEditing = false }) => {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     try {
       const formDataToSend = new FormData();
       Object.keys(formData).forEach(key => {
-        if (key === 'date') {
-          formDataToSend.append(key, new Date(formData[key]).toISOString());
-        } else {
-          formDataToSend.append(key, formData[key]);
+        const value = formData[key as keyof EventFormData];
+        if (key === 'date' && value) {
+          formDataToSend.append(key, new Date(value as string).toISOString());
+        } else if (value !== undefined) {
+          formDataToSend.append(key, String(value));
         }
       });
 
@@ -62,7 +82,7 @@ const EventForm = ({ onSubmit, initialData = {}, isEditing = false }) => {
 
       await onSubmit(formDataToSend);
       navigate('/events');
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'Something went wrong. Please try again.');
     }
   };
@@ -254,23 +274,17 @@ const EventForm = ({ onSubmit, initialData = {}, isEditing = false }) => {
           onChange={handleChange}
           className={inputClasses}
         >
-          <option value="educational">Educational Workshop</option>
-          <option value="career">Career Development</option>
-          <option value="support">Support Session</option>
+          <option value="educational">Educational</option>
+          <option value="cultural">Cultural</option>
+          <option value="social">Social</option>
+          <option value="other">Other</option>
         </select>
       </div>
 
-      <div className="flex justify-end space-x-4 pt-6">
-        <button
-          type="button"
-          onClick={() => navigate('/events')}
-          className="px-6 py-2 border border-gray-300 text-zubin-gray rounded-full text-sm font-medium hover:bg-zubin-secondary transition-colors"
-        >
-          Cancel
-        </button>
+      <div>
         <button
           type="submit"
-          className="px-6 py-2 bg-zubin-primary text-zubin-text rounded-full text-sm font-medium hover:bg-zubin-accent transition-colors"
+          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-zubin-primary hover:bg-zubin-accent focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-zubin-primary"
         >
           {isEditing ? 'Update Event' : 'Create Event'}
         </button>
