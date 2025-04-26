@@ -47,7 +47,10 @@ router.post('/', auth, async (req, res) => {
     });
 
     await newUser.save();
-    res.status(201).json(newUser);
+    
+    // Return user without password
+    const userWithoutPassword = await User.findById(newUser._id).select('-password');
+    res.status(201).json(userWithoutPassword);
   } catch (error) {
     console.error('[USERS] Error creating user:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
