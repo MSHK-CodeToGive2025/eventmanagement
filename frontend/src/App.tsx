@@ -8,6 +8,7 @@ import CreateEvent from './pages/CreateEvent';
 import UserManagement from './pages/UserManagement';
 import Events from './pages/Events';
 import Home from './pages/Home';
+import EventAdminForm from './components/events/EventAdminForm';
 
 const App: React.FC = () => {
   return (
@@ -22,6 +23,7 @@ const App: React.FC = () => {
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/events" element={<Events />} />
               <Route path="/events/create" element={<CreateEvent />} />
+              <Route path="/events/:id/edit" element={<EventAdminForm />} />
               <Route path="/user-management" element={<UserManagement />} />
               <Route path="/" element={<Home />} />
             </Routes>
