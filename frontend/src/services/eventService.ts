@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5050/api';
 
-interface Event {
+export interface Event {
   _id: string;
   title: string;
   description: string;
@@ -20,19 +20,23 @@ interface Event {
   };
   registeredParticipants: Array<{
     _id: string;
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
+    phoneNumber?: string;
   } | string>;
   waitlist: Array<{
     _id: string;
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
+    phoneNumber?: string;
   } | string>;
   availableSpots: number;
   isFull: boolean;
 }
 
-interface EventFormData {
+export interface EventFormData {
   title: string;
   description: string;
   date: string;
@@ -45,7 +49,7 @@ interface EventFormData {
 }
 
 // Add auth token to requests
-const authHeader = (): { Authorization?: string } => {
+export const authHeader = (): { Authorization?: string } => {
   const token = localStorage.getItem('token');
   return token ? { Authorization: `Bearer ${token}` } : {};
 };

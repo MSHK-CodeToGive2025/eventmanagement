@@ -3,8 +3,15 @@ import auth from '../middleware/auth.js';
 import Event from '../models/Event.js';
 import User from '../models/User.js';
 import multer from 'multer';
+import twilio from 'twilio';
 
 const router = express.Router();
+
+// Initialize Twilio client
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
 
 // Configure multer for handling file uploads
 const storage = multer.memoryStorage();
@@ -257,6 +264,79 @@ router.get('/:id/image', async (req, res) => {
     res.set('Content-Type', event.image.contentType);
     res.send(event.image.data);
   } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Send WhatsApp message to all registered participants (requires auth)
+router.post('/:id/send-whatsapp', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    const event = await Event.findById(req.params.id)
+      .populate({
+        path: 'registeredParticipants',
+        select: 'firstName lastName phoneNumber',
+        model: 'User'
+      });
+
+    if (!event) {
+      console.error(`[WhatsApp] Event not found: ${req.params.id}`);
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Only admin or staff can send messages
+    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
+      console.error(`[WhatsApp] Unauthorized access attempt by user: ${req.user.userId}`);
+      return res.status(403).json({ message: 'Only admin or staff can send WhatsApp messages' });
+    }
+
+    const { message } = req.body;
+    if (!message) {
+      console.error('[WhatsApp] Message content is required');
+      return res.status(400).json({ message: 'Message content is required' });
+    }
+
+    console.log(`[WhatsApp] Starting message send for event: ${event.title} (${event._id})`);
+    console.log(`[WhatsApp] Message content: ${message}`);
+    console.log(`[WhatsApp] Number of registered participants: ${event.registeredParticipants.length}`);
+
+    const failedNumbers = [];
+    const successfulNumbers = [];
+
+    // Send message to each participant
+    for (const participant of event.registeredParticipants) {
+      if (participant && participant.phoneNumber) {
+        try {
+          console.log(`[WhatsApp] Sending to ${participant.firstName || 'Unknown'} ${participant.lastName || 'User'} (${participant.phoneNumber})`);
+          await twilioClient.messages.create({
+            body: `Event Notification: ${event.title}\n\n${message}`,
+            from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+            to: `whatsapp:${participant.phoneNumber}`
+          });
+          console.log(`[WhatsApp] Successfully sent to ${participant.phoneNumber}`);
+          successfulNumbers.push(participant.phoneNumber);
+        } catch (error) {
+          console.error(`[WhatsApp] Failed to send to ${participant.phoneNumber}:`, error.message);
+          failedNumbers.push(participant.phoneNumber);
+        }
+      } else {
+        console.log(`[WhatsApp] Skipping participant - no phone number or invalid data`);
+      }
+    }
+
+    console.log(`[WhatsApp] Message send completed. Successful: ${successfulNumbers.length}, Failed: ${failedNumbers.length}`);
+    if (failedNumbers.length > 0) {
+      console.error(`[WhatsApp] Failed numbers: ${failedNumbers.join(', ')}`);
+    }
+
+    res.json({
+      message: 'WhatsApp messages sent',
+      successful: successfulNumbers.length,
+      failed: failedNumbers.length,
+      failedNumbers
+    });
+  } catch (error) {
+    console.error('[WhatsApp] Unexpected error:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
