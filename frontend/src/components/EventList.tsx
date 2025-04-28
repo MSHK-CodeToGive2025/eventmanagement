@@ -147,12 +147,22 @@ const EventList: React.FC = () => {
               </div>
 
               <div className="flex justify-between items-center">
-                <Link
-                  to={`/events/${event._id}`}
-                  className="text-zubin-accent hover:text-zubin-text font-medium text-sm transition-colors"
-                >
-                  View Details →
-                </Link>
+                <div className="flex space-x-2">
+                  <Link
+                    to={`/events/${event._id}`}
+                    className="text-zubin-accent hover:text-zubin-text font-medium text-sm transition-colors"
+                  >
+                    View Details →
+                  </Link>
+                  {user && (user.role === 'admin' || user.role === 'staff') && (
+                    <Link
+                      to={`/events/${event._id}/edit`}
+                      className="text-zubin-accent hover:text-zubin-text font-medium text-sm transition-colors"
+                    >
+                      Edit Event →
+                    </Link>
+                  )}
+                </div>
                 {user ? (
                   <div>
                     {isUserRegistered(event) ? (
