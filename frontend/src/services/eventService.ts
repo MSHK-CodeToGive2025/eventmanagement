@@ -15,20 +15,18 @@ export interface Event {
   image?: string;
   organizer: {
     _id: string;
-    firstName: string;
-    lastName: string;
+    name: string;
+    email: string;
   };
   registeredParticipants: Array<{
     _id: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
     phoneNumber?: string;
   } | string>;
   waitlist: Array<{
     _id: string;
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
     phoneNumber?: string;
   } | string>;

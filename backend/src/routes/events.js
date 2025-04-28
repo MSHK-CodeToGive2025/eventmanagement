@@ -1,3 +1,4 @@
+import dotenv from 'dotenv';
 import express from 'express';
 import auth from '../middleware/auth.js';
 import Event from '../models/Event.js';
@@ -5,12 +6,18 @@ import User from '../models/User.js';
 import multer from 'multer';
 import twilio from 'twilio';
 
+dotenv.config();
+
 const router = express.Router();
 
-// Initialize Twilio client
+// Initialize Twilio client with proper credentials
 const twilioClient = twilio(
   process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN
+  process.env.TWILIO_AUTH_TOKEN,
+  { 
+    accountSid: process.env.TWILIO_ACCOUNT_SID,
+    authToken: process.env.TWILIO_AUTH_TOKEN
+  }
 );
 
 // Configure multer for handling file uploads
@@ -45,9 +52,9 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const event = await Event.findById(req.params.id)
-      .populate('organizer', 'firstName lastName email')
-      .populate('registeredParticipants', 'firstName lastName email')
-      .populate('waitlist', 'firstName lastName email');
+      .populate('organizer', 'name email')
+      .populate('registeredParticipants', 'name email phoneNumber')
+      .populate('waitlist', 'name email phoneNumber');
     
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
@@ -169,9 +176,9 @@ router.post('/:id/register', auth, async (req, res) => {
     }
 
     const event = await Event.findById(req.params.id)
-      .populate('organizer', 'firstName lastName email')
-      .populate('registeredParticipants', 'firstName lastName email')
-      .populate('waitlist', 'firstName lastName email');
+      .populate('organizer', 'name email')
+      .populate('registeredParticipants', 'name email phoneNumber')
+      .populate('waitlist', 'name email phoneNumber');
 
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
@@ -197,9 +204,9 @@ router.post('/:id/register', auth, async (req, res) => {
 
     // Populate the response data
     const populatedEvent = await Event.findById(event._id)
-      .populate('organizer', 'firstName lastName email')
-      .populate('registeredParticipants', 'firstName lastName email')
-      .populate('waitlist', 'firstName lastName email');
+      .populate('organizer', 'name email')
+      .populate('registeredParticipants', 'name email phoneNumber')
+      .populate('waitlist', 'name email phoneNumber');
 
     res.json(populatedEvent);
   } catch (error) {
@@ -272,22 +279,23 @@ router.get('/:id/image', async (req, res) => {
 router.post('/:id/send-whatsapp', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
+    
+    // Only admin or staff can send messages
+    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
+      console.error(`[WhatsApp] Unauthorized access attempt by user: ${req.user.userId}`);
+      return res.status(403).json({ message: 'Only admin or staff can send WhatsApp messages' });
+    }
+
     const event = await Event.findById(req.params.id)
       .populate({
         path: 'registeredParticipants',
-        select: 'firstName lastName phoneNumber',
+        select: 'name email phoneNumber',
         model: 'User'
       });
 
     if (!event) {
       console.error(`[WhatsApp] Event not found: ${req.params.id}`);
       return res.status(404).json({ message: 'Event not found' });
-    }
-
-    // Only admin or staff can send messages
-    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
-      console.error(`[WhatsApp] Unauthorized access attempt by user: ${req.user.userId}`);
-      return res.status(403).json({ message: 'Only admin or staff can send WhatsApp messages' });
     }
 
     const { message } = req.body;
@@ -307,14 +315,21 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
     for (const participant of event.registeredParticipants) {
       if (participant && participant.phoneNumber) {
         try {
-          console.log(`[WhatsApp] Sending to ${participant.firstName || 'Unknown'} ${participant.lastName || 'User'} (${participant.phoneNumber})`);
+          console.log(`[WhatsApp] Sending to ${participant.name || 'Unknown User'} (${participant.phoneNumber})`);
+          
+          // Format phone number to E.164 format if needed
+          const formattedNumber = participant.phoneNumber.startsWith('+') 
+            ? participant.phoneNumber 
+            : `+${participant.phoneNumber.replace(/\D/g, '')}`;
+
           await twilioClient.messages.create({
             body: `Event Notification: ${event.title}\n\n${message}`,
             from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-            to: `whatsapp:${participant.phoneNumber}`
+            to: `whatsapp:${formattedNumber}`
           });
-          console.log(`[WhatsApp] Successfully sent to ${participant.phoneNumber}`);
-          successfulNumbers.push(participant.phoneNumber);
+          
+          console.log(`[WhatsApp] Successfully sent to ${formattedNumber}`);
+          successfulNumbers.push(formattedNumber);
         } catch (error) {
           console.error(`[WhatsApp] Failed to send to ${participant.phoneNumber}:`, error.message);
           failedNumbers.push(participant.phoneNumber);
