@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "5050:5050"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongodb:27017/zubin-foundation
+      - PORT=5050
+    depends_on:
+      - mongodb
+    volumes:
+      - .:/app
+      - /app/node_modules
+    restart: unless-stopped
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
+volumes:
+  mongodb_data: 
