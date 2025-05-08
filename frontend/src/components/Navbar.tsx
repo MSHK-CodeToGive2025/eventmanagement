@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 
 const Navbar: React.FC = () => {
