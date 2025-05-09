@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/auth-context';
-import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import CreateEvent from './pages/CreateEvent';
 import EventAdminForm from './components/events/EventAdminForm';
@@ -16,6 +15,8 @@ import EnhancedEventsPage from './pages/public/enhanced-events/enhanced-events-p
 import EnhancedEventDetailPage from './pages/public/enhanced-events/enhanced-event-detail-page';
 import { AnalyticsDashboard } from './pages/internal/analytics/analytics-dashboard';
 import SignUp from './pages/public/sign-up';
+import EventRemindersPage from './pages/internal/events-builder/event-reminders-page';
+
 const App: React.FC = () => {
 
   return (
@@ -34,6 +35,7 @@ const App: React.FC = () => {
               <Route path="/events/create" element={<CreateEvent />} />
               <Route path="/events/:id/edit" element={<EventAdminForm />} />
               <Route path="/manage/events-builder" element={<EventsBuilderPage />} />
+              <Route path="/manage/events/:id/reminders" element={<EventRemindersPage />} />
               <Route path="/manage/forms" element={<FormsPage />} />
               <Route path="/manage/forms/new" element={<NewFormPage />} />
               <Route path="/manage/users" element={<UserManagementPage />} />

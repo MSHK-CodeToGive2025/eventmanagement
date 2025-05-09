@@ -11,14 +11,25 @@ import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { enhancedEvents } from "@/types/mock-enhanced-event-data"
 
-// Get unique categories from events
+/**
+ * Helper function to extract unique categories from events array
+ * @param events - Array of ZubinEvent objects
+ * @returns Array of unique category strings
+ */
 const getUniqueCategories = (events: ZubinEvent[]) => {
   const categories = events.map((event) => event.category)
   return [...new Set(categories)]
 }
 
+/**
+ * EnhancedEventsPage Component
+ * Displays a grid of events with search, filter, and pagination functionality
+ */
 export default function EnhancedEventsPage() {
+  // Navigation hook from React Router
   const navigate = useNavigate()
+
+  // State for events data and loading status
   const [events, setEvents] = useState<ZubinEvent[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -32,16 +43,19 @@ export default function EnhancedEventsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [eventsPerPage, setEventsPerPage] = useState(9)
 
-  // Sorting state
+  // Sorting state - options: date-asc, date-desc, title-asc, title-desc, capacity-asc, capacity-desc
   const [sortBy, setSortBy] = useState<string>("date-asc")
 
-  // Filter visibility on mobile
+  // Mobile filter visibility state
   const [showFilters, setShowFilters] = useState(false)
 
+  /**
+   * Fetch events data on component mount
+   * Currently using mock data, but can be replaced with API call
+   */
   useEffect(() => {
-    // Simulate API fetch
     const fetchEvents = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate API delay
       setEvents(enhancedEvents)
       setLoading(false)
     }
@@ -49,14 +63,17 @@ export default function EnhancedEventsPage() {
     fetchEvents()
   }, [])
 
-  // Get unique categories for filter dropdown
+  // Get unique categories for filter dropdown using useMemo for performance
   const categories = useMemo(() => getUniqueCategories(events), [events])
 
-  // Filter and sort events
+  /**
+   * Filter and sort events based on current filter and sort states
+   * Uses useMemo to prevent unnecessary recalculations
+   */
   const filteredEvents = useMemo(() => {
     let result = [...events]
 
-    // Apply search filter
+    // Apply search filter across title, details, and location
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       result = result.filter(
@@ -85,7 +102,7 @@ export default function EnhancedEventsPage() {
       result = result.filter((event) => new Date(event.date) <= end)
     }
 
-    // Apply sorting
+    // Apply sorting based on selected sort option
     switch (sortBy) {
       case "date-asc":
         result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
@@ -110,19 +127,24 @@ export default function EnhancedEventsPage() {
     return result
   }, [events, searchQuery, selectedCategory, startDate, endDate, sortBy])
 
-  // Calculate pagination
+  // Calculate pagination values
   const totalPages = Math.ceil(filteredEvents.length / eventsPerPage)
   const indexOfLastEvent = currentPage * eventsPerPage
   const indexOfFirstEvent = indexOfLastEvent - eventsPerPage
   const currentEvents = filteredEvents.slice(indexOfFirstEvent, indexOfLastEvent)
 
-  // Handle page change
+  /**
+   * Handle page change in pagination
+   * @param pageNumber - The page number to navigate to
+   */
   const paginate = (pageNumber: number) => {
     setCurrentPage(pageNumber)
     window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
-  // Reset filters
+  /**
+   * Reset all filters to their initial state
+   */
   const resetFilters = () => {
     setSearchQuery("")
     setSelectedCategory(null)
@@ -132,17 +154,23 @@ export default function EnhancedEventsPage() {
     setCurrentPage(1)
   }
 
+  /**
+   * Navigate to event detail page
+   * @param eventId - The ID of the event to view
+   */
   const navigateToEvent = (eventId: string) => {
     navigate(`/enhanced-events/${eventId}`)
   }
 
-  // Check if any filters are applied
+  // Check if any filters are currently applied
   const hasActiveFilters = searchQuery || selectedCategory || startDate || endDate
 
+  // Loading state UI
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Events</h1>
+        {/* Loading skeleton UI */}
         <div className="mb-6 animate-pulse">
           <div className="h-10 bg-gray-200 rounded w-full mb-4"></div>
           <div className="flex flex-wrap gap-2">
@@ -151,6 +179,7 @@ export default function EnhancedEventsPage() {
             <div className="h-10 bg-gray-200 rounded w-32"></div>
           </div>
         </div>
+        {/* Event card skeletons */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="animate-pulse">
@@ -170,11 +199,20 @@ export default function EnhancedEventsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6">Enhanced Events</h1>
 
-      {/* Search and Filter Section - Desktop */}
+      {/* <h1 className="text-3xl font-bold mb-6">Enhanced Events</h1> */}
+      <div className=" mb-8">
+        <h1 className="text-3xl font-bold mb-4">Upcoming Events</h1>
+        <p className="text-gray-600 mx-auto ">
+          Discover and register for events organized by The Zubin Foundation to support ethnic minorities in Hong Kong.
+        </p>
+      </div>
+
+      {/* Desktop Search and Filter Section */}
       <div className="hidden md:block mb-6 space-y-4">
+        {/* Search and Sort Row */}
         <div className="flex gap-4">
+          {/* Search Input */}
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
@@ -189,6 +227,7 @@ export default function EnhancedEventsPage() {
             />
           </div>
 
+          {/* Sort Dropdown */}
           <Select value={sortBy} onValueChange={(value) => setSortBy(value)}>
             <SelectTrigger className="w-[180px]">
               <div className="flex items-center">
@@ -207,7 +246,9 @@ export default function EnhancedEventsPage() {
           </Select>
         </div>
 
+        {/* Filters Row */}
         <div className="flex flex-wrap gap-4 items-center">
+          {/* Category Filter */}
           <div className="w-[180px]">
             <Select
               value={selectedCategory || ""}
@@ -230,6 +271,7 @@ export default function EnhancedEventsPage() {
             </Select>
           </div>
 
+          {/* Date Range Filters */}
           <div className="flex items-center gap-2">
             <div className="flex items-center">
               <Label htmlFor="start-date" className="mr-2">
@@ -266,6 +308,7 @@ export default function EnhancedEventsPage() {
             </div>
           </div>
 
+          {/* Clear Filters Button */}
           {hasActiveFilters && (
             <Button variant="ghost" onClick={resetFilters} className="text-red-500 hover:text-red-700 hover:bg-red-50">
               <X className="h-4 w-4 mr-2" />
@@ -274,9 +317,10 @@ export default function EnhancedEventsPage() {
           )}
         </div>
 
-        {/* Active filters display */}
+        {/* Active Filters Display */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 mt-2">
+            {/* Search Filter Badge */}
             {searchQuery && (
               <Badge variant="secondary" className="flex items-center gap-1">
                 Search: {searchQuery}
@@ -289,6 +333,7 @@ export default function EnhancedEventsPage() {
                 />
               </Badge>
             )}
+            {/* Category Filter Badge */}
             {selectedCategory && (
               <Badge variant="secondary" className="flex items-center gap-1">
                 Category: {selectedCategory}
@@ -301,6 +346,7 @@ export default function EnhancedEventsPage() {
                 />
               </Badge>
             )}
+            {/* Date Range Filter Badges */}
             {startDate && (
               <Badge variant="secondary" className="flex items-center gap-1">
                 From: {format(startDate, "MMM dd, yyyy")}
@@ -329,8 +375,9 @@ export default function EnhancedEventsPage() {
         )}
       </div>
 
-      {/* Search and Filter Section - Mobile */}
+      {/* Mobile Search and Filter Section */}
       <div className="md:hidden mb-6 space-y-4">
+        {/* Mobile Search and Filter Toggle */}
         <div className="flex gap-2">
           <div className="relative flex-grow">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -356,8 +403,10 @@ export default function EnhancedEventsPage() {
           </Button>
         </div>
 
+        {/* Mobile Filters Panel */}
         {showFilters && (
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
+            {/* Mobile Category Filter */}
             <div>
               <Label htmlFor="mobile-category">Category</Label>
               <Select
@@ -381,6 +430,7 @@ export default function EnhancedEventsPage() {
               </Select>
             </div>
 
+            {/* Mobile Date Range Filter */}
             <div>
               <Label>Date Range</Label>
               <div className="flex gap-2 mt-1">
@@ -414,6 +464,7 @@ export default function EnhancedEventsPage() {
               </div>
             </div>
 
+            {/* Mobile Sort Filter */}
             <div>
               <Label htmlFor="mobile-sort">Sort By</Label>
               <Select value={sortBy} onValueChange={(value) => setSortBy(value)}>
@@ -431,6 +482,7 @@ export default function EnhancedEventsPage() {
               </Select>
             </div>
 
+            {/* Mobile Clear Filters Button */}
             {hasActiveFilters && (
               <Button
                 variant="ghost"
@@ -444,7 +496,7 @@ export default function EnhancedEventsPage() {
           </div>
         )}
 
-        {/* Active filters display - Mobile */}
+        {/* Mobile Active Filters Display */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 mt-2">
             {selectedCategory && (
@@ -500,7 +552,7 @@ export default function EnhancedEventsPage() {
         )}
       </div>
 
-      {/* Results count */}
+      {/* Results Count */}
       <div className="mb-4 text-sm text-gray-500">
         Showing {currentEvents.length} of {filteredEvents.length} events
         {hasActiveFilters && " (filtered)"}
@@ -511,6 +563,7 @@ export default function EnhancedEventsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {currentEvents.map((event) => (
             <Card key={event.eventId} className="overflow-hidden hover:shadow-md transition-shadow">
+              {/* Event Image */}
               <div className="relative h-48">
                 <img
                   src={event.imageUrl || "/placeholder.svg?height=200&width=400&query=event"}
@@ -518,24 +571,29 @@ export default function EnhancedEventsPage() {
                   className="object-cover w-full h-full"
                 />
               </div>
+              {/* Event Details */}
               <CardContent className="p-4">
                 <h2 className="text-xl font-semibold mb-2 line-clamp-1">{event.eventTitle}</h2>
                 <div className="space-y-2 mb-4">
+                  {/* Event Date */}
                   <div className="flex items-center text-sm text-gray-600">
                     <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
                     <span>{new Date(event.date).toLocaleDateString()}</span>
                   </div>
+                  {/* Event Time */}
                   <div className="flex items-center text-sm text-gray-600">
                     <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
                     <span>
                       {event.startTime} - {event.endTime}
                     </span>
                   </div>
+                  {/* Event Location */}
                   <div className="flex items-center text-sm text-gray-600">
                     <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
                     <span className="line-clamp-1">{event.location}</span>
                   </div>
                 </div>
+                {/* Event Footer */}
                 <div className="flex items-center justify-between">
                   <div className="flex space-x-2">
                     <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">
@@ -555,6 +613,7 @@ export default function EnhancedEventsPage() {
           ))}
         </div>
       ) : (
+        // No Results State
         <div className="text-center py-12 bg-gray-50 rounded-lg">
           <div className="text-gray-500 mb-4">No events found matching your criteria</div>
           <Button onClick={resetFilters} variant="outline">
@@ -563,10 +622,11 @@ export default function EnhancedEventsPage() {
         </div>
       )}
 
-      {/* Pagination */}
+      {/* Pagination Controls */}
       {totalPages > 1 && (
         <div className="flex justify-center mt-8">
           <div className="flex items-center space-x-2">
+            {/* Previous Page Button */}
             <Button
               variant="outline"
               size="sm"
@@ -576,6 +636,7 @@ export default function EnhancedEventsPage() {
               <ChevronLeft className="h-4 w-4" />
             </Button>
 
+            {/* Page Numbers */}
             <div className="flex items-center space-x-1">
               {Array.from({ length: totalPages }, (_, i) => i + 1)
                 .filter((page) => {
@@ -606,6 +667,7 @@ export default function EnhancedEventsPage() {
                 })}
             </div>
 
+            {/* Next Page Button */}
             <Button
               variant="outline"
               size="sm"
@@ -618,7 +680,7 @@ export default function EnhancedEventsPage() {
         </div>
       )}
 
-      {/* Events per page selector */}
+      {/* Events Per Page Selector */}
       <div className="flex justify-center mt-4">
         <div className="flex items-center space-x-2 text-sm text-gray-500">
           <span>Show</span>

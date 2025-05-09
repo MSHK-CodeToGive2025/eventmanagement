@@ -11,14 +11,7 @@ dotenv.config();
 const router = express.Router();
 
 // Initialize Twilio client with proper credentials
-const twilioClient = twilio(
-  process.env.TWILIO_ACCOUNT_SID,
-  process.env.TWILIO_AUTH_TOKEN,
-  { 
-    accountSid: process.env.TWILIO_ACCOUNT_SID,
-    authToken: process.env.TWILIO_AUTH_TOKEN
-  }
-);
+const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
 
 // Configure multer for handling file uploads
 const storage = multer.memoryStorage();
@@ -272,6 +265,33 @@ router.get('/:id/image', async (req, res) => {
     res.send(event.image.data);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Send WhatsApp message to registered participant (requires auth)
+router.post('/send-whatsapp-reminder', async (req, res) => {
+  try {
+    const { to, message } = req.body;
+    
+    // Log the attempt (without sensitive data)
+    console.log(`Attempting to send WhatsApp message to: ${to}`);
+    
+    const result = await twilioClient.messages.create({
+      body: message,
+      from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+      to: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER_TO}`
+    });
+    
+    console.log('WhatsApp message sent successfully:', result.sid);
+    res.json({ success: true, sid: result.sid });
+  } catch (error) {
+    console.error('Error sending WhatsApp message:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      code: error.code,
+      moreInfo: error.moreInfo
+    });
   }
 });
 
