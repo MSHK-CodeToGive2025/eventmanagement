@@ -34,6 +34,7 @@ import {
   X,
   FileText,
   Clock,
+  MessageSquare,
 } from "lucide-react"
 
 // Event categories mapping
@@ -576,6 +577,12 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
         return sortConfig.direction === "ascending" ? capacityA - capacityB : capacityB - capacityA
       }
 
+      if (sortConfig.key === "registrations") {
+        return sortConfig.direction === "ascending"
+          ? a.registrations - b.registrations
+          : b.registrations - a.registrations
+      }
+
       return 0
     })
   }
@@ -889,6 +896,17 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                     ))}
                 </div>
               </TableHead>
+              <TableHead className="cursor-pointer" onClick={() => handleSort("registrations")}>
+                <div className="flex items-center">
+                  Registered Count
+                  {sortConfig?.key === "registrations" &&
+                    (sortConfig.direction === "ascending" ? (
+                      <ChevronUp className="h-4 w-4 ml-1" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 ml-1" />
+                    ))}
+                </div>
+              </TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -980,6 +998,14 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                       </div>
                     </Badge>
                   </TableCell>
+                  <TableCell>
+                    <div className="flex items-center">
+                      <UserCircle className="h-4 w-4 mr-1 text-gray-500" />
+                      <span className="font-medium">{event.registrations}</span>
+                      <span className="text-gray-500 mx-1">/</span>
+                      <span className="text-gray-500">{event.capacity}</span>
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -992,6 +1018,12 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                         <DropdownMenuItem onClick={() => onEditEvent(event.id)}>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => (window.location.href = `/manage/events/${event.id}/reminders`)}
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Send WhatsApp Reminders
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteClick(event.id)}>
                           <Trash2 className="h-4 w-4 mr-2" />
