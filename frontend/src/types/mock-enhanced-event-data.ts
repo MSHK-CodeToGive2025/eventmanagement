@@ -1,1788 +1,862 @@
-import type { ZubinEvent } from "./enhanced-event-types"
+import { ZubinEvent } from "./event-types"
+import { RegistrationForm, FormSection, FormField } from "./form-types"
+import { User } from "./user-types"
+import { EventRegistration } from "./event-types"
 
-// Mock enhanced events data
-export const enhancedEvents: ZubinEvent[] = [
-  {
-    eventId: "evt-001",
-    eventTitle: "Cultural Diversity Workshop",
-    location: "Wan Chai Community Center",
-    date: "2025-07-15",
-    startTime: "10:00",
-    endTime: "16:00",
-    category: "Workshop",
-    targetGroup: "All community members",
-    capacity: 50,
-    registeredCount: 12,
-    imageUrl: "/community-event.png",
-    eventDetails:
-      "Join us for a day of cultural exchange and learning. This workshop aims to promote understanding and appreciation of the diverse cultures within our community. Activities include cultural presentations, interactive discussions, and collaborative projects.",
-    associatedRegistrationForm: {
-      formId: "form-001",
-      formTitle: "Cultural Diversity Workshop Registration",
-      formCategory: "Workshop",
-      formFields: [
-        {
-          fieldId: "firstName",
-          fieldLabel: "First Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your first name",
-        },
-        {
-          fieldId: "lastName",
-          fieldLabel: "Last Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your last name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-          validation: {
-            pattern: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$",
-            message: "Please enter a valid email address",
-          },
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-          validation: {
-            pattern: "^[0-9+\\-\\s()]{8,15}$",
-            message: "Please enter a valid phone number",
-          },
-        },
-        {
-          fieldId: "culturalBackground",
-          fieldLabel: "Cultural Background",
-          fieldType: "text",
-          isRequired: false,
-          placeholder: "Optional: Share your cultural background",
-        },
-        {
-          fieldId: "dietaryRequirements",
-          fieldLabel: "Dietary Requirements",
-          fieldType: "dropdown",
-          isRequired: false,
-          options: ["None", "Vegetarian", "Vegan", "Halal", "Kosher", "Gluten-free", "Other"],
-        },
-        {
-          fieldId: "expectations",
-          fieldLabel: "What do you hope to gain from this workshop?",
-          fieldType: "textarea",
-          isRequired: false,
-          placeholder: "Share your expectations...",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-002",
-    eventTitle: "Mental Health Awareness Seminar",
-    location: "Tsim Sha Tsui Community Hall",
-    date: "2025-08-20",
-    startTime: "14:00",
-    endTime: "17:00",
-    category: "Seminar",
-    targetGroup: "Adults and young adults",
-    capacity: 100,
-    registeredCount: 45,
-    imageUrl: "/mental-health-abstract.png",
-    eventDetails:
-      "This seminar focuses on raising awareness about mental health issues affecting ethnic minority communities. Expert speakers will discuss common challenges, coping strategies, and available resources. The event aims to reduce stigma and promote mental wellbeing.",
-    associatedRegistrationForm: {
-      formId: "form-002",
-      formTitle: "Mental Health Awareness Seminar Registration",
-      formCategory: "Seminar",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-          validation: {
-            pattern: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$",
-            message: "Please enter a valid email address",
-          },
-        },
-        {
-          fieldId: "age",
-          fieldLabel: "Age Group",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["Under 18", "18-24", "25-34", "35-44", "45-54", "55-64", "65+"],
-        },
-        {
-          fieldId: "occupation",
-          fieldLabel: "Occupation",
-          fieldType: "text",
-          isRequired: false,
-          placeholder: "Optional: Your occupation",
-        },
-        {
-          fieldId: "reasonForAttending",
-          fieldLabel: "Reason for attending",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: [
-            "Personal interest",
-            "Professional development",
-            "Supporting a family member",
-            "Supporting a friend",
-            "Academic research",
-            "Other",
-          ],
-        },
-        {
-          fieldId: "specialAccommodations",
-          fieldLabel: "Special Accommodations",
-          fieldType: "textarea",
-          isRequired: false,
-          placeholder: "Please let us know if you require any special accommodations",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-003",
-    eventTitle: "Youth Leadership Conference",
-    location: "Hong Kong Convention Center",
-    date: "2025-09-10",
-    startTime: "09:00",
-    endTime: "18:00",
-    category: "Conference",
-    targetGroup: "Youth (16-24 years)",
-    capacity: 200,
-    registeredCount: 87,
-    imageUrl: "/diverse-community-event.png",
-    eventDetails:
-      "The Youth Leadership Conference brings together young leaders from diverse backgrounds to develop leadership skills, network with peers, and engage with community issues. The day includes keynote speakers, interactive workshops, and collaborative problem-solving activities.",
-    associatedRegistrationForm: {
-      formId: "form-003",
-      formTitle: "Youth Leadership Conference Registration",
-      formCategory: "Conference",
-      formFields: [
-        {
-          fieldId: "firstName",
-          fieldLabel: "First Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your first name",
-        },
-        {
-          fieldId: "lastName",
-          fieldLabel: "Last Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your last name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-          validation: {
-            pattern: "^[\\w-\\.]+@([\\w-]+\\.)+[\\w-]{2,4}$",
-            message: "Please enter a valid email address",
-          },
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-          validation: {
-            pattern: "^[0-9+\\-\\s()]{8,15}$",
-            message: "Please enter a valid phone number",
-          },
-        },
-        {
-          fieldId: "dateOfBirth",
-          fieldLabel: "Date of Birth",
-          fieldType: "date",
-          isRequired: true,
-        },
-        {
-          fieldId: "school",
-          fieldLabel: "School/College/University",
-          fieldType: "text",
-          isRequired: false,
-          placeholder: "If applicable",
-        },
-        {
-          fieldId: "leadershipExperience",
-          fieldLabel: "Previous Leadership Experience",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["None", "School club/team", "Community organization", "Work environment", "Other"],
-        },
-        {
-          fieldId: "workshopPreference",
-          fieldLabel: "Workshop Preference",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: [
-            "Public Speaking",
-            "Project Management",
-            "Community Organizing",
-            "Digital Leadership",
-            "Conflict Resolution",
-          ],
-        },
-        {
-          fieldId: "dietaryRequirements",
-          fieldLabel: "Dietary Requirements",
-          fieldType: "dropdown",
-          isRequired: false,
-          options: ["None", "Vegetarian", "Vegan", "Halal", "Kosher", "Gluten-free", "Other"],
-        },
-        {
-          fieldId: "specialAccommodations",
-          fieldLabel: "Special Accommodations",
-          fieldType: "textarea",
-          isRequired: false,
-          placeholder: "Please let us know if you require any special accommodations",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  // Adding more diverse events
-  {
-    eventId: "evt-004",
-    eventTitle: "Cantonese Language Basics",
-    location: "Mong Kok Learning Center",
-    date: "2025-06-05",
-    startTime: "18:30",
-    endTime: "20:30",
-    category: "Language",
-    targetGroup: "Non-Chinese speaking residents",
-    capacity: 30,
-    registeredCount: 30, // Full capacity
-    imageUrl: "/language-learning.png",
-    eventDetails:
-      "An introductory course to Cantonese language basics, designed specifically for non-Chinese speaking residents. Learn essential phrases, basic conversation skills, and cultural context to help navigate daily life in Hong Kong.",
-    associatedRegistrationForm: {
-      formId: "form-004",
-      formTitle: "Cantonese Language Basics Registration",
-      formCategory: "Language",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "languageBackground",
-          fieldLabel: "Language Background",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["No prior Cantonese experience", "Some basic knowledge", "Intermediate", "Advanced"],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-005",
-    eventTitle: "Job Fair for Ethnic Minorities",
-    location: "Kowloon Bay International Trade & Exhibition Centre",
-    date: "2025-05-12",
-    startTime: "10:00",
-    endTime: "17:00",
-    category: "Career",
-    targetGroup: "Job seekers from ethnic minority communities",
-    capacity: 500,
-    registeredCount: 213,
-    imageUrl: "/career-workshop.png",
-    eventDetails:
-      "A specialized job fair connecting employers with talented individuals from ethnic minority communities. The event features on-site interviews, resume workshops, and networking opportunities with companies committed to diversity and inclusion.",
-    associatedRegistrationForm: {
-      formId: "form-005",
-      formTitle: "Job Fair Registration",
-      formCategory: "Career",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "resumeUpload",
-          fieldLabel: "Upload Resume",
-          fieldType: "file",
-          isRequired: true,
-        },
-        {
-          fieldId: "jobInterests",
-          fieldLabel: "Job Interests",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: [
-            "Finance & Banking",
-            "Information Technology",
-            "Healthcare",
-            "Hospitality",
-            "Education",
-            "Retail",
-            "Other",
-          ],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-006",
-    eventTitle: "Diwali Celebration",
-    location: "Victoria Park",
-    date: "2025-11-12",
-    startTime: "16:00",
-    endTime: "22:00",
-    category: "Cultural",
-    targetGroup: "All community members",
-    capacity: 1000,
-    registeredCount: 567,
-    imageUrl: "/vibrant-cultural-festival.png",
-    eventDetails:
-      "Join us for a vibrant celebration of Diwali, the Festival of Lights. Experience traditional music, dance performances, authentic cuisine, and the symbolic lighting of lamps. This family-friendly event welcomes everyone to participate in the festivities.",
-    associatedRegistrationForm: {
-      formId: "form-006",
-      formTitle: "Diwali Celebration Registration",
-      formCategory: "Cultural",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "numberOfAttendees",
-          fieldLabel: "Number of Attendees",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "How many people are coming?",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-007",
-    eventTitle: "Women's Entrepreneurship Summit",
-    location: "Central Business District Conference Center",
-    date: "2025-03-08", // International Women's Day
-    startTime: "09:00",
-    endTime: "17:00",
-    category: "Business",
-    targetGroup: "Women entrepreneurs and aspiring business owners",
-    capacity: 150,
-    registeredCount: 98,
-    imageUrl: "/community-support.png",
-    eventDetails:
-      "A summit dedicated to empowering women entrepreneurs from diverse backgrounds. The event features successful business leaders sharing their journeys, practical workshops on business development, and networking opportunities with potential investors and mentors.",
-    associatedRegistrationForm: {
-      formId: "form-007",
-      formTitle: "Women's Entrepreneurship Summit Registration",
-      formCategory: "Business",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "businessStage",
-          fieldLabel: "Business Stage",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["Idea stage", "Early startup", "Established business", "Looking to expand", "Not started yet"],
-        },
-        {
-          fieldId: "industryInterest",
-          fieldLabel: "Industry Interest",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: [
-            "Technology",
-            "Retail",
-            "Food & Beverage",
-            "Healthcare",
-            "Education",
-            "Creative Arts",
-            "Professional Services",
-            "Other",
-          ],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-008",
-    eventTitle: "Youth Sports Tournament",
-    location: "Tseung Kwan O Sports Ground",
-    date: "2025-07-25",
-    startTime: "08:00",
-    endTime: "18:00",
-    category: "Sports",
-    targetGroup: "Youth (12-18 years)",
-    capacity: 300,
-    registeredCount: 245,
-    imageUrl: "/community-event.png",
-    eventDetails:
-      "A multi-sport tournament bringing together young athletes from diverse backgrounds. The event includes football, basketball, and track competitions, promoting teamwork, healthy competition, and cross-cultural friendships through sports.",
-    associatedRegistrationForm: {
-      formId: "form-008",
-      formTitle: "Youth Sports Tournament Registration",
-      formCategory: "Sports",
-      formFields: [
-        {
-          fieldId: "participantName",
-          fieldLabel: "Participant Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter participant's full name",
-        },
-        {
-          fieldId: "age",
-          fieldLabel: "Age",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "Enter participant's age",
-        },
-        {
-          fieldId: "parentGuardianName",
-          fieldLabel: "Parent/Guardian Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter parent/guardian's full name",
-        },
-        {
-          fieldId: "parentGuardianEmail",
-          fieldLabel: "Parent/Guardian Email",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter parent/guardian's email",
-        },
-        {
-          fieldId: "parentGuardianPhone",
-          fieldLabel: "Parent/Guardian Phone",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter parent/guardian's phone number",
-        },
-        {
-          fieldId: "sportCategory",
-          fieldLabel: "Sport Category",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["Football", "Basketball", "Track & Field"],
-        },
-        {
-          fieldId: "medicalConditions",
-          fieldLabel: "Medical Conditions",
-          fieldType: "textarea",
-          isRequired: false,
-          placeholder: "Please list any medical conditions or allergies",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-009",
-    eventTitle: "Community Health Screening",
-    location: "Kwun Tong Community Health Center",
-    date: "2025-04-07", // World Health Day
-    startTime: "09:00",
-    endTime: "16:00",
-    category: "Health",
-    targetGroup: "All community members",
-    capacity: 200,
-    registeredCount: 132,
-    imageUrl: "/mental-health-abstract.png",
-    eventDetails:
-      "A free health screening event providing basic health checks, consultations, and health education to underserved communities. Services include blood pressure monitoring, diabetes screening, BMI assessment, and consultations with healthcare professionals.",
-    associatedRegistrationForm: {
-      formId: "form-009",
-      formTitle: "Community Health Screening Registration",
-      formCategory: "Health",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "age",
-          fieldLabel: "Age",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "Enter your age",
-        },
-        {
-          fieldId: "gender",
-          fieldLabel: "Gender",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["Male", "Female", "Non-binary", "Prefer not to say"],
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "preferredTimeSlot",
-          fieldLabel: "Preferred Time Slot",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["9:00 - 10:30", "10:30 - 12:00", "12:00 - 13:30", "13:30 - 16:00"],
-        },
-        {
-          fieldId: "medicalHistory",
-          fieldLabel: "Relevant Medical History",
-          fieldType: "textarea",
-          isRequired: false,
-          placeholder: "Please share any relevant medical history",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-010",
-    eventTitle: "Digital Skills Workshop for Seniors",
-    location: "Sha Tin Public Library",
-    date: "2025-10-01", // International Day of Older Persons
-    startTime: "10:00",
-    endTime: "15:00",
-    category: "Education",
-    targetGroup: "Seniors (65+ years)",
-    capacity: 40,
-    registeredCount: 22,
-    imageUrl: "/community-support.png",
-    eventDetails:
-      "A workshop designed to help seniors from diverse backgrounds develop essential digital skills. Topics include smartphone basics, internet safety, video calling with family, and accessing online services. The workshop is conducted in multiple languages with patient, one-on-one assistance.",
-    associatedRegistrationForm: {
-      formId: "form-010",
-      formTitle: "Digital Skills Workshop Registration",
-      formCategory: "Education",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "age",
-          fieldLabel: "Age",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "Enter your age",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "preferredLanguage",
-          fieldLabel: "Preferred Language",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["English", "Cantonese", "Mandarin", "Hindi", "Urdu", "Nepali", "Tagalog", "Other"],
-        },
-        {
-          fieldId: "deviceOwnership",
-          fieldLabel: "Do you own a smartphone or tablet?",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["Yes, smartphone", "Yes, tablet", "Yes, both", "No"],
-        },
-        {
-          fieldId: "digitalSkillLevel",
-          fieldLabel: "Current Digital Skill Level",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["Complete beginner", "Some basic knowledge", "Intermediate", "Advanced but need specific help"],
-        },
-        {
-          fieldId: "specificInterests",
-          fieldLabel: "Specific Topics of Interest",
-          fieldType: "textarea",
-          isRequired: false,
-          placeholder: "Please share any specific digital skills you'd like to learn",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-011",
-    eventTitle: "Multicultural Food Festival",
-    location: "West Kowloon Cultural District",
-    date: "2025-10-16", // World Food Day
-    startTime: "11:00",
-    endTime: "20:00",
-    category: "Cultural",
-    targetGroup: "All community members",
-    capacity: 2000,
-    registeredCount: 1245,
-    imageUrl: "/vibrant-cultural-festival.png",
-    eventDetails:
-      "A vibrant celebration of culinary diversity featuring food stalls, cooking demonstrations, and cultural performances from Hong Kong's diverse communities. Visitors can sample authentic dishes, learn cooking techniques, and enjoy music and dance from around the world.",
-    associatedRegistrationForm: {
-      formId: "form-011",
-      formTitle: "Multicultural Food Festival Registration",
-      formCategory: "Cultural",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "numberOfAttendees",
-          fieldLabel: "Number of Attendees",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "How many people are coming?",
-        },
-        {
-          fieldId: "dietaryRestrictions",
-          fieldLabel: "Dietary Restrictions",
-          fieldType: "dropdown",
-          isRequired: false,
-          options: ["None", "Vegetarian", "Vegan", "Halal", "Kosher", "Gluten-free", "Other"],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-012",
-    eventTitle: "Children's Art Workshop",
-    location: "Yau Ma Tei Community Center",
-    date: "2025-06-01", // International Children's Day
-    startTime: "14:00",
-    endTime: "17:00",
-    category: "Education",
-    targetGroup: "Children (6-12 years)",
-    capacity: 30,
-    registeredCount: 18,
-    imageUrl: "/community-event.png",
-    eventDetails:
-      "A creative art workshop for children from diverse backgrounds to express themselves through painting, drawing, and crafts. The workshop aims to foster creativity, cultural exchange, and friendship among children from different communities.",
-    associatedRegistrationForm: {
-      formId: "form-012",
-      formTitle: "Children's Art Workshop Registration",
-      formCategory: "Education",
-      formFields: [
-        {
-          fieldId: "childName",
-          fieldLabel: "Child's Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter child's full name",
-        },
-        {
-          fieldId: "childAge",
-          fieldLabel: "Child's Age",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "Enter child's age",
-        },
-        {
-          fieldId: "parentGuardianName",
-          fieldLabel: "Parent/Guardian Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter parent/guardian's full name",
-        },
-        {
-          fieldId: "parentGuardianEmail",
-          fieldLabel: "Parent/Guardian Email",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter parent/guardian's email",
-        },
-        {
-          fieldId: "parentGuardianPhone",
-          fieldLabel: "Parent/Guardian Phone",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter parent/guardian's phone number",
-        },
-        {
-          fieldId: "allergies",
-          fieldLabel: "Allergies",
-          fieldType: "textarea",
-          isRequired: false,
-          placeholder: "Please list any allergies (e.g., to art materials)",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-013",
-    eventTitle: "Legal Rights Workshop",
-    location: "Sham Shui Po Community Legal Center",
-    date: "2025-02-20",
-    startTime: "18:30",
-    endTime: "20:30",
-    category: "Workshop",
-    targetGroup: "Ethnic minority residents",
-    capacity: 50,
-    registeredCount: 27,
-    imageUrl: "/community-support.png",
-    eventDetails:
-      "A workshop providing essential information about legal rights and resources for ethnic minority residents. Topics include employment rights, housing laws, immigration procedures, and accessing legal aid. The workshop includes Q&A sessions with legal professionals.",
-    associatedRegistrationForm: {
-      formId: "form-013",
-      formTitle: "Legal Rights Workshop Registration",
-      formCategory: "Workshop",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "preferredLanguage",
-          fieldLabel: "Preferred Language",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["English", "Urdu", "Nepali", "Hindi", "Tagalog", "Indonesian", "Thai", "Other"],
-        },
-        {
-          fieldId: "specificLegalConcerns",
-          fieldLabel: "Specific Legal Concerns",
-          fieldType: "textarea",
-          isRequired: false,
-          placeholder: "Please share any specific legal concerns you'd like addressed",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-014",
-    eventTitle: "Interfaith Dialogue Forum",
-    location: "Hong Kong Cultural Centre",
-    date: "2025-08-16",
-    startTime: "14:00",
-    endTime: "17:00",
-    category: "Cultural",
-    targetGroup: "All community members",
-    capacity: 120,
-    registeredCount: 67,
-    imageUrl: "/diverse-community-event.png",
-    eventDetails:
-      "A forum bringing together religious leaders and community members from diverse faith backgrounds for respectful dialogue and mutual understanding. The event includes panel discussions, small group conversations, and a shared meal celebrating cultural diversity.",
-    associatedRegistrationForm: {
-      formId: "form-014",
-      formTitle: "Interfaith Dialogue Forum Registration",
-      formCategory: "Cultural",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "religiousAffiliation",
-          fieldLabel: "Religious Affiliation (Optional)",
-          fieldType: "dropdown",
-          isRequired: false,
-          options: [
-            "Buddhism",
-            "Christianity",
-            "Hinduism",
-            "Islam",
-            "Judaism",
-            "Sikhism",
-            "Taoism",
-            "No religious affiliation",
-            "Other",
-            "Prefer not to say",
-          ],
-        },
-        {
-          fieldId: "dietaryRequirements",
-          fieldLabel: "Dietary Requirements",
-          fieldType: "dropdown",
-          isRequired: false,
-          options: ["None", "Vegetarian", "Vegan", "Halal", "Kosher", "Gluten-free", "Other"],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-015",
-    eventTitle: "Women's Health Seminar",
-    location: "North Point Community Hall",
-    date: "2025-03-08", // International Women's Day
-    startTime: "10:00",
-    endTime: "13:00",
-    category: "Health",
-    targetGroup: "Women from ethnic minority communities",
-    capacity: 80,
-    registeredCount: 42,
-    imageUrl: "/mental-health-abstract.png",
-    eventDetails:
-      "A seminar addressing women's health issues with a focus on the specific needs and concerns of women from ethnic minority communities. Topics include preventive care, reproductive health, mental wellbeing, and navigating healthcare services in Hong Kong.",
-    associatedRegistrationForm: {
-      formId: "form-015",
-      formTitle: "Women's Health Seminar Registration",
-      formCategory: "Health",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "ageGroup",
-          fieldLabel: "Age Group",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["18-24", "25-34", "35-44", "45-54", "55-64", "65+"],
-        },
-        {
-          fieldId: "preferredLanguage",
-          fieldLabel: "Preferred Language",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["English", "Urdu", "Nepali", "Hindi", "Tagalog", "Indonesian", "Thai", "Other"],
-        },
-        {
-          fieldId: "topicsOfInterest",
-          fieldLabel: "Topics of Interest",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: [
-            "Preventive healthcare",
-            "Reproductive health",
-            "Mental wellbeing",
-            "Nutrition",
-            "Healthcare services in Hong Kong",
-            "Other",
-          ],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-016",
-    eventTitle: "Youth Coding Bootcamp",
-    location: "Cyberport",
-    date: "2025-07-05",
-    startTime: "09:00",
-    endTime: "17:00",
-    category: "Education",
-    targetGroup: "Youth (14-18 years)",
-    capacity: 40,
-    registeredCount: 35,
-    imageUrl: "/community-support.png",
-    eventDetails:
-      "An intensive coding bootcamp designed to introduce young people from diverse backgrounds to computer programming. Participants will learn the basics of coding, develop their own simple applications, and gain insights into career opportunities in technology.",
-    associatedRegistrationForm: {
-      formId: "form-016",
-      formTitle: "Youth Coding Bootcamp Registration",
-      formCategory: "Education",
-      formFields: [
-        {
-          fieldId: "participantName",
-          fieldLabel: "Participant Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter participant's full name",
-        },
-        {
-          fieldId: "age",
-          fieldLabel: "Age",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "Enter participant's age",
-        },
-        {
-          fieldId: "parentGuardianName",
-          fieldLabel: "Parent/Guardian Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter parent/guardian's full name",
-        },
-        {
-          fieldId: "parentGuardianEmail",
-          fieldLabel: "Parent/Guardian Email",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter parent/guardian's email",
-        },
-        {
-          fieldId: "parentGuardianPhone",
-          fieldLabel: "Parent/Guardian Phone",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter parent/guardian's phone number",
-        },
-        {
-          fieldId: "programmingExperience",
-          fieldLabel: "Programming Experience",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["None", "Some basic knowledge", "Intermediate", "Advanced"],
-        },
-        {
-          fieldId: "computerAccess",
-          fieldLabel: "Do you have access to a laptop for the bootcamp?",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["Yes", "No, I'll need one provided"],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-017",
-    eventTitle: "Financial Literacy Workshop",
-    location: "Central District Community Center",
-    date: "2025-04-15",
-    startTime: "18:30",
-    endTime: "20:30",
-    category: "Workshop",
-    targetGroup: "Adults from ethnic minority communities",
-    capacity: 60,
-    registeredCount: 32,
-    imageUrl: "/career-workshop.png",
-    eventDetails:
-      "A practical workshop on financial literacy tailored for ethnic minority communities. Topics include budgeting, saving, understanding banking services, investment basics, and planning for retirement in the Hong Kong context.",
-    associatedRegistrationForm: {
-      formId: "form-017",
-      formTitle: "Financial Literacy Workshop Registration",
-      formCategory: "Workshop",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "preferredLanguage",
-          fieldLabel: "Preferred Language",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["English", "Urdu", "Nepali", "Hindi", "Tagalog", "Indonesian", "Thai", "Other"],
-        },
-        {
-          fieldId: "financialTopicsInterest",
-          fieldLabel: "Financial Topics of Interest",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["Budgeting", "Saving", "Banking services", "Investment", "Retirement planning", "All of the above"],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-018",
-    eventTitle: "Traditional Crafts Workshop",
-    location: "Sai Kung Town Hall",
-    date: "2025-09-27",
-    startTime: "14:00",
-    endTime: "17:00",
-    category: "Cultural",
-    targetGroup: "All community members",
-    capacity: 35,
-    registeredCount: 21,
-    imageUrl: "/vibrant-cultural-festival.png",
-    eventDetails:
-      "A hands-on workshop celebrating traditional crafts from various cultures. Participants will learn techniques for creating traditional handicrafts under the guidance of skilled artisans from different ethnic communities. All materials are provided.",
-    associatedRegistrationForm: {
-      formId: "form-018",
-      formTitle: "Traditional Crafts Workshop Registration",
-      formCategory: "Cultural",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "craftPreference",
-          fieldLabel: "Craft Preference",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: [
-            "South Asian textile arts",
-            "Chinese paper cutting",
-            "Filipino bamboo crafts",
-            "Indonesian batik",
-            "No preference",
-          ],
-        },
-        {
-          fieldId: "previousExperience",
-          fieldLabel: "Previous Crafting Experience",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["None", "Some", "Experienced"],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-019",
-    eventTitle: "Community Gardening Project",
-    location: "Lai Chi Kok Community Garden",
-    date: "2025-05-10",
-    startTime: "09:00",
-    endTime: "12:00",
-    category: "Community",
-    targetGroup: "All community members",
-    capacity: 45,
-    registeredCount: 23,
-    imageUrl: "/community-event.png",
-    eventDetails:
-      "A community gardening project bringing together people from diverse backgrounds to create and maintain a shared garden space. Participants will learn gardening skills, grow vegetables and herbs, and build connections with neighbors through collaborative work.",
-    associatedRegistrationForm: {
-      formId: "form-019",
-      formTitle: "Community Gardening Project Registration",
-      formCategory: "Community",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "gardeningExperience",
-          fieldLabel: "Gardening Experience",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["None", "Some basic knowledge", "Intermediate", "Advanced"],
-        },
-        {
-          fieldId: "participationFrequency",
-          fieldLabel: "How often can you participate?",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["Weekly", "Bi-weekly", "Monthly", "Occasionally"],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-020",
-    eventTitle: "Parenting Workshop Series",
-    location: "Tung Chung Family Resource Centre",
-    date: "2025-06-14",
-    startTime: "10:00",
-    endTime: "12:00",
-    category: "Workshop",
-    targetGroup: "Parents from ethnic minority communities",
-    capacity: 30,
-    registeredCount: 17,
-    imageUrl: "/community-support.png",
-    eventDetails:
-      "A series of workshops supporting parents from ethnic minority backgrounds in navigating the challenges of raising children in Hong Kong. Topics include understanding the local education system, supporting bilingual development, and accessing family services.",
-    associatedRegistrationForm: {
-      formId: "form-020",
-      formTitle: "Parenting Workshop Series Registration",
-      formCategory: "Workshop",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "numberOfChildren",
-          fieldLabel: "Number of Children",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "Enter number of children",
-        },
-        {
-          fieldId: "childrenAges",
-          fieldLabel: "Children's Ages",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter ages separated by commas (e.g., 3, 7, 10)",
-        },
-        {
-          fieldId: "preferredLanguage",
-          fieldLabel: "Preferred Language",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["English", "Urdu", "Nepali", "Hindi", "Tagalog", "Indonesian", "Thai", "Other"],
-        },
-        {
-          fieldId: "topicsOfInterest",
-          fieldLabel: "Topics of Interest",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: [
-            "Education system in Hong Kong",
-            "Bilingual development",
-            "Accessing family services",
-            "Cultural identity",
-            "All of the above",
-          ],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-021",
-    eventTitle: "Eid Celebration",
-    location: "Kowloon Park",
-    date: "2025-05-01",
-    startTime: "14:00",
-    endTime: "20:00",
-    category: "Cultural",
-    targetGroup: "All community members",
-    capacity: 500,
-    registeredCount: 342,
-    imageUrl: "/vibrant-cultural-festival.png",
-    eventDetails:
-      "A joyful celebration of Eid open to the entire community. The event features traditional food, music, dance performances, children's activities, and opportunities for cultural exchange and building friendships across communities.",
-    associatedRegistrationForm: {
-      formId: "form-021",
-      formTitle: "Eid Celebration Registration",
-      formCategory: "Cultural",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "numberOfAttendees",
-          fieldLabel: "Number of Attendees",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "How many people are coming?",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-022",
-    eventTitle: "Elderly Tech Support Day",
-    location: "Wong Tai Sin Community Center",
-    date: "2025-10-01", // International Day of Older Persons
-    startTime: "10:00",
-    endTime: "16:00",
-    category: "Community",
-    targetGroup: "Elderly residents from ethnic minority communities",
-    capacity: 40,
-    registeredCount: 15,
-    imageUrl: "/community-support.png",
-    eventDetails:
-      "A day dedicated to providing technology support for elderly residents from ethnic minority backgrounds. Volunteers will offer one-on-one assistance with smartphones, tablets, and computers, helping seniors connect with family, access services, and navigate digital tools.",
-    associatedRegistrationForm: {
-      formId: "form-022",
-      formTitle: "Elderly Tech Support Day Registration",
-      formCategory: "Community",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "age",
-          fieldLabel: "Age",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "Enter your age",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "preferredLanguage",
-          fieldLabel: "Preferred Language",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["English", "Urdu", "Nepali", "Hindi", "Tagalog", "Indonesian", "Thai", "Other"],
-        },
-        {
-          fieldId: "deviceType",
-          fieldLabel: "Device Type",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["Smartphone", "Tablet", "Computer", "Multiple devices", "I don't have a device yet"],
-        },
-        {
-          fieldId: "techSupportNeeded",
-          fieldLabel: "What kind of tech support do you need?",
-          fieldType: "textarea",
-          isRequired: true,
-          placeholder: "Please describe what you need help with",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-023",
-    eventTitle: "Nepali New Year Celebration",
-    location: "Yuen Long Town Hall",
-    date: "2025-04-14",
-    startTime: "12:00",
-    endTime: "18:00",
-    category: "Cultural",
-    targetGroup: "All community members",
-    capacity: 300,
-    registeredCount: 187,
-    imageUrl: "/vibrant-cultural-festival.png",
-    eventDetails:
-      "A vibrant celebration of Nepali New Year (Bikram Sambat) featuring traditional music, dance performances, authentic cuisine, and cultural displays. The event welcomes everyone to experience Nepali culture and join in the festivities.",
-    associatedRegistrationForm: {
-      formId: "form-023",
-      formTitle: "Nepali New Year Celebration Registration",
-      formCategory: "Cultural",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "numberOfAttendees",
-          fieldLabel: "Number of Attendees",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "How many people are coming?",
-        },
-        {
-          fieldId: "dietaryRequirements",
-          fieldLabel: "Dietary Requirements",
-          fieldType: "dropdown",
-          isRequired: false,
-          options: ["None", "Vegetarian", "Vegan", "Other"],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-024",
-    eventTitle: "Youth Mentorship Program Launch",
-    location: "Kwun Tong Youth Center",
-    date: "2025-09-05",
-    startTime: "16:00",
-    endTime: "18:00",
-    category: "Education",
-    targetGroup: "Youth (15-21 years) from ethnic minority communities",
-    capacity: 50,
-    registeredCount: 28,
-    imageUrl: "/diverse-community-event.png",
-    eventDetails:
-      "The launch event for a mentorship program connecting young people from ethnic minority backgrounds with professional mentors. The program aims to provide guidance on education, career development, and life skills through regular mentoring sessions.",
-    associatedRegistrationForm: {
-      formId: "form-024",
-      formTitle: "Youth Mentorship Program Registration",
-      formCategory: "Education",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "age",
-          fieldLabel: "Age",
-          fieldType: "number",
-          isRequired: true,
-          placeholder: "Enter your age",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "school",
-          fieldLabel: "School/College",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your school or college name",
-        },
-        {
-          fieldId: "careerInterests",
-          fieldLabel: "Career Interests",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: [
-            "Business & Finance",
-            "Technology & IT",
-            "Healthcare",
-            "Education",
-            "Creative Arts",
-            "Social Services",
-            "Other",
-          ],
-        },
-        {
-          fieldId: "mentorshipGoals",
-          fieldLabel: "What do you hope to gain from the mentorship program?",
-          fieldType: "textarea",
-          isRequired: true,
-          placeholder: "Please share your goals for the program",
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
-  {
-    eventId: "evt-025",
-    eventTitle: "Community Health Fair",
-    location: "Victoria Park",
-    date: "2025-04-07", // World Health Day
-    startTime: "10:00",
-    endTime: "16:00",
-    category: "Health",
-    targetGroup: "All community members",
-    capacity: 500,
-    registeredCount: 312,
-    imageUrl: "/mental-health-abstract.png",
-    eventDetails:
-      "A comprehensive health fair offering free health screenings, consultations with healthcare professionals, wellness workshops, and health education resources. The event aims to improve health awareness and access to healthcare services for diverse communities.",
-    associatedRegistrationForm: {
-      formId: "form-025",
-      formTitle: "Community Health Fair Registration",
-      formCategory: "Health",
-      formFields: [
-        {
-          fieldId: "fullName",
-          fieldLabel: "Full Name",
-          fieldType: "text",
-          isRequired: true,
-          placeholder: "Enter your full name",
-        },
-        {
-          fieldId: "email",
-          fieldLabel: "Email Address",
-          fieldType: "email",
-          isRequired: true,
-          placeholder: "Enter your email address",
-        },
-        {
-          fieldId: "phone",
-          fieldLabel: "Phone Number",
-          fieldType: "tel",
-          isRequired: true,
-          placeholder: "Enter your phone number",
-        },
-        {
-          fieldId: "ageGroup",
-          fieldLabel: "Age Group",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["Under 18", "18-30", "31-45", "46-60", "61+"],
-        },
-        {
-          fieldId: "preferredLanguage",
-          fieldLabel: "Preferred Language",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: ["English", "Cantonese", "Mandarin", "Urdu", "Nepali", "Hindi", "Tagalog", "Other"],
-        },
-        {
-          fieldId: "servicesInterested",
-          fieldLabel: "Services Interested In",
-          fieldType: "dropdown",
-          isRequired: true,
-          options: [
-            "General health screening",
-            "Dental check-up",
-            "Vision screening",
-            "Mental health resources",
-            "Nutrition consultation",
-            "All available services",
-          ],
-        },
-        {
-          fieldId: "agreeToTerms",
-          fieldLabel: "I agree to the terms and conditions",
-          fieldType: "checkbox",
-          isRequired: true,
-        },
-      ],
-    },
-  },
+// Helper function to create a form field
+const createField = (
+  label: string,
+  type: FormField["type"],
+  required: boolean,
+  options?: string[],
+  validation?: FormField["validation"]
+): FormField => ({
+  _id: `field-${Math.random().toString(36).substr(2, 9)}`,
+  label,
+  type,
+  required,
+  options,
+  validation,
+  order: 0
+})
+
+// Helper function to create a form section
+const createSection = (title: string, fields: FormField[]): FormSection => ({
+  _id: `section-${Math.random().toString(36).substr(2, 9)}`,
+  title,
+  fields,
+  order: 0
+})
+
+// Helper function to create a registration form
+const createRegistrationForm = (
+  _id: string,
+  title: string,
+  description: string,
+  sections: FormSection[]
+): RegistrationForm => ({
+  _id,
+  title,
+  description,
+  sections,
+  isActive: true,
+  createdBy: "system",
+  createdAt: new Date()
+})
+
+// Registration Forms
+export const mockRegistrationForms: RegistrationForm[] = [
+  createRegistrationForm(
+    "form1",
+    "English Conversation Club Registration",
+    "Please fill out this form to register for the English Conversation Club sessions.",
+    [
+      createSection("Personal Information", [
+        createField("First Name", "text", true, undefined, { minLength: 2, maxLength: 50 }),
+        createField("Last Name", "text", true, undefined, { minLength: 2, maxLength: 50 }),
+        createField("Email", "email", true),
+        createField("Phone Number", "phone", true),
+        createField("Age", "number", true, undefined, { minValue: 13, maxValue: 100 }),
+        createField("Native Language", "text", true)
+      ]),
+      createSection("English Proficiency", [
+        createField("English Level", "dropdown", true, [
+          "Beginner",
+          "Intermediate",
+          "Advanced"
+        ]),
+        createField("Preferred Session", "dropdown", true, [
+          "Basic Conversation Practice (14:00-15:00)",
+          "Advanced Discussion Group (15:00-16:00)"
+        ])
+      ]),
+      createSection("Additional Information", [
+        createField("Learning Goals", "textarea", false),
+        createField("Special Requirements", "textarea", false),
+        createField("I agree to the terms and conditions", "checkbox", true)
+      ])
+    ]
+  ),
+  createRegistrationForm(
+    "form2",
+    "Career Development Workshop Registration",
+    "Please complete this form to register for the Career Development Workshop.",
+    [
+      createSection("Personal Information", [
+        createField("First Name", "text", true, undefined, { minLength: 2, maxLength: 50 }),
+        createField("Last Name", "text", true, undefined, { minLength: 2, maxLength: 50 }),
+        createField("Email", "email", true),
+        createField("Phone Number", "phone", true),
+        createField("Current Job Title", "text", true),
+        createField("Years of Experience", "number", true, undefined, { minValue: 0, maxValue: 50 })
+      ]),
+      createSection("Workshop Preferences", [
+        createField("Sessions to Attend", "dropdown", true, [
+          "Resume Writing Workshop (10:00-12:00)",
+          "Interview Skills (13:00-15:00)",
+          "Networking Session (15:30-17:00)"
+        ]),
+        createField("Career Goals", "textarea", true),
+        createField("Specific Areas for Improvement", "textarea", false)
+      ]),
+      createSection("Additional Information", [
+        createField("Industry", "dropdown", true, [
+          "Technology",
+          "Finance",
+          "Healthcare",
+          "Education",
+          "Other"
+        ]),
+        createField("Resume Upload", "file", false),
+        createField("I agree to the terms and conditions", "checkbox", true)
+      ])
+    ]
+  ),
+  createRegistrationForm(
+    "form3",
+    "Cultural Exchange Festival Registration",
+    "Join us for a day of cultural celebration and exchange.",
+    [
+      createSection("Personal Information", [
+        createField("First Name", "text", true, undefined, { minLength: 2, maxLength: 50 }),
+        createField("Last Name", "text", true, undefined, { minLength: 2, maxLength: 50 }),
+        createField("Email", "email", true),
+        createField("Phone Number", "phone", true),
+        createField("Number of Attendees", "number", true, undefined, { minValue: 1, maxValue: 10 })
+      ]),
+      createSection("Event Preferences", [
+        createField("Activities Interested In", "dropdown", true, [
+          "Cultural Performances (11:00-13:00)",
+          "Food Festival (13:00-16:00)",
+          "Cultural Workshops (16:00-18:00)",
+          "Evening Concert (18:00-20:00)"
+        ]),
+        createField("Cultural Background", "text", false),
+        createField("Special Requirements", "textarea", false)
+      ]),
+      createSection("Additional Information", [
+        createField("Dietary Restrictions", "textarea", false),
+        createField("I agree to the terms and conditions", "checkbox", true)
+      ])
+    ]
+  ),
+  createRegistrationForm(
+    "form4",
+    "Women's Leadership Forum Registration",
+    "Join us for an empowering virtual forum focused on women's leadership development.",
+    [
+      createSection("Personal Information", [
+        createField("First Name", "text", true, undefined, { minLength: 2, maxLength: 50 }),
+        createField("Last Name", "text", true, undefined, { minLength: 2, maxLength: 50 }),
+        createField("Email", "email", true),
+        createField("Phone Number", "phone", true),
+        createField("Current Role", "text", true),
+        createField("Organization", "text", true)
+      ]),
+      createSection("Forum Participation", [
+        createField("Sessions to Attend", "dropdown", true, [
+          "Keynote Speech (19:00-19:45)",
+          "Panel Discussion (19:45-20:30)",
+          "Networking Session (20:30-21:00)"
+        ]),
+        createField("Leadership Experience", "textarea", true),
+        createField("Areas of Interest", "textarea", false)
+      ]),
+      createSection("Additional Information", [
+        createField("Industry", "dropdown", true, [
+          "Technology",
+          "Finance",
+          "Healthcare",
+          "Education",
+          "Other"
+        ]),
+        createField("Questions for Panelists", "textarea", false),
+        createField("I agree to the terms and conditions", "checkbox", true)
+      ])
+    ]
+  ),
+  createRegistrationForm(
+    "form5",
+    "Youth Coding Workshop Registration",
+    "Join us for an exciting introduction to programming!",
+    [
+      createSection("Personal Information", [
+        createField("First Name", "text", true, undefined, { minLength: 2, maxLength: 50 }),
+        createField("Last Name", "text", true, undefined, { minLength: 2, maxLength: 50 }),
+        createField("Email", "email", true),
+        createField("Phone Number", "phone", true),
+        createField("Age", "number", true, undefined, { minValue: 13, maxValue: 25 }),
+        createField("Parent/Guardian Name", "text", true),
+        createField("Parent/Guardian Phone", "phone", true)
+      ]),
+      createSection("Workshop Information", [
+        createField("Programming Experience", "dropdown", true, [
+          "None",
+          "Beginner",
+          "Intermediate"
+        ]),
+        createField("Preferred Programming Language", "dropdown", true, [
+          "Python",
+          "JavaScript",
+          "No Preference"
+        ]),
+        createField("Learning Goals", "textarea", true)
+      ]),
+      createSection("Additional Information", [
+        createField("Laptop Required", "checkbox", true),
+        createField("Special Requirements", "textarea", false),
+        createField("I agree to the terms and conditions", "checkbox", true)
+      ])
+    ]
+  )
 ]
 
-// Function to get enhanced event by ID
-export const getEnhancedEventById = async (id: string): Promise<ZubinEvent | null> => {
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 500))
+export const mockZubinEvents: ZubinEvent[] = [
+  {
+    _id: "1",
+    title: "English Conversation Club",
+    description: "Join our weekly English conversation club to practice speaking English in a friendly environment. All levels welcome!",
+    category: "Language Learning",
+    targetGroup: "All Hong Kong Residents",
+    location: {
+      venue: "Central Library",
+      address: "66 Causeway Road, Causeway Bay",
+      district: "Wan Chai",
+      onlineEvent: false
+    },
+    startDate: new Date("2024-04-15"),
+    endDate: new Date("2024-04-15"),
+    coverImageUrl: "/language-learning.png",
+    isPrivate: false,
+    status: "Published",
+    registrationFormId: "form1",
+    sessions: [
+      {
+        _id: "sess-1-1",
+        title: "Basic Conversation Practice",
+        description: "Practice everyday conversations with native English speakers",
+        date: new Date("2024-04-15"),
+        startTime: "14:00",
+        endTime: "15:00",
+        location: {
+          venue: "Central Library - Room 1"
+        },
+        capacity: 10
+      },
+      {
+        _id: "sess-1-2",
+        title: "Advanced Discussion Group",
+        description: "Engage in deeper discussions on current topics",
+        date: new Date("2024-04-15"),
+        startTime: "15:00",
+        endTime: "16:00",
+        location: {
+          venue: "Central Library - Room 2"
+        },
+        capacity: 10
+      }
+    ],
+    capacity: 20,
+    createdBy: "janesmith",
+    createdAt: new Date("2024-03-01"),
+    updatedBy: "janesmith",
+    updatedAt: new Date("2024-03-01"),
+    registeredCount: 15
+  },
+  {
+    _id: "2",
+    title: "Career Development Workshop",
+    description: "Learn essential skills for career advancement in Hong Kong. Topics include resume writing, interview preparation, and networking.",
+    category: "Career Development",
+    targetGroup: "Professionals",
+    location: {
+      venue: "Kowloon Bay Office",
+      address: "123 Enterprise Square",
+      district: "Kwun Tong",
+      onlineEvent: false
+    },
+    startDate: new Date("2024-04-20"),
+    endDate: new Date("2024-04-20"),
+    coverImageUrl: "/career-workshop.png",
+    isPrivate: false,
+    status: "Published",
+    registrationFormId: "form2",
+    sessions: [
+      {
+        _id: "sess-2-1",
+        title: "Resume Writing Workshop",
+        description: "Learn how to create an effective resume for the Hong Kong job market",
+        date: new Date("2024-04-20"),
+        startTime: "10:00",
+        endTime: "12:00",
+        location: {
+          venue: "Kowloon Bay Office - Training Room A"
+        },
+        capacity: 15
+      },
+      {
+        _id: "sess-2-2",
+        title: "Interview Skills",
+        description: "Master the art of job interviews with practical exercises",
+        date: new Date("2024-04-20"),
+        startTime: "13:00",
+        endTime: "15:00",
+        location: {
+          venue: "Kowloon Bay Office - Training Room B"
+        },
+        capacity: 15
+      },
+      {
+        _id: "sess-2-3",
+        title: "Networking Session",
+        description: "Practice networking skills with industry professionals",
+        date: new Date("2024-04-20"),
+        startTime: "15:30",
+        endTime: "17:00",
+        location: {
+          venue: "Kowloon Bay Office - Conference Hall"
+        },
+        capacity: 30
+      }
+    ],
+    capacity: 30,
+    createdBy: "admin",
+    createdAt: new Date("2024-03-05"),
+    updatedBy: "admin",
+    updatedAt: new Date("2024-03-05"),
+    registeredCount: 25
+  },
+  {
+    _id: "3",
+    title: "Cultural Exchange Festival",
+    description: "Celebrate diversity through music, dance, and food from different cultures. A family-friendly event for everyone.",
+    category: "Cultural Exchange",
+    targetGroup: "All Hong Kong Residents",
+    location: {
+      venue: "Victoria Park",
+      address: "1 Hing Fat Street, Causeway Bay",
+      district: "Wan Chai",
+      onlineEvent: false
+    },
+    startDate: new Date("2024-05-01"),
+    endDate: new Date("2024-05-01"),
+    coverImageUrl: "/vibrant-cultural-festival.png",
+    isPrivate: false,
+    status: "Published",
+    registrationFormId: "form3",
+    sessions: [
+      {
+        _id: "sess-3-1",
+        title: "Cultural Performances",
+        description: "Traditional music and dance performances from various cultures",
+        date: new Date("2024-05-01"),
+        startTime: "11:00",
+        endTime: "13:00",
+        location: {
+          venue: "Victoria Park - Main Stage"
+        },
+        capacity: 200
+      },
+      {
+        _id: "sess-3-2",
+        title: "Food Festival",
+        description: "Taste authentic dishes from different cultures",
+        date: new Date("2024-05-01"),
+        startTime: "13:00",
+        endTime: "16:00",
+        location: {
+          venue: "Victoria Park - Food Court"
+        },
+        capacity: 300
+      },
+      {
+        _id: "sess-3-3",
+        title: "Cultural Workshops",
+        description: "Hands-on workshops for traditional crafts and activities",
+        date: new Date("2024-05-01"),
+        startTime: "16:00",
+        endTime: "18:00",
+        location: {
+          venue: "Victoria Park - Workshop Area"
+        },
+        capacity: 150
+      },
+      {
+        _id: "sess-3-4",
+        title: "Evening Concert",
+        description: "Grand finale concert featuring multicultural performances",
+        date: new Date("2024-05-01"),
+        startTime: "18:00",
+        endTime: "20:00",
+        location: {
+          venue: "Victoria Park - Main Stage"
+        },
+        capacity: 500
+      }
+    ],
+    capacity: 500,
+    createdBy: "admin",
+    createdAt: new Date("2024-03-10"),
+    updatedBy: "admin",
+    updatedAt: new Date("2024-03-10"),
+    registeredCount: 300
+  },
+  {
+    _id: "4",
+    title: "Women's Leadership Forum",
+    description: "Empowering women through leadership development, networking, and mentorship opportunities.",
+    category: "Women's Empowerment",
+    targetGroup: "Women",
+    location: {
+      venue: "Online",
+      address: "",
+      district: "",
+      onlineEvent: true,
+      meetingLink: "https://zoom.us/j/123456789"
+    },
+    startDate: new Date("2024-04-25"),
+    endDate: new Date("2024-04-25"),
+    coverImageUrl: "/diverse-community-event.png",
+    isPrivate: false,
+    status: "Published",
+    registrationFormId: "form4",
+    sessions: [
+      {
+        _id: "sess-4-1",
+        title: "Keynote Speech",
+        description: "Inspiring keynote from successful women leaders",
+        date: new Date("2024-04-25"),
+        startTime: "19:00",
+        endTime: "19:45",
+        location: {
+          meetingLink: "https://zoom.us/j/123456789"
+        },
+        capacity: 100
+      },
+      {
+        _id: "sess-4-2",
+        title: "Panel Discussion",
+        description: "Interactive panel discussion on leadership challenges and opportunities",
+        date: new Date("2024-04-25"),
+        startTime: "19:45",
+        endTime: "20:30",
+        location: {
+          meetingLink: "https://zoom.us/j/123456789"
+        },
+        capacity: 100
+      },
+      {
+        _id: "sess-4-3",
+        title: "Networking Session",
+        description: "Virtual networking with fellow participants",
+        date: new Date("2024-04-25"),
+        startTime: "20:30",
+        endTime: "21:00",
+        location: {
+          meetingLink: "https://zoom.us/j/123456789"
+        },
+        capacity: 100
+      }
+    ],
+    capacity: 100,
+    createdBy: "johndoe",
+    createdAt: new Date("2024-03-15"),
+    updatedBy: "johndoe",
+    updatedAt: new Date("2024-03-15"),
+    registeredCount: 75
+  },
+  {
+    _id: "5",
+    title: "Youth Coding Workshop",
+    description: "Introduction to programming for young people. Learn basic coding concepts through fun projects.",
+    category: "Education & Training",
+    targetGroup: "Youth (13-25)",
+    location: {
+      venue: "Youth Center",
+      address: "45 Youth Street, Mong Kok",
+      district: "Yau Tsim Mong",
+      onlineEvent: false
+    },
+    startDate: new Date("2024-04-18"),
+    endDate: new Date("2024-04-18"),
+    coverImageUrl: "/community-support.png",
+    isPrivate: false,
+    status: "Published",
+    registrationFormId: "form5",
+    sessions: [
+      {
+        _id: "sess-5-1",
+        title: "Introduction to Programming",
+        description: "Learn basic programming concepts and tools",
+        date: new Date("2024-04-18"),
+        startTime: "15:00",
+        endTime: "16:00",
+        location: {
+          venue: "Youth Center - Computer Lab 1"
+        },
+        capacity: 15
+      },
+      {
+        _id: "sess-5-2",
+        title: "Hands-on Project",
+        description: "Build a simple game using what you've learned",
+        date: new Date("2024-04-18"),
+        startTime: "16:00",
+        endTime: "17:30",
+        location: {
+          venue: "Youth Center - Computer Lab 2"
+        },
+        capacity: 15
+      },
+      {
+        _id: "sess-5-3",
+        title: "Showcase and Q&A",
+        description: "Present your projects and get feedback",
+        date: new Date("2024-04-18"),
+        startTime: "17:30",
+        endTime: "18:00",
+        location: {
+          venue: "Youth Center - Presentation Room"
+        },
+        capacity: 25
+      }
+    ],
+    capacity: 25,
+    createdBy: "alicebrown",
+    createdAt: new Date("2024-03-20"),
+    updatedBy: "alicebrown",
+    updatedAt: new Date("2024-03-20"),
+    registeredCount: 20
+  }
+]
 
-  const event = enhancedEvents.find((event) => event.eventId === id)
+// Mock Users
+export const mockUsers: User[] = [
+  {
+    _id: "1",
+    username: "johndoe",
+    passwordHash: "hashed_password",
+    mobile: "+1 (555) 123-4567",
+    email: "john@example.com",
+    role: "admin",
+    firstName: "John",
+    lastName: "Doe",
+    createdAt: new Date("2023-01-15"),
+    updatedAt: new Date("2023-01-15"),
+    lastLogin: new Date("2023-05-10"),
+    isActive: true
+  },
+  {
+    _id: "2",
+    username: "janesmith",
+    passwordHash: "hashed_password",
+    mobile: "+1 (555) 987-6543",
+    email: "jane@example.com",
+    role: "staff",
+    firstName: "Jane",
+    lastName: "Smith",
+    createdAt: new Date("2023-02-20"),
+    updatedAt: new Date("2023-02-20"),
+    lastLogin: new Date("2023-05-08"),
+    isActive: true
+  },
+  {
+    _id: "3",
+    username: "bobjohnson",
+    passwordHash: "hashed_password",
+    mobile: "+1 (555) 456-7890",
+    email: "bob@example.com",
+    role: "participant",
+    firstName: "Bob",
+    lastName: "Johnson",
+    createdAt: new Date("2023-03-10"),
+    updatedAt: new Date("2023-03-10"),
+    lastLogin: new Date("2023-04-15"),
+    isActive: false
+  },
+  {
+    _id: "4",
+    username: "alicebrown",
+    passwordHash: "hashed_password",
+    mobile: "+1 (555) 234-5678",
+    email: "alice@example.com",
+    role: "staff",
+    firstName: "Alice",
+    lastName: "Brown",
+    createdAt: new Date("2023-01-05"),
+    updatedAt: new Date("2023-01-05"),
+    lastLogin: new Date("2023-05-12"),
+    isActive: true
+  },
+  {
+    _id: "5",
+    username: "charliewilson",
+    passwordHash: "hashed_password",
+    mobile: "+1 (555) 876-5432",
+    email: "charlie@example.com",
+    role: "participant",
+    firstName: "Charlie",
+    lastName: "Wilson",
+    createdAt: new Date("2023-04-01"),
+    updatedAt: new Date("2023-04-01"),
+    lastLogin: new Date("2023-05-01"),
+    isActive: true
+  },  
+  {
+    _id: "6",
+    username: "sarah.wong",
+    passwordHash: "hashed_password_1",
+    mobile: "91234567",
+    email: "sarah.wong@example.com",
+    role: "participant",
+    firstName: "Sarah",
+    lastName: "Wong",
+    createdAt: new Date("2024-01-01"),
+    updatedAt: new Date("2024-01-01"),
+    lastLogin: new Date("2024-03-15"),
+    isActive: true
+  },
+  {
+    _id: "7",
+    username: "raj.patel",
+    passwordHash: "hashed_password_2",
+    mobile: "92345678",
+    email: "raj.patel@example.com",
+    role: "participant",
+    firstName: "Raj",
+    lastName: "Patel",
+    createdAt: new Date("2024-01-15"),
+    updatedAt: new Date("2024-01-15"),
+    lastLogin: new Date("2024-03-20"),
+    isActive: true
+  },
+  {
+    _id: "8",
+    username: "maria.garcia",
+    passwordHash: "hashed_password_3",
+    mobile: "93456789",
+    email: "maria.garcia@example.com",
+    role: "participant",
+    firstName: "Maria",
+    lastName: "Garcia",
+    createdAt: new Date("2024-02-01"),
+    updatedAt: new Date("2024-02-01"),
+    lastLogin: new Date("2024-03-18"),
+    isActive: true
+  },
+  {
+    _id: "9",
+    username: "ali.khan",
+    passwordHash: "hashed_password_4",
+    mobile: "94567890",
+    email: "ali.khan@example.com",
+    role: "participant",
+    firstName: "Ali",
+    lastName: "Khan",
+    createdAt: new Date("2024-02-15"),
+    updatedAt: new Date("2024-02-15"),
+    lastLogin: new Date("2024-03-19"),
+    isActive: true
+  },
+  {
+    _id: "10",
+    username: "emma.chan",
+    passwordHash: "hashed_password_5",
+    mobile: "95678901",
+    email: "emma.chan@example.com",
+    role: "participant",
+    firstName: "Emma",
+    lastName: "Chan",
+    createdAt: new Date("2024-03-01"),
+    updatedAt: new Date("2024-03-01"),
+    lastLogin: new Date("2024-03-21"),
+    isActive: true
+  }
+]
+
+// Mock Event Registrations
+export const mockEventRegistrations: EventRegistration[] = [
+  // English Conversation Club Registrations
+  {
+    _id: "reg1",
+    eventId: "1",
+    userId: "user1",
+    attendee: {
+      firstName: "Sarah",
+      lastName: "Wong",
+      phone: "91234567",
+      email: "sarah.wong@example.com"
+    },
+    sessions: ["sess-1-1", "sess-1-2"],
+    formResponses: [
+      {
+        sectionId: "section-1",
+        fieldId: "field-1",
+        response: "Sarah"
+      },
+      {
+        sectionId: "section-1",
+        fieldId: "field-2",
+        response: "Wong"
+      },
+      {
+        sectionId: "section-2",
+        fieldId: "field-3",
+        response: "intermediate"
+      }
+    ],
+    status: "confirmed",
+    registeredAt: new Date("2024-03-10"),
+    notes: "Regular participant"
+  },
+  {
+    _id: "reg2",
+    eventId: "1",
+    userId: "user2",
+    attendee: {
+      firstName: "Raj",
+      lastName: "Patel",
+      phone: "92345678",
+      email: "raj.patel@example.com"
+    },
+    sessions: ["sess-1-2"],
+    formResponses: [
+      {
+        sectionId: "section-1",
+        fieldId: "field-1",
+        response: "Raj"
+      },
+      {
+        sectionId: "section-1",
+        fieldId: "field-2",
+        response: "Patel"
+      },
+      {
+        sectionId: "section-2",
+        fieldId: "field-3",
+        response: "advanced"
+      }
+    ],
+    status: "confirmed",
+    registeredAt: new Date("2024-03-11")
+  },
+  // Career Development Workshop Registrations
+  {
+    _id: "reg3",
+    eventId: "2",
+    userId: "user3",
+    attendee: {
+      firstName: "Maria",
+      lastName: "Garcia",
+      phone: "93456789",
+      email: "maria.garcia@example.com"
+    },
+    sessions: ["sess-2-1", "sess-2-2", "sess-2-3"],
+    formResponses: [
+      {
+        sectionId: "section-1",
+        fieldId: "field-1",
+        response: "Maria"
+      },
+      {
+        sectionId: "section-1",
+        fieldId: "field-2",
+        response: "Garcia"
+      },
+      {
+        sectionId: "section-2",
+        fieldId: "field-3",
+        response: "Marketing Manager"
+      }
+    ],
+    status: "confirmed",
+    registeredAt: new Date("2024-03-12")
+  },
+  // Cultural Exchange Festival Registrations
+  {
+    _id: "reg4",
+    eventId: "3",
+    userId: "user4",
+    attendee: {
+      firstName: "Ali",
+      lastName: "Khan",
+      phone: "94567890",
+      email: "ali.khan@example.com"
+    },
+    sessions: ["sess-3-1", "sess-3-2", "sess-3-3", "sess-3-4"],
+    formResponses: [
+      {
+        sectionId: "section-1",
+        fieldId: "field-1",
+        response: "Ali"
+      },
+      {
+        sectionId: "section-1",
+        fieldId: "field-2",
+        response: "Khan"
+      },
+      {
+        sectionId: "section-2",
+        fieldId: "field-3",
+        response: "Pakistani"
+      }
+    ],
+    status: "confirmed",
+    registeredAt: new Date("2024-03-13")
+  },
+  // Women's Leadership Forum Registrations
+  {
+    _id: "reg5",
+    eventId: "4",
+    userId: "user5",
+    attendee: {
+      firstName: "Emma",
+      lastName: "Chan",
+      phone: "95678901",
+      email: "emma.chan@example.com"
+    },
+    sessions: ["sess-4-1", "sess-4-2", "sess-4-3"],
+    formResponses: [
+      {
+        sectionId: "section-1",
+        fieldId: "field-1",
+        response: "Emma"
+      },
+      {
+        sectionId: "section-1",
+        fieldId: "field-2",
+        response: "Chan"
+      },
+      {
+        sectionId: "section-2",
+        fieldId: "field-3",
+        response: "Project Manager"
+      }
+    ],
+    status: "confirmed",
+    registeredAt: new Date("2024-03-14")
+  }
+]
+
+export const getEnhancedEventById = async (id: string): Promise<ZubinEvent | null> => {
+  const event = mockZubinEvents.find(event => event._id === id)
   return event || null
+}
+
+export const getRegistrationFormById = async (id: string): Promise<RegistrationForm | null> => {
+  const form = mockRegistrationForms.find(form => form._id === id)
+  return form || null
+}
+
+export const getUserById = async (id: string): Promise<User | null> => {
+  const user = mockUsers.find(user => user._id === id)
+  return user || null
+}
+
+export const getEventRegistrationsByEventId = async (eventId: string): Promise<EventRegistration[]> => {
+  return mockEventRegistrations.filter(registration => registration.eventId === eventId)
+}
+
+export const getEventRegistrationsByUserId = async (userId: string): Promise<EventRegistration[]> => {
+  return mockEventRegistrations.filter(registration => registration.userId === userId)
 }

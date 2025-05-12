@@ -1,39 +1,64 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { User, UserFormData, UserRole, UserStatus } from "@/types/user-types"
-import { getUsers, getUserById, createUser, updateUser, deleteUser, searchUsers, filterUsers } from "@/services/user-service"
+import { User, UserRole, type CreateUserData, type UpdateUserData } from "@/types/user-types"
+import { UserService } from "@/services/user-service"
 import { useToast } from "@/hooks/use-toast"
 
+/**
+ * Interface defining the shape of the User Management Context
+ * This context provides all the necessary functions and state for managing users
+ */
 interface UserManagementContextType {
+  /** List of all users */
   users: User[]
+  /** Loading state indicator */
   loading: boolean
+  /** Error message if any */
   error: string | null
+  /** Currently selected user for detailed view/editing */
   selectedUser: User | null
+  /** Function to fetch all users */
   fetchUsers: () => Promise<void>
+  /** Function to fetch a specific user by ID */
   fetchUserById: (id: string) => Promise<User | null>
-  addUser: (userData: UserFormData) => Promise<User | null>
-  editUser: (id: string, userData: Partial<UserFormData>) => Promise<User | null>
+  /** Function to create a new user */
+  addUser: (userData: CreateUserData) => Promise<User | null>
+  /** Function to update an existing user */
+  editUser: (id: string, userData: UpdateUserData) => Promise<User | null>
+  /** Function to delete a user */
   removeUser: (id: string) => Promise<boolean>
+  /** Function to search users by query string */
   searchForUsers: (query: string) => Promise<void>
-  filterUsersList: (filters: { role?: UserRole; status?: UserStatus; department?: string }) => Promise<void>
+  /** Function to filter users by role, status, and phone */
+  filterUsersList: (filters: { role?: UserRole; status?: boolean; phone?: string }) => Promise<void>
+  /** Function to set the currently selected user */
   setSelectedUser: (user: User | null) => void
+  /** Function to change a user's password */
   changeUserPassword: (userId: string, newPassword: string) => Promise<boolean>
 }
 
 const UserManagementContext = createContext<UserManagementContextType | undefined>(undefined)
 
+/**
+ * Provider component for User Management functionality
+ * This component manages the state and provides methods for user management operations
+ */
 export function UserManagementProvider({ children }: { children: ReactNode }) {
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const { toast } = useToast()
+  const userService = UserService.getInstance()
 
+  /**
+   * Fetches all users from the API
+   */
   const fetchUsers = async () => {
     try {
       setLoading(true)
       setError(null)
-      const fetchedUsers = await getUsers()
-      setUsers(fetchedUsers)
+      const result = await userService.searchUsers({})
+      setUsers(result.users)
     } catch (err) {
       setError("Failed to fetch users")
       toast({
@@ -47,11 +72,14 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /**
+   * Fetches a specific user by ID
+   */
   const fetchUserById = async (id: string): Promise<User | null> => {
     try {
       setLoading(true)
       setError(null)
-      const user = await getUserById(id)
+      const user = await userService.getUserById(id)
       if (user) {
         setSelectedUser(user)
       }
@@ -70,11 +98,14 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const addUser = async (userData: UserFormData): Promise<User | null> => {
+  /**
+   * Creates a new user
+   */
+  const addUser = async (userData: CreateUserData): Promise<User | null> => {
     try {
       setLoading(true)
       setError(null)
-      const newUser = await createUser(userData)
+      const newUser = await userService.createUser(userData)
       setUsers((prevUsers) => [...prevUsers, newUser])
       toast({
         title: "Success",
@@ -95,13 +126,16 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const editUser = async (id: string, userData: Partial<UserFormData>): Promise<User | null> => {
+  /**
+   * Updates an existing user
+   */
+  const editUser = async (id: string, userData: UpdateUserData): Promise<User | null> => {
     try {
       setLoading(true)
       setError(null)
-      const updatedUser = await updateUser(id, userData)
-      setUsers((prevUsers) => prevUsers.map((user) => (user.id === id ? updatedUser : user)))
-      if (selectedUser && selectedUser.id === id) {
+      const updatedUser = await userService.updateUser(id, userData)
+      setUsers((prevUsers) => prevUsers.map((user) => (user._id === id ? updatedUser : user)))
+      if (selectedUser && selectedUser._id === id) {
         setSelectedUser(updatedUser)
       }
       toast({
@@ -123,13 +157,16 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /**
+   * Deletes a user
+   */
   const removeUser = async (id: string): Promise<boolean> => {
     try {
       setLoading(true)
       setError(null)
-      await deleteUser(id)
-      setUsers((prevUsers) => prevUsers.filter((user) => user.id !== id))
-      if (selectedUser && selectedUser.id === id) {
+      await userService.deleteUser(id)
+      setUsers((prevUsers) => prevUsers.filter((user) => user._id !== id))
+      if (selectedUser && selectedUser._id === id) {
         setSelectedUser(null)
       }
       toast({
@@ -151,12 +188,15 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /**
+   * Searches users based on a query string
+   */
   const searchForUsers = async (query: string): Promise<void> => {
     try {
       setLoading(true)
       setError(null)
-      const results = await searchUsers(query)
-      setUsers(results)
+      const result = await userService.searchUsers({ searchQuery: query })
+      setUsers(result.users)
     } catch (err) {
       setError("Failed to search users")
       toast({
@@ -170,16 +210,23 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /**
+   * Filters users based on role, status, and phone
+   */
   const filterUsersList = async (filters: {
     role?: UserRole
-    status?: UserStatus
-    department?: string
+    status?: boolean
+    phone?: string
   }): Promise<void> => {
     try {
       setLoading(true)
       setError(null)
-      const results = await filterUsers(filters)
-      setUsers(results)
+      const result = await userService.searchUsers({
+        role: filters.role,
+        isActive: filters.status,
+        phone: filters.phone
+      })
+      setUsers(result.users)
     } catch (err) {
       setError("Failed to filter users")
       toast({
@@ -193,6 +240,9 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  /**
+   * Changes a user's password
+   */
   const changeUserPassword = async (userId: string, newPassword: string): Promise<boolean> => {
     try {
       setLoading(true)
@@ -249,6 +299,10 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
   )
 }
 
+/**
+ * Custom hook to use the User Management context
+ * @throws Error if used outside of UserManagementProvider
+ */
 export function useUserManagement() {
   const context = useContext(UserManagementContext)
   if (context === undefined) {

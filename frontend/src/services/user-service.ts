@@ -1,142 +1,299 @@
-import type { User, UserFormData, UserRole, UserStatus } from "@/types/user-types"
+import { mockUsers } from "@/types/mock-enhanced-event-data"
+import type { User, UserRole } from "@/types/user-types"
+import { type CreateUserData, type UpdateUserData, type UserFilterCriteria, type UserSortCriteria, type UserPaginationParams } from "@/types/user-types"
 
-// Mock users data
-const mockUsers: User[] = [
-  {
-    id: "1",
-    name: "John Doe",
-    username: "johndoe",
-    email: "john@example.com",
-    role: "admin",
-    status: "active",
-    department: "IT",
-    phone: "+1 (555) 123-4567",
-    createdAt: new Date("2023-01-15").toISOString(),
-    lastLogin: new Date("2023-05-10").toISOString(),
-  },
-  {
-    id: "2",
-    name: "Jane Smith",
-    username: "janesmith",
-    email: "jane@example.com",
-    role: "staff",
-    status: "active",
-    department: "HR",
-    phone: "+1 (555) 987-6543",
-    createdAt: new Date("2023-02-20").toISOString(),
-    lastLogin: new Date("2023-05-08").toISOString(),
-  },
-  {
-    id: "3",
-    name: "Bob Johnson",
-    username: "bobjohnson",
-    email: "bob@example.com",
-    role: "participant",
-    status: "inactive",
-    department: "",
-    phone: "+1 (555) 456-7890",
-    createdAt: new Date("2023-03-10").toISOString(),
-    lastLogin: new Date("2023-04-15").toISOString(),
-  },
-  {
-    id: "4",
-    name: "Alice Brown",
-    username: "alicebrown",
-    email: "alice@example.com",
-    role: "staff",
-    status: "active",
-    department: "Marketing",
-    phone: "+1 (555) 234-5678",
-    createdAt: new Date("2023-01-05").toISOString(),
-    lastLogin: new Date("2023-05-12").toISOString(),
-  },
-  {
-    id: "5",
-    name: "Charlie Wilson",
-    username: "charliewilson",
-    email: "charlie@example.com",
-    role: "participant",
-    status: "active",
-    department: "",
-    phone: "+1 (555) 876-5432",
-    createdAt: new Date("2023-04-01").toISOString(),
-    lastLogin: new Date("2023-05-01").toISOString(),
-  },
-]
+/**
+ * Interface for user form data when creating/updating users
+ * Note: This is a simplified version of the User interface
+ * used specifically for form submissions
+ */
+interface UserFormData {
+  username: string
+  email: string
+  role: UserRole
+  name: string
+  phone?: string
+}
 
-// Helper function to simulate API delay
+/**
+ * Helper function to simulate API delay
+ * @param ms - Milliseconds to delay
+ */
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-// Get all users
+/**
+ * Fetches all users from the API
+ * @returns Promise resolving to an array of users
+ */
 export async function getUsers(): Promise<User[]> {
   await delay(500) // Simulate API delay
   return [...mockUsers]
 }
 
-// Get user by ID
+/**
+ * Fetches a single user by their ID
+ * @param id - The user's ID to fetch
+ * @returns Promise resolving to the user or null if not found
+ */
 export async function getUserById(id: string): Promise<User | null> {
   await delay(300)
-  const user = mockUsers.find((u) => u.id === id)
+  const user = mockUsers.find((u) => u._id === id)
   return user || null
 }
 
-// Create a new user
-export async function createUser(userData: UserFormData): Promise<User> {
-  await delay(800)
-  const newUser: User = {
-    id: `${mockUsers.length + 1}`,
-    name: userData.name,
-    username: userData.username || userData.name.toLowerCase().replace(/\s+/g, ""),
-    email: userData.email,
-    role: userData.role,
-    status: userData.status || "active",
-    department: userData.department || "",
-    phone: userData.phone || "",
-    createdAt: new Date().toISOString(),
-    lastLogin: "",
+export class UserServiceError extends Error {
+  constructor(
+    message: string,
+    public code: string,
+    public status?: number
+  ) {
+    super(message)
+    this.name = "UserServiceError"
   }
-
-  // In a real app, this would add to a database
-  // For this demo, we'll just return the new user
-  return newUser
 }
 
-// Update an existing user
-export async function updateUser(id: string, userData: Partial<UserFormData>): Promise<User> {
-  await delay(600)
-  const userIndex = mockUsers.findIndex((u) => u.id === id)
+export class UserService {
+  private static instance: UserService
+  private users: User[] = [...mockUsers]
 
-  if (userIndex === -1) {
-    throw new Error("User not found")
+  private constructor() {}
+
+  static getInstance(): UserService {
+    if (!UserService.instance) {
+      UserService.instance = new UserService()
+    }
+    return UserService.instance
   }
 
-  const updatedUser = {
-    ...mockUsers[userIndex],
-    ...userData,
+  private validateUserData(data: Partial<User>): void {
+    if (data.username && data.username.length < 3) {
+      throw new UserServiceError(
+        "Username must be at least 3 characters",
+        "INVALID_USERNAME"
+      )
+    }
+    if (data.mobile && data.mobile.length < 8) {
+      throw new UserServiceError(
+        "Mobile number must be at least 8 digits",
+        "INVALID_MOBILE"
+      )
+    }
+    if (data.email && !data.email.includes("@")) {
+      throw new UserServiceError(
+        "Invalid email address",
+        "INVALID_EMAIL"
+      )
+    }
   }
 
-  // In a real app, this would update the database
-  // For this demo, we'll just return the updated user
-  return updatedUser
+  async createUser(data: CreateUserData): Promise<User> {
+    try {
+      this.validateUserData(data)
+
+      // Check if username already exists
+      if (this.users.some(user => user.username === data.username)) {
+        throw new UserServiceError(
+          "Username already exists",
+          "USERNAME_EXISTS",
+          409
+        )
+      }
+
+      const newUser: User = {
+        _id: Math.random().toString(36).substr(2, 9),
+        ...data,
+        passwordHash: "hashed_" + data.password, // In real app, use proper hashing
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      this.users.push(newUser)
+      return newUser
+    } catch (error) {
+      if (error instanceof UserServiceError) {
+        throw error
+      }
+      throw new UserServiceError(
+        "Failed to create user",
+        "CREATE_ERROR",
+        500
+      )
+    }
+  }
+
+  async updateUser(id: string, data: UpdateUserData): Promise<User> {
+    try {
+      this.validateUserData(data)
+
+      const userIndex = this.users.findIndex(user => user._id === id)
+      if (userIndex === -1) {
+        throw new UserServiceError(
+          "User not found",
+          "USER_NOT_FOUND",
+          404
+        )
+      }
+
+      // Check username uniqueness if being updated
+      if (data.username && data.username !== this.users[userIndex].username) {
+        if (this.users.some(user => user.username === data.username)) {
+          throw new UserServiceError(
+            "Username already exists",
+            "USERNAME_EXISTS",
+            409
+          )
+        }
+      }
+
+      const updatedUser = {
+        ...this.users[userIndex],
+        ...data,
+        updatedAt: new Date(),
+      }
+
+      if (data.password) {
+        updatedUser.passwordHash = "hashed_" + data.password // In real app, use proper hashing
+      }
+
+      this.users[userIndex] = updatedUser
+      return updatedUser
+    } catch (error) {
+      if (error instanceof UserServiceError) {
+        throw error
+      }
+      throw new UserServiceError(
+        "Failed to update user",
+        "UPDATE_ERROR",
+        500
+      )
+    }
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    try {
+      const userIndex = this.users.findIndex(user => user._id === id)
+      if (userIndex === -1) {
+        throw new UserServiceError(
+          "User not found",
+          "USER_NOT_FOUND",
+          404
+        )
+      }
+
+      this.users.splice(userIndex, 1)
+    } catch (error) {
+      if (error instanceof UserServiceError) {
+        throw error
+      }
+      throw new UserServiceError(
+        "Failed to delete user",
+        "DELETE_ERROR",
+        500
+      )
+    }
+  }
+
+  async getUserById(id: string): Promise<User> {
+    try {
+      const user = this.users.find(user => user._id === id)
+      if (!user) {
+        throw new UserServiceError(
+          "User not found",
+          "USER_NOT_FOUND",
+          404
+        )
+      }
+      return user
+    } catch (error) {
+      if (error instanceof UserServiceError) {
+        throw error
+      }
+      throw new UserServiceError(
+        "Failed to get user",
+        "GET_ERROR",
+        500
+      )
+    }
+  }
+
+  async searchUsers(
+    criteria: UserFilterCriteria,
+    sort?: UserSortCriteria,
+    pagination?: UserPaginationParams
+  ): Promise<{ users: User[]; total: number }> {
+    try {
+      let filteredUsers = [...this.users]
+
+      // Apply filters
+      if (criteria.role) {
+        filteredUsers = filteredUsers.filter(user => user.role === criteria.role)
+      }
+      if (criteria.isActive !== undefined) {
+        filteredUsers = filteredUsers.filter(user => user.isActive === criteria.isActive)
+      }
+      if (criteria.phone) {
+        filteredUsers = filteredUsers.filter(user => user.mobile.includes(criteria.phone!))
+      }
+      if (criteria.searchQuery) {
+        const query = criteria.searchQuery.toLowerCase()
+        filteredUsers = filteredUsers.filter(user =>
+          user.username.toLowerCase().includes(query) ||
+          user.firstName.toLowerCase().includes(query) ||
+          user.lastName.toLowerCase().includes(query) ||
+          user.email?.toLowerCase().includes(query) ||
+          user.mobile.includes(query)
+        )
+      }
+
+      // Apply sorting
+      if (sort) {
+        filteredUsers.sort((a, b) => {
+          const aValue = a[sort.field] as string | number | Date
+          const bValue = b[sort.field] as string | number | Date
+          
+          // Handle undefined values
+          if (aValue === undefined && bValue === undefined) return 0
+          if (aValue === undefined) return sort.direction === "asc" ? 1 : -1
+          if (bValue === undefined) return sort.direction === "asc" ? -1 : 1
+          
+          // Compare values
+          if (sort.direction === "asc") {
+            return aValue > bValue ? 1 : -1
+          }
+          return aValue < bValue ? 1 : -1
+        })
+      }
+
+      // Apply pagination
+      const total = filteredUsers.length
+      if (pagination) {
+        const start = (pagination.page - 1) * pagination.itemsPerPage
+        filteredUsers = filteredUsers.slice(start, start + pagination.itemsPerPage)
+      }
+
+      return { users: filteredUsers, total }
+    } catch (error) {
+      if (error instanceof UserServiceError) {
+        throw error
+      }
+      throw new UserServiceError(
+        "Failed to search users",
+        "SEARCH_ERROR",
+        500
+      )
+    }
+  }
 }
 
-// Delete a user
-export async function deleteUser(id: string): Promise<void> {
-  await delay(500)
-  const userIndex = mockUsers.findIndex((u) => u.id === id)
-
-  if (userIndex === -1) {
-    throw new Error("User not found")
-  }
-
-  // In a real app, this would delete from the database
-  // For this demo, we'll just simulate success
-}
-
-// Search users
+/**
+ * Searches for users based on a query string
+ * @param query - The search query
+ * @param searchFields - Optional array of fields to search in
+ * @returns Promise resolving to array of matching users
+ */
 export async function searchUsers(
   query: string,
-  searchFields: string[] = ["name", "email", "department"],
+  searchFields: string[] = ["username", "mobile", "email"],
 ): Promise<User[]> {
   await delay(400)
   const lowercaseQuery = query.toLowerCase()
@@ -149,11 +306,18 @@ export async function searchUsers(
   })
 }
 
-// Filter users
+/**
+ * Filters users based on various criteria
+ * @param filters - Object containing filter criteria
+ * @param filters.role - Filter by user role
+ * @param filters.status - Filter by active status
+ * @param filters.phone - Filter by phone number
+ * @returns Promise resolving to array of filtered users
+ */
 export async function filterUsers(filters: {
   role?: UserRole
-  status?: UserStatus
-  department?: string
+  status?: boolean
+  phone?: string
 }): Promise<User[]> {
   await delay(400)
 
@@ -161,10 +325,10 @@ export async function filterUsers(filters: {
     if (filters.role && user.role !== filters.role) {
       return false
     }
-    if (filters.status && user.status !== filters.status) {
+    if (filters.status !== undefined && user.isActive !== filters.status) {
       return false
     }
-    if (filters.department && user.department !== filters.department) {
+    if (filters.phone && !user.mobile.includes(filters.phone)) {
       return false
     }
     return true

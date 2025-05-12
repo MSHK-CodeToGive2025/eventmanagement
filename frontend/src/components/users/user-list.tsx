@@ -1,3 +1,22 @@
+/**
+ * UserList Component
+ * 
+ * A comprehensive list view of users with features for:
+ * - Displaying users in a table format
+ * - Searching users by various fields
+ * - Filtering users by role and phone
+ * - Sorting users by different columns
+ * - Pagination
+ * - User management actions (view, edit, delete, change password)
+ * 
+ * The component includes:
+ * - Search bar for finding users
+ * - Filter dropdowns for role and phone
+ * - Sortable table columns
+ * - Action buttons for each user
+ * - Pagination controls
+ */
+
 import type React from "react"
 
 import { useState } from "react"
@@ -24,22 +43,36 @@ import {
 } from "@/components/ui/select"
 import { Eye, Edit, Trash2, MoreHorizontal, UserPlus, Key, Search } from "lucide-react"
 import { UserStatus, UserRole, User } from "@/types/user-types"
+import { Pagination } from "@/components/ui/pagination"
 
 interface UserListProps {
+  /** Array of users to display */
   users: User[]
+  /** Callback when search is performed */
   onSearch: (query: string, searchFields?: string[]) => Promise<void>
-  onFilter: (filters: { role?: UserRole; status?: UserStatus; department?: string }) => Promise<void>
+  /** Callback when filters are applied */
+  onFilter: (filters: { role?: UserRole; status?: UserStatus; department?: string; phone?: string }) => Promise<void>
+  /** Callback when a user is viewed */
   onView: (user: User) => void
+  /** Callback when a user is edited */
   onEdit: (user: User) => void
+  /** Callback when a user is deleted */
   onDelete: (user: User) => void
+  /** Callback when adding a new user */
   onAddNew: () => void
+  /** Callback when changing a user's password */
   onChangePassword: (user: User) => void
+  /** Current page number */
   currentPage?: number
+  /** Number of items per page */
   itemsPerPage?: number
+  /** Callback when page changes */
   onPageChange?: (page: number) => void
-  onItemsPerPageChange?: (count: number) => void
+  /** Field to sort by */
   sortField?: string
+  /** Sort direction */
   sortDirection?: "asc" | "desc"
+  /** Callback when sort changes */
   onSort?: (field: string) => void
 }
 
@@ -55,7 +88,6 @@ export function UserList({
   currentPage = 1,
   itemsPerPage = 10,
   onPageChange,
-  onItemsPerPageChange,
   sortField = "username",
   sortDirection = "asc",
   onSort,
@@ -63,7 +95,8 @@ export function UserList({
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<UserRole | "">("")
   const [statusFilter, setStatusFilter] = useState<UserStatus | "">("")
-  const [searchFields, setSearchFields] = useState<string[]>(["username", "phone", "email"])
+  const [phoneFilter, setPhoneFilter] = useState("")
+  const [searchFields] = useState<string[]>(["username", "firstName", "lastName", "email"])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -82,15 +115,22 @@ export function UserList({
     onFilter({ role: roleFilter || undefined, status: status || undefined })
   }
 
+  const handlePhoneFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const phone = e.target.value
+    setPhoneFilter(phone)
+    onFilter({ role: roleFilter || undefined, status: statusFilter || undefined, phone })
+  }
+
   const clearFilters = () => {
     setRoleFilter("")
     setStatusFilter("")
+    setPhoneFilter("")
     onFilter({})
   }
 
-  const formatDate = (dateString: string) => {
-    if (!dateString) return "Never"
-    return new Date(dateString).toLocaleDateString()
+  const formatDate = (date: Date | undefined) => {
+    if (!date) return "Never"
+    return new Date(date).toLocaleDateString()
   }
 
   const getRoleBadgeColor = (role: string) => {
@@ -117,10 +157,6 @@ export function UserList({
       default:
         return "bg-gray-100 text-gray-800 hover:bg-gray-200"
     }
-  }
-
-  const toggleSearchField = (field: string) => {
-    setSearchFields((prev) => (prev.includes(field) ? prev.filter((f) => f !== field) : [...prev, field]))
   }
 
   const getSortedPaginatedUsers = () => {
@@ -160,51 +196,27 @@ export function UserList({
     return sortedUsers
   }
 
+  const handleSort = (field: string) => {
+    if (onSort) {
+      const newDirection = field === sortField && sortDirection === "asc" ? "desc" : "asc"
+      onSort(field)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row justify-between gap-4">
-        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2">
+        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-2 w-full">
           <div className="relative flex-1">
             <Input
-              placeholder="Search users..."
+              placeholder="Search by username, first/last name, email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 w-full"
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
           </div>
-          <div className="flex gap-2 items-center">
-            <div className="flex gap-2 items-center text-sm">
-              <label className="flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={searchFields.includes("username")}
-                  onChange={() => toggleSearchField("username")}
-                  className="rounded text-primary"
-                />
-                Username
-              </label>
-              <label className="flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={searchFields.includes("phone")}
-                  onChange={() => toggleSearchField("phone")}
-                  className="rounded text-primary"
-                />
-                Phone
-              </label>
-              <label className="flex items-center gap-1.5">
-                <input
-                  type="checkbox"
-                  checked={searchFields.includes("email")}
-                  onChange={() => toggleSearchField("email")}
-                  className="rounded text-primary"
-                />
-                Email
-              </label>
-            </div>
-            <Button type="submit">Search</Button>
-          </div>
+          <Button type="submit">Search</Button>
         </form>
         <Button onClick={onAddNew}>
           <UserPlus className="mr-2 h-4 w-4" />
@@ -232,6 +244,16 @@ export function UserList({
         </div>
 
         <div className="space-y-1">
+          <p className="text-sm font-medium">Filter by Phone</p>
+          <Input
+            placeholder="Enter phone number"
+            value={phoneFilter}
+            onChange={handlePhoneFilterChange}
+            className="w-[180px]"
+          />
+        </div>
+
+        <div className="space-y-1">
           <p className="text-sm font-medium">Filter by Status</p>
           <Select value={statusFilter} onValueChange={handleStatusFilterChange}>
             <SelectTrigger className="w-[180px]">
@@ -249,7 +271,7 @@ export function UserList({
           </Select>
         </div>
 
-        {(roleFilter || statusFilter) && (
+        {(roleFilter || statusFilter || phoneFilter) && (
           <Button variant="ghost" onClick={clearFilters}>
             Clear Filters
           </Button>
@@ -262,42 +284,42 @@ export function UserList({
             <TableRow>
               <TableHead
                 className={sortField === "username" ? "cursor-pointer bg-gray-50" : "cursor-pointer"}
-                onClick={() => onSort && onSort("username")}
+                onClick={() => handleSort("username")}
               >
                 Username
                 {sortField === "username" && <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>}
               </TableHead>
               <TableHead
                 className={sortField === "phone" ? "cursor-pointer bg-gray-50" : "cursor-pointer"}
-                onClick={() => onSort && onSort("phone")}
+                onClick={() => handleSort("phone")}
               >
                 Phone
                 {sortField === "phone" && <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>}
               </TableHead>
               <TableHead
                 className={sortField === "email" ? "cursor-pointer bg-gray-50" : "cursor-pointer"}
-                onClick={() => onSort && onSort("email")}
+                onClick={() => handleSort("email")}
               >
                 Email
                 {sortField === "email" && <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>}
               </TableHead>
               <TableHead
                 className={sortField === "role" ? "cursor-pointer bg-gray-50" : "cursor-pointer"}
-                onClick={() => onSort && onSort("role")}
+                onClick={() => handleSort("role")}
               >
                 Role
                 {sortField === "role" && <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>}
               </TableHead>
               <TableHead
                 className={sortField === "status" ? "cursor-pointer bg-gray-50" : "cursor-pointer"}
-                onClick={() => onSort && onSort("status")}
+                onClick={() => handleSort("status")}
               >
                 Status
                 {sortField === "status" && <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>}
               </TableHead>
               <TableHead
                 className={sortField === "lastLogin" ? "cursor-pointer bg-gray-50" : "cursor-pointer"}
-                onClick={() => onSort && onSort("lastLogin")}
+                onClick={() => handleSort("lastLogin")}
               >
                 Last Login
                 {sortField === "lastLogin" && <span className="ml-1">{sortDirection === "asc" ? "↑" : "↓"}</span>}
@@ -314,9 +336,9 @@ export function UserList({
               </TableRow>
             ) : (
               getSortedPaginatedUsers().map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.username || user.name}</TableCell>
-                  <TableCell>{user.phone || "-"}</TableCell>
+                <TableRow key={user._id}>
+                  <TableCell className="font-medium">{user.username}</TableCell>
+                  <TableCell>{user.mobile || "-"}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     <Badge className={getRoleBadgeColor(user.role)} variant="outline">
@@ -324,8 +346,8 @@ export function UserList({
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <Badge className={getStatusBadgeColor(user.status)} variant="outline">
-                      {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
+                    <Badge className={getStatusBadgeColor(user.isActive ? "active" : "inactive")} variant="outline">
+                      {user.isActive ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
                   <TableCell>{formatDate(user.lastLogin)}</TableCell>
@@ -365,6 +387,16 @@ export function UserList({
           </TableBody>
         </Table>
       </div>
+
+      {onPageChange && (
+        <div className="flex justify-center">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={Math.ceil(users.length / itemsPerPage)}
+            onPageChange={onPageChange}
+          />
+        </div>
+      )}
     </div>
   )
 }

@@ -1,4 +1,3 @@
-import type { FormField } from "@/types/enhanced-event-types"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -10,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { CalendarIcon } from "lucide-react"
 import { format } from "date-fns"
 import { cn } from "@/lib/utils"
+import { FormField } from "@/types/form-types"
 
 interface DynamicFormFieldProps {
   field: FormField
@@ -20,18 +20,18 @@ interface DynamicFormFieldProps {
 
 export function DynamicFormField({ field, value, onChange, error }: DynamicFormFieldProps) {
   const handleChange = (newValue: any) => {
-    onChange(field.fieldId, newValue)
+    onChange(field._id, newValue)
   }
 
   const renderField = () => {
-    switch (field.fieldType) {
+    switch (field.type) {
       case "text":
       case "email":
-      case "tel":
+      case "phone":
         return (
           <Input
-            id={field.fieldId}
-            type={field.fieldType}
+            id={field._id}
+            type={field.type}
             placeholder={field.placeholder}
             value={value || ""}
             onChange={(e) => handleChange(e.target.value)}
@@ -42,7 +42,7 @@ export function DynamicFormField({ field, value, onChange, error }: DynamicFormF
       case "textarea":
         return (
           <Textarea
-            id={field.fieldId}
+            id={field._id}
             placeholder={field.placeholder}
             value={value || ""}
             onChange={(e) => handleChange(e.target.value)}
@@ -70,18 +70,18 @@ export function DynamicFormField({ field, value, onChange, error }: DynamicFormF
         return (
           <div className="flex items-center space-x-2">
             <Checkbox
-              id={field.fieldId}
+              id={field._id}
               checked={value || false}
               onCheckedChange={handleChange}
               className={error ? "border-red-500" : ""}
             />
             <label
-              htmlFor={field.fieldId}
+              htmlFor={field._id}
               className={`text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 ${
                 error ? "text-red-500" : ""
               }`}
             >
-              {field.fieldLabel}
+              {field.label}
             </label>
           </div>
         )
@@ -109,12 +109,12 @@ export function DynamicFormField({ field, value, onChange, error }: DynamicFormF
         )
 
       default:
-        return <div>Unsupported field type: {field.fieldType}</div>
+        return <div>Unsupported field type: {field.type}</div>
     }
   }
 
   // For checkbox type, we render the field differently
-  if (field.fieldType === "checkbox") {
+  if (field.type === "checkbox") {
     return (
       <div className="space-y-2">
         {renderField()}
@@ -126,9 +126,9 @@ export function DynamicFormField({ field, value, onChange, error }: DynamicFormF
 
   return (
     <div className="space-y-2">
-      <Label htmlFor={field.fieldId} className="flex items-center">
-        {field.fieldLabel}
-        {field.isRequired && <span className="text-red-500 ml-1">*</span>}
+      <Label htmlFor={field._id} className="flex items-center">
+        {field.label}
+        {field.required && <span className="text-red-500 ml-1">*</span>}
       </Label>
       {renderField()}
       {error && <p className="text-red-500 text-sm">{error}</p>}

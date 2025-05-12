@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { format, parseISO } from "date-fns"
+import { format } from "date-fns"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,320 +35,43 @@ import {
   FileText,
   Clock,
   MessageSquare,
+  Users,
 } from "lucide-react"
-
-// Event categories mapping
-const categoryNames = {
-  education: "Education & Training",
-  cultural: "Cultural Exchange",
-  health: "Health & Wellness",
-  career: "Career Development",
-  community: "Community Building",
-  language: "Language Learning",
-  social: "Social Integration",
-  youth: "Youth Programs",
-  women: "Women's Empowerment",
-  other: "Other",
-}
-
-// Target groups mapping
-const targetGroupNames = {
-  all: "All Hong Kong Residents",
-  "ethnic-minorities": "Ethnic Minorities",
-  "south-asian": "South Asian Community",
-  women: "Women",
-  youth: "Youth (13-25)",
-  children: "Children (0-12)",
-  seniors: "Seniors (65+)",
-  professionals: "Professionals",
-  newcomers: "Newcomers to Hong Kong",
-  other: "Other",
-}
-
-// Status options
-const statusOptions = ["Draft", "Published", "Upcoming", "Ongoing", "Completed", "Cancelled"]
-
-// Registration forms
-const registrationForms = [
-  { id: "form1", title: "Basic Registration Form" },
-  { id: "form2", title: "Detailed Participant Information" },
-  { id: "form3", title: "Workshop Registration" },
-  { id: "form4", title: "Cultural Event Registration" },
-  { id: "form5", title: "Health Seminar Registration" },
-  { id: "form6", title: "Youth Program Application" },
-]
-
-// Mock events data with form and status fields
-const mockEvents = [
-  {
-    id: "1",
-    title: "Career Workshop for Ethnic Minorities",
-    description:
-      "A workshop designed to help ethnic minorities in Hong Kong develop career skills and find employment opportunities.",
-    date: "2025-06-15",
-    startTime: "14:00",
-    endTime: "17:00",
-    location: "Wan Chai Community Center",
-    capacity: "50",
-    category: "career",
-    targetGroup: "ethnic-minorities",
-    details: "<p>This workshop will cover resume writing, interview skills, and job search strategies.</p>",
-    faqs: "<p><strong>Q: Do I need to bring anything?</strong></p><p>A: Just bring a notebook and pen.</p>",
-    imageUrl: "/placeholder.svg?key=cegm9",
-    status: "Upcoming",
-    registrations: 12,
-    registrationForm: "form3",
-  },
-  {
-    id: "2",
-    title: "Cultural Exchange Festival",
-    description: "Celebrate the diverse cultures of Hong Kong's ethnic minorities through food, music, dance, and art.",
-    date: "2025-07-22",
-    startTime: "11:00",
-    endTime: "20:00",
-    location: "Victoria Park, Causeway Bay",
-    capacity: "500",
-    category: "cultural",
-    targetGroup: "all",
-    details:
-      "<p>Join us for a day of cultural celebration featuring performances, food stalls, and interactive activities.</p>",
-    faqs: "",
-    imageUrl: "/vibrant-cultural-festival.png",
-    status: "Published",
-    registrations: 78,
-    registrationForm: "form4",
-  },
-  {
-    id: "3",
-    title: "Language Learning Program",
-    description:
-      "Free Cantonese classes for non-Chinese speaking residents to improve integration and employment prospects.",
-    date: "2025-08-05",
-    startTime: "10:00",
-    endTime: "12:00",
-    location: "Zubin Foundation Office, Wan Chai",
-    capacity: "30",
-    category: "language",
-    targetGroup: "ethnic-minorities",
-    details: "<p>Weekly classes focusing on practical Cantonese for daily life and work situations.</p>",
-    faqs: "<p><strong>Q: What level is this class for?</strong></p><p>A: Beginners with no prior knowledge of Cantonese.</p>",
-    imageUrl: "/placeholder.svg?key=2hggs",
-    status: "Draft",
-    registrations: 25,
-    registrationForm: "form1",
-  },
-  {
-    id: "4",
-    title: "Health Awareness Seminar",
-    description: "Information session on healthcare access and services available for ethnic minority communities.",
-    date: "2025-09-10",
-    startTime: "15:00",
-    endTime: "17:30",
-    location: "Kwun Tong Community Hall",
-    capacity: "100",
-    category: "health",
-    targetGroup: "ethnic-minorities",
-    details: "<p>Learn about healthcare services, insurance options, and preventive care.</p>",
-    faqs: "",
-    imageUrl: "/placeholder.svg?key=1sazv",
-    status: "Published",
-    registrations: 45,
-    registrationForm: "form5",
-  },
-  {
-    id: "5",
-    title: "Virtual Career Fair",
-    description: "Online job fair connecting ethnic minority job seekers with inclusive employers.",
-    date: "2025-10-15",
-    startTime: "09:00",
-    endTime: "17:00",
-    location: "Online via Zoom",
-    capacity: "200",
-    category: "career",
-    targetGroup: "professionals",
-    details: "<p>Meet representatives from companies committed to diversity and inclusion.</p>",
-    faqs: "<p><strong>Q: How do I prepare?</strong></p><p>A: Have your resume ready and test your camera/mic before the event.</p>",
-    imageUrl: "/placeholder.svg?key=3jklm",
-    status: "Upcoming",
-    registrations: 120,
-    registrationForm: "form2",
-  },
-  {
-    id: "6",
-    title: "Youth Leadership Workshop",
-    description: "Workshop to develop leadership skills among ethnic minority youth.",
-    date: "2025-11-05",
-    startTime: "13:00",
-    endTime: "17:00",
-    location: "Mong Kok Community Center",
-    capacity: "40",
-    category: "youth",
-    targetGroup: "youth",
-    details: "<p>Interactive workshop focusing on communication, teamwork, and project management skills.</p>",
-    faqs: "",
-    imageUrl: "/placeholder.svg?key=4pqrs",
-    status: "Draft",
-    registrations: 0,
-    registrationForm: "form6",
-  },
-  {
-    id: "7",
-    title: "Women's Empowerment Seminar",
-    description: "Seminar focused on empowering women from ethnic minority backgrounds.",
-    date: "2025-12-10",
-    startTime: "10:00",
-    endTime: "15:00",
-    location: "Central Library, Causeway Bay",
-    capacity: "80",
-    category: "women",
-    targetGroup: "women",
-    details: "<p>Featuring guest speakers, networking opportunities, and skill-building workshops.</p>",
-    faqs: "",
-    imageUrl: "/placeholder.svg?key=5tuvw",
-    status: "Published",
-    registrations: 35,
-    registrationForm: "form2",
-  },
-  {
-    id: "8",
-    title: "Community Health Fair",
-    description: "Health fair providing free screenings and health information to the community.",
-    date: "2026-01-15",
-    startTime: "09:00",
-    endTime: "16:00",
-    location: "Tung Chung Community Hall",
-    capacity: "300",
-    category: "health",
-    targetGroup: "all",
-    details: "<p>Free health screenings, consultations with healthcare providers, and health education workshops.</p>",
-    faqs: "",
-    imageUrl: "/placeholder.svg?key=6xyza",
-    status: "Draft",
-    registrations: 0,
-    registrationForm: "form5",
-  },
-  {
-    id: "9",
-    title: "Educational Support Program",
-    description: "Program providing educational support to ethnic minority students.",
-    date: "2026-02-20",
-    startTime: "15:00",
-    endTime: "17:00",
-    location: "Zubin Foundation Office, Wan Chai",
-    capacity: "25",
-    category: "education",
-    targetGroup: "children",
-    details: "<p>Tutoring, homework help, and educational resources for students.</p>",
-    faqs: "",
-    imageUrl: "/placeholder.svg?key=7bcde",
-    status: "Upcoming",
-    registrations: 10,
-    registrationForm: "form1",
-  },
-  {
-    id: "10",
-    title: "Cultural Integration Workshop",
-    description: "Workshop to help newcomers integrate into Hong Kong society.",
-    date: "2026-03-05",
-    startTime: "14:00",
-    endTime: "16:30",
-    location: "Sham Shui Po Community Center",
-    capacity: "60",
-    category: "social",
-    targetGroup: "newcomers",
-    details: "<p>Information on local customs, practical tips for daily life, and networking opportunities.</p>",
-    faqs: "",
-    imageUrl: "/placeholder.svg?key=8fghi",
-    status: "Draft",
-    registrations: 0,
-    registrationForm: "form3",
-  },
-  {
-    id: "11",
-    title: "Professional Networking Event",
-    description: "Networking event for professionals from diverse backgrounds.",
-    date: "2026-04-10",
-    startTime: "18:00",
-    endTime: "21:00",
-    location: "Business Center, Admiralty",
-    capacity: "100",
-    category: "career",
-    targetGroup: "professionals",
-    details: "<p>Opportunity to connect with professionals across industries and build your network.</p>",
-    faqs: "",
-    imageUrl: "/placeholder.svg?key=9jklm",
-    status: "Upcoming",
-    registrations: 45,
-    registrationForm: "form2",
-  },
-  {
-    id: "12",
-    title: "Community Support Group",
-    description: "Support group for ethnic minorities facing challenges in Hong Kong.",
-    date: "2026-05-15",
-    startTime: "19:00",
-    endTime: "21:00",
-    location: "Zubin Foundation Office, Wan Chai",
-    capacity: "20",
-    category: "community",
-    targetGroup: "ethnic-minorities",
-    details: "<p>Safe space to share experiences, challenges, and support one another.</p>",
-    faqs: "",
-    imageUrl: "/placeholder.svg?key=0nopq",
-    status: "Published",
-    registrations: 8,
-    registrationForm: "form1",
-  },
-]
-
-// Define the interface for the event object
-interface Event {
-  id: string
-  title: string
-  description: string
-  date: string
-  startTime: string
-  endTime: string
-  location: string
-  capacity: string
-  category: string
-  targetGroup: string
-  details: string
-  faqs: string
-  imageUrl: string
-  status: string
-  registrations: number
-  registrationForm: string
-}
+import { ZubinEvent, eventCategories, targetGroups, eventStatuses } from "@/types/event-types"
+import { mockZubinEvents } from "@/types/mock-enhanced-event-data"
+import { useNavigate } from "react-router-dom"
 
 // Define the interface for the filter state
 interface FilterState {
-  title: string
-  location: string
-  category: string[]
-  targetGroup: string[]
-  status: string[]
-  registrationForm: string[]
+  location: string;
+  category: string[];
+  targetGroup: string[];
+  status: string[];
+  registrationForm: string[];
+  isPrivate: boolean | null;
+  lastUpdatedBy: string;
   dateRange: {
-    from: Date | null
-    to: Date | null
-  }
+    from: Date | null;
+    to: Date | null;
+  };
 }
 
 interface EnhancedEventsListProps {
-  onEditEvent: (eventId: string) => void
+  onEditEvent: (eventId: string) => void;
 }
 
 export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListProps) {
+  const navigate = useNavigate();
   // State for search, filters, sorting, and pagination
   const [searchQuery, setSearchQuery] = useState("")
   const [filters, setFilters] = useState<FilterState>({
-    title: "",
     location: "",
     category: [],
     targetGroup: [],
     status: [],
     registrationForm: [],
+    isPrivate: null,
+    lastUpdatedBy: "",
     dateRange: {
       from: null,
       to: null,
@@ -371,12 +94,13 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
   useEffect(() => {
     const newActiveFilters: string[] = []
 
-    if (filters.title) newActiveFilters.push("Title")
     if (filters.location) newActiveFilters.push("Location")
     if (filters.category.length > 0) newActiveFilters.push("Category")
     if (filters.targetGroup.length > 0) newActiveFilters.push("Target Group")
     if (filters.status.length > 0) newActiveFilters.push("Status")
     if (filters.registrationForm.length > 0) newActiveFilters.push("Form")
+    if (filters.isPrivate !== null) newActiveFilters.push("Private Status")
+    if (filters.lastUpdatedBy) newActiveFilters.push("Last Updated By")
     if (filters.dateRange.from || filters.dateRange.to) newActiveFilters.push("Date Range")
 
     setActiveFilters(newActiveFilters)
@@ -419,12 +143,13 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
   // Clear all filters
   const clearAllFilters = () => {
     setFilters({
-      title: "",
       location: "",
       category: [],
       targetGroup: [],
       status: [],
       registrationForm: [],
+      isPrivate: null,
+      lastUpdatedBy: "",
       dateRange: {
         from: null,
         to: null,
@@ -436,9 +161,6 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
   // Clear a specific filter
   const clearFilter = (filterType: string) => {
     switch (filterType) {
-      case "Title":
-        setFilters((prev) => ({ ...prev, title: "" }))
-        break
       case "Location":
         setFilters((prev) => ({ ...prev, location: "" }))
         break
@@ -454,6 +176,12 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
       case "Form":
         setFilters((prev) => ({ ...prev, registrationForm: [] }))
         break
+      case "Private Status":
+        setFilters((prev) => ({ ...prev, isPrivate: null }))
+        break
+      case "Last Updated By":
+        setFilters((prev) => ({ ...prev, lastUpdatedBy: "" }))
+        break
       case "Date Range":
         setFilters((prev) => ({ ...prev, dateRange: { from: null, to: null } }))
         break
@@ -463,30 +191,15 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
   }
 
   // Filter events based on all filters and search query
-  const filteredEvents = mockEvents.filter((event) => {
-    // Global search across multiple fields
+  const filteredEvents = mockZubinEvents.filter((event) => {
+    // Global search only for title
     const matchesSearch = searchQuery
-      ? event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        event.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        categoryNames[event.category as keyof typeof categoryNames]
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        targetGroupNames[event.targetGroup as keyof typeof targetGroupNames]
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        event.status.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        registrationForms
-          .find((form) => form.id === event.registrationForm)
-          ?.title.toLowerCase()
-          .includes(searchQuery.toLowerCase())
+      ? event.title.toLowerCase().includes(searchQuery.toLowerCase())
       : true
 
     // Specific field filters
-    const matchesTitle = filters.title ? event.title.toLowerCase().includes(filters.title.toLowerCase()) : true
-
     const matchesLocation = filters.location
-      ? event.location.toLowerCase().includes(filters.location.toLowerCase())
+      ? event.location.venue.toLowerCase().includes(filters.location.toLowerCase())
       : true
 
     const matchesCategory = filters.category.length > 0 ? filters.category.includes(event.category) : true
@@ -496,30 +209,36 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
     const matchesStatus = filters.status.length > 0 ? filters.status.includes(event.status) : true
 
     const matchesForm =
-      filters.registrationForm.length > 0 ? filters.registrationForm.includes(event.registrationForm) : true
+      filters.registrationForm.length > 0 ? filters.registrationForm.includes(event.registrationFormId) : true
+
+    const matchesIsPrivate = filters.isPrivate !== null ? event.isPrivate === filters.isPrivate : true;
+
+    const matchesLastUpdatedBy = filters.lastUpdatedBy
+      ? event.updatedBy?.toLowerCase().includes(filters.lastUpdatedBy.toLowerCase()) || false
+      : true;
 
     // Date range filter
     let matchesDateRange = true
     if (filters.dateRange.from || filters.dateRange.to) {
-      const eventDate = new Date(event.date)
       if (filters.dateRange.from && filters.dateRange.to) {
-        matchesDateRange = eventDate >= filters.dateRange.from && eventDate <= filters.dateRange.to
+        matchesDateRange = event.startDate >= filters.dateRange.from && event.endDate <= filters.dateRange.to
       } else if (filters.dateRange.from) {
-        matchesDateRange = eventDate >= filters.dateRange.from
+        matchesDateRange = event.startDate >= filters.dateRange.from
       } else if (filters.dateRange.to) {
-        matchesDateRange = eventDate <= filters.dateRange.to
+        matchesDateRange = event.endDate <= filters.dateRange.to
       }
     }
 
     return (
       matchesSearch &&
-      matchesTitle &&
       matchesLocation &&
       matchesCategory &&
       matchesTargetGroup &&
       matchesStatus &&
       matchesForm &&
-      matchesDateRange
+      matchesDateRange &&
+      matchesIsPrivate &&
+      matchesLastUpdatedBy
     )
   })
 
@@ -528,41 +247,33 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
   if (sortConfig) {
     sortedEvents.sort((a, b) => {
       if (sortConfig.key === "date") {
-        const dateA = new Date(a.date).getTime()
-        const dateB = new Date(b.date).getTime()
-        return sortConfig.direction === "ascending" ? dateA - dateB : dateB - dateA
+        return sortConfig.direction === "ascending"
+          ? a.startDate.getTime() - b.startDate.getTime()
+          : b.startDate.getTime() - a.startDate.getTime()
       }
 
       if (sortConfig.key === "title") {
-        return sortConfig.direction === "ascending" ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)
+        return sortConfig.direction === "ascending"
+          ? a.title.localeCompare(b.title)
+          : b.title.localeCompare(a.title)
       }
 
       if (sortConfig.key === "location") {
         return sortConfig.direction === "ascending"
-          ? a.location.localeCompare(b.location)
-          : b.location.localeCompare(a.location)
+          ? a.location.venue.localeCompare(b.location.venue)
+          : b.location.venue.localeCompare(a.location.venue)
       }
 
       if (sortConfig.key === "category") {
-        const categoryA = categoryNames[a.category as keyof typeof categoryNames] || a.category
-        const categoryB = categoryNames[b.category as keyof typeof categoryNames] || b.category
         return sortConfig.direction === "ascending"
-          ? categoryA.localeCompare(categoryB)
-          : categoryB.localeCompare(categoryA)
+          ? a.category.localeCompare(b.category)
+          : b.category.localeCompare(a.category)
       }
 
       if (sortConfig.key === "targetGroup") {
-        const targetGroupA = targetGroupNames[a.targetGroup as keyof typeof targetGroupNames] || a.targetGroup
-        const targetGroupB = targetGroupNames[b.targetGroup as keyof typeof targetGroupNames] || b.targetGroup
         return sortConfig.direction === "ascending"
-          ? targetGroupA.localeCompare(targetGroupB)
-          : targetGroupB.localeCompare(targetGroupA)
-      }
-
-      if (sortConfig.key === "form") {
-        const formA = registrationForms.find((form) => form.id === a.registrationForm)?.title || ""
-        const formB = registrationForms.find((form) => form.id === b.registrationForm)?.title || ""
-        return sortConfig.direction === "ascending" ? formA.localeCompare(formB) : formB.localeCompare(formA)
+          ? a.targetGroup.localeCompare(b.targetGroup)
+          : b.targetGroup.localeCompare(a.targetGroup)
       }
 
       if (sortConfig.key === "status") {
@@ -572,15 +283,9 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
       }
 
       if (sortConfig.key === "capacity") {
-        const capacityA = Number.parseInt(a.capacity)
-        const capacityB = Number.parseInt(b.capacity)
-        return sortConfig.direction === "ascending" ? capacityA - capacityB : capacityB - capacityA
-      }
-
-      if (sortConfig.key === "registrations") {
         return sortConfig.direction === "ascending"
-          ? a.registrations - b.registrations
-          : b.registrations - a.registrations
+          ? (a.capacity || 0) - (b.capacity || 0)
+          : (b.capacity || 0) - (a.capacity || 0)
       }
 
       return 0
@@ -603,11 +308,6 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
     setEventToDelete(null)
   }
 
-  // Get form title by ID
-  const getFormTitle = (formId: string) => {
-    return registrationForms.find((form) => form.id === formId)?.title || "No form"
-  }
-
   return (
     <div className="space-y-4">
       {/* Search and Filter Bar */}
@@ -617,7 +317,7 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500" />
             <Input
-              placeholder="Search events by title, location, category..."
+              placeholder="Search events by title..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10"
@@ -671,17 +371,6 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
           <Card className="mt-2">
             <CardContent className="p-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {/* Title Filter */}
-                <div className="space-y-2">
-                  <Label htmlFor="title-filter">Title</Label>
-                  <Input
-                    id="title-filter"
-                    placeholder="Filter by title"
-                    value={filters.title}
-                    onChange={(e) => handleFilterChange("title", e.target.value)}
-                  />
-                </div>
-
                 {/* Location Filter */}
                 <div className="space-y-2">
                   <Label htmlFor="location-filter">Location</Label>
@@ -726,19 +415,52 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                   </div>
                 </div>
 
+                {/* Private Event Filter */}
+                <div className="space-y-2">
+                  <Label>Private Event</Label>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="private-yes"
+                        checked={filters.isPrivate === true}
+                        onCheckedChange={(checked) => {
+                          setFilters((prev) => ({
+                            ...prev,
+                            isPrivate: checked ? true : null,
+                          }));
+                        }}
+                      />
+                      <Label htmlFor="private-yes">Private</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="private-no"
+                        checked={filters.isPrivate === false}
+                        onCheckedChange={(checked) => {
+                          setFilters((prev) => ({
+                            ...prev,
+                            isPrivate: checked ? false : null,
+                          }));
+                        }}
+                      />
+                      <Label htmlFor="private-no">Public</Label>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Category Filter */}
                 <div className="space-y-2">
                   <Label>Category</Label>
                   <div className="max-h-40 overflow-y-auto border rounded-md p-2">
-                    {Object.entries(categoryNames).map(([id, name]) => (
-                      <div key={id} className="flex items-center space-x-2 py-1">
+                    {eventCategories.map((category) => (
+                      <div key={category} className="flex items-center space-x-2 py-1">
                         <Checkbox
-                          id={`category-${id}`}
-                          checked={filters.category.includes(id)}
-                          onCheckedChange={() => handleCheckboxFilterChange("category", id)}
+                          id={`category-${category}`}
+                          checked={filters.category.includes(category)}
+                          onCheckedChange={() => handleCheckboxFilterChange("category", category)}
                         />
-                        <Label htmlFor={`category-${id}`} className="cursor-pointer text-sm">
-                          {name}
+                        <Label htmlFor={`category-${category}`} className="cursor-pointer text-sm">
+                          {category}
                         </Label>
                       </div>
                     ))}
@@ -749,15 +471,15 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                 <div className="space-y-2">
                   <Label>Target Group</Label>
                   <div className="max-h-40 overflow-y-auto border rounded-md p-2">
-                    {Object.entries(targetGroupNames).map(([id, name]) => (
-                      <div key={id} className="flex items-center space-x-2 py-1">
+                    {targetGroups.map((group) => (
+                      <div key={group} className="flex items-center space-x-2 py-1">
                         <Checkbox
-                          id={`target-${id}`}
-                          checked={filters.targetGroup.includes(id)}
-                          onCheckedChange={() => handleCheckboxFilterChange("targetGroup", id)}
+                          id={`target-${group}`}
+                          checked={filters.targetGroup.includes(group)}
+                          onCheckedChange={() => handleCheckboxFilterChange("targetGroup", group)}
                         />
-                        <Label htmlFor={`target-${id}`} className="cursor-pointer text-sm">
-                          {name}
+                        <Label htmlFor={`target-${group}`} className="cursor-pointer text-sm">
+                          {group}
                         </Label>
                       </div>
                     ))}
@@ -768,7 +490,7 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                 <div className="space-y-2">
                   <Label>Status</Label>
                   <div className="max-h-40 overflow-y-auto border rounded-md p-2">
-                    {statusOptions.map((status) => (
+                    {eventStatuses.map((status) => (
                       <div key={status} className="flex items-center space-x-2 py-1">
                         <Checkbox
                           id={`status-${status}`}
@@ -783,23 +505,15 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                   </div>
                 </div>
 
-                {/* Registration Form Filter */}
+                {/* Last Updated By Filter */}
                 <div className="space-y-2">
-                  <Label>Registration Form</Label>
-                  <div className="max-h-40 overflow-y-auto border rounded-md p-2">
-                    {registrationForms.map((form) => (
-                      <div key={form.id} className="flex items-center space-x-2 py-1">
-                        <Checkbox
-                          id={`form-${form.id}`}
-                          checked={filters.registrationForm.includes(form.id)}
-                          onCheckedChange={() => handleCheckboxFilterChange("registrationForm", form.id)}
-                        />
-                        <Label htmlFor={`form-${form.id}`} className="cursor-pointer text-sm">
-                          {form.title}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
+                  <Label htmlFor="last-updated-by-filter">Last Updated By</Label>
+                  <Input
+                    id="last-updated-by-filter"
+                    placeholder="Filter by user"
+                    value={filters.lastUpdatedBy}
+                    onChange={(e) => handleFilterChange("lastUpdatedBy", e.target.value)}
+                  />
                 </div>
               </div>
 
@@ -832,7 +546,7 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
               </TableHead>
               <TableHead className="cursor-pointer" onClick={() => handleSort("date")}>
                 <div className="flex items-center">
-                  Date & Time
+                  Start Date & Sessions
                   {sortConfig?.key === "date" &&
                     (sortConfig.direction === "ascending" ? (
                       <ChevronUp className="h-4 w-4 ml-1" />
@@ -863,21 +577,10 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                     ))}
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("targetGroup")}>
+              <TableHead className="cursor-pointer" onClick={() => handleSort("isPrivate")}>
                 <div className="flex items-center">
-                  Target Group
-                  {sortConfig?.key === "targetGroup" &&
-                    (sortConfig.direction === "ascending" ? (
-                      <ChevronUp className="h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 ml-1" />
-                    ))}
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("form")}>
-                <div className="flex items-center">
-                  Form
-                  {sortConfig?.key === "form" &&
+                  Private Event
+                  {sortConfig?.key === "isPrivate" &&
                     (sortConfig.direction === "ascending" ? (
                       <ChevronUp className="h-4 w-4 ml-1" />
                     ) : (
@@ -896,10 +599,10 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                     ))}
                 </div>
               </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("registrations")}>
+              <TableHead className="cursor-pointer" onClick={() => handleSort("updatedBy")}>
                 <div className="flex items-center">
-                  Registered Count
-                  {sortConfig?.key === "registrations" &&
+                  Last Updated By
+                  {sortConfig?.key === "updatedBy" &&
                     (sortConfig.direction === "ascending" ? (
                       <ChevronUp className="h-4 w-4 ml-1" />
                     ) : (
@@ -919,52 +622,44 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
               </TableRow>
             ) : (
               paginatedEvents.map((event) => (
-                <TableRow key={event.id}>
+                <TableRow key={event._id}>
                   <TableCell className="font-medium">{event.title}</TableCell>
                   <TableCell>
                     <div className="flex flex-col">
                       <div className="flex items-center">
                         <CalendarIcon className="h-4 w-4 mr-1 text-gray-500" />
-                        {format(parseISO(event.date), "MMM d, yyyy")}
+                        {format(event.startDate, "MMM d, yyyy")}
                       </div>
-                      <div className="text-gray-500 text-sm flex items-center">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {event.startTime} - {event.endTime}
+                      <div className="text-gray-500 text-sm">
+                        {event.sessions.length} session{event.sessions.length !== 1 ? "s" : ""}
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
                       <MapPin className="h-4 w-4 mr-1 text-gray-500" />
-                      {event.location}
+                      {event.location.onlineEvent ? "Online" : event.location.venue}
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
                       <Tag className="h-4 w-4 mr-1 text-gray-500" />
                       <Badge variant="outline" className="bg-gray-50">
-                        {categoryNames[event.category as keyof typeof categoryNames]}
+                        {event.category}
                       </Badge>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center">
-                      <UserCircle className="h-4 w-4 mr-1 text-gray-500" />
-                      <span className="text-sm">
-                        {targetGroupNames[event.targetGroup as keyof typeof targetGroupNames]}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <FileText className="h-4 w-4 mr-1 text-gray-500" />
-                      <span className="text-sm">{getFormTitle(event.registrationForm)}</span>
+                      <Badge variant={event.isPrivate ? "default" : "outline"} className={event.isPrivate ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-800"}>
+                        {event.isPrivate ? "Private" : "Public"}
+                      </Badge>
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge
                       variant={
-                        event.status === "Published" || event.status === "Upcoming"
+                        event.status === "Published"
                           ? "default"
                           : event.status === "Draft"
                             ? "outline"
@@ -975,17 +670,15 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                       className={
                         event.status === "Published"
                           ? "bg-green-100 text-green-800 hover:bg-green-100"
-                          : event.status === "Upcoming"
-                            ? "bg-blue-100 text-blue-800 hover:bg-blue-100"
-                            : event.status === "Draft"
-                              ? "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                              : event.status === "Cancelled"
-                                ? "bg-red-100 text-red-800 hover:bg-red-100"
-                                : "bg-purple-100 text-purple-800 hover:bg-purple-100"
+                          : event.status === "Draft"
+                            ? "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                            : event.status === "Cancelled"
+                              ? "bg-red-100 text-red-800 hover:bg-red-100"
+                              : "bg-purple-100 text-purple-800 hover:bg-purple-100"
                       }
                     >
                       <div className="flex items-center">
-                        {event.status === "Published" || event.status === "Upcoming" ? (
+                        {event.status === "Published" ? (
                           <div className="w-1.5 h-1.5 rounded-full bg-green-600 mr-1.5"></div>
                         ) : event.status === "Draft" ? (
                           <div className="w-1.5 h-1.5 rounded-full bg-gray-600 mr-1.5"></div>
@@ -1001,9 +694,7 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                   <TableCell>
                     <div className="flex items-center">
                       <UserCircle className="h-4 w-4 mr-1 text-gray-500" />
-                      <span className="font-medium">{event.registrations}</span>
-                      <span className="text-gray-500 mx-1">/</span>
-                      <span className="text-gray-500">{event.capacity}</span>
+                      <span className="text-sm">{event.updatedBy}</span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
@@ -1015,17 +706,21 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEditEvent(event.id)}>
+                        <DropdownMenuItem onClick={() => onEditEvent(event._id)}>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate(`/manage/events/${event._id}/registrations`, { state: { event } })}>
+                          <Users className="h-4 w-4 mr-2" />
+                          Manage Registrations
+                        </DropdownMenuItem>
                         <DropdownMenuItem
-                          onClick={() => (window.location.href = `/manage/events/${event.id}/reminders`)}
+                          onClick={() => (window.location.href = `/manage/events/${event._id}/reminders`)}
                         >
                           <MessageSquare className="h-4 w-4 mr-2" />
                           Send WhatsApp Reminders
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteClick(event.id)}>
+                        <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteClick(event._id)}>
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete
                         </DropdownMenuItem>
