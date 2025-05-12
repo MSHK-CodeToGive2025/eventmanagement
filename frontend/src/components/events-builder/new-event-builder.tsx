@@ -1,6 +1,4 @@
-import type React from "react"
-
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -9,30 +7,27 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Switch } from "@/components/ui/switch"
 import { format } from "date-fns"
-import { CalendarIcon, Clock } from "lucide-react"
+import { CalendarIcon, Clock, MapPin, Link, Tag } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import EventSessions from "./event-sessions"
+import {
+  ZubinEvent,
+  eventCategories,
+  targetGroups,
+  eventStatuses,
+  hongKongDistricts,
+} from "@/types/event-types"
 
 // Define the form schema
 const eventFormSchema = z.object({
   title: z.string().min(2, {
     message: "Event title is required and must be at least 2 characters.",
   }),
-  date: z.string().min(1, {
-    message: "Event date is required.",
-  }),
-  startTime: z.string().min(1, {
-    message: "Start time is required.",
-  }),
-  endTime: z.string().min(1, {
-    message: "End time is required.",
-  }),
-  location: z.string().min(2, {
-    message: "Location is required and must be at least 2 characters.",
-  }),
-  capacity: z.string().min(1, {
-    message: "Capacity is required.",
+  description: z.string().min(1, {
+    message: "Event description is required.",
   }),
   category: z.string().min(1, {
     message: "Category is required.",
@@ -40,65 +35,64 @@ const eventFormSchema = z.object({
   targetGroup: z.string().min(1, {
     message: "Target group is required.",
   }),
-  registrationForm: z.string().optional(),
-  details: z.string().optional(),
-  faqs: z.string().optional(),
-  imageUrl: z.string().optional(),
-  organizer: z.string(),
-  status: z.string(),
+  location: z.object({
+    venue: z.string().min(2, {
+      message: "Venue is required.",
+    }),
+    address: z.string().min(2, {
+      message: "Address is required.",
+    }),
+    district: z.string().min(1, {
+      message: "District is required.",
+    }),
+    onlineEvent: z.boolean(),
+    meetingLink: z.string().optional(),
+  }),
+  startDate: z.date({
+    required_error: "Start date is required.",
+  }),
+  endDate: z.date({
+    required_error: "End date is required.",
+  }),
+  coverImageUrl: z.string().optional(),
+  isPrivate: z.boolean(),
+  status: z.enum(["draft", "published", "cancelled", "completed"]),
+  registrationFormId: z.string().min(1, {
+    message: "Registration form is required.",
+  }),
+  sessions: z.array(
+    z.object({
+      _id: z.string(),
+      title: z.string().min(1, "Session title is required"),
+      description: z.string().optional(),
+      date: z.date(),
+      startTime: z.string().min(1, "Start time is required"),
+      endTime: z.string().min(1, "End time is required"),
+      location: z
+        .object({
+          venue: z.string().optional(),
+          meetingLink: z.string().optional(),
+        })
+        .optional(),
+      capacity: z.number().optional(),
+    })
+  ),
+  capacity: z.number().optional(),
+  tags: z.array(z.string()).optional(),
 })
 
 type EventFormValues = z.infer<typeof eventFormSchema>
 
-// Event categories
-const eventCategories = [
-  { id: "education", name: "Education & Training" },
-  { id: "cultural", name: "Cultural Exchange" },
-  { id: "health", name: "Health & Wellness" },
-  { id: "career", name: "Career Development" },
-  { id: "community", name: "Community Building" },
-  { id: "language", name: "Language Learning" },
-  { id: "social", name: "Social Integration" },
-  { id: "youth", name: "Youth Programs" },
-  { id: "women", name: "Women's Empowerment" },
-  { id: "other", name: "Other" },
-]
-
-// Target groups
-const targetGroups = [
-  { id: "all", name: "All Hong Kong Residents" },
-  { id: "ethnic-minorities", name: "Ethnic Minorities" },
-  { id: "south-asian", name: "South Asian Community" },
-  { id: "women", name: "Women" },
-  { id: "youth", name: "Youth (13-25)" },
-  { id: "children", name: "Children (0-12)" },
-  { id: "seniors", name: "Seniors (65+)" },
-  { id: "professionals", name: "Professionals" },
-  { id: "newcomers", name: "Newcomers to Hong Kong" },
-  { id: "other", name: "Other" },
-]
-
-// Mock forms data for the dropdown
-const availableForms = [
-  { id: "form1", title: "Basic Registration Form" },
-  { id: "form2", title: "Detailed Participant Information" },
-  { id: "form3", title: "Workshop Registration" },
-  { id: "form4", title: "Cultural Event Registration" },
-  { id: "form5", title: "Health Seminar Registration" },
-  { id: "form6", title: "Youth Program Application" },
-]
-
 interface NewEventBuilderProps {
   onClose: () => void
-  onSave: (data: EventFormValues) => void
+  onSave: (data: ZubinEvent) => void
   eventId?: string | null
-  defaultValues?: Partial<EventFormValues>
+  defaultValues?: Partial<ZubinEvent>
 }
 
 export default function NewEventBuilder({ onClose, onSave, eventId, defaultValues }: NewEventBuilderProps) {
   const [activeTab, setActiveTab] = useState("basic")
   const [previewImage, setPreviewImage] = useState<string | null>(null)
-  const [selectedFormTitle, setSelectedFormTitle] = useState<string>("")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
 
@@ -111,48 +105,37 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
     resolver: zodResolver(eventFormSchema),
     defaultValues: defaultValues || {
       title: "",
-      date: formattedToday,
-      startTime: "",
-      endTime: "",
-      location: "",
-      capacity: "",
+      description: "",
       category: "",
       targetGroup: "",
-      registrationForm: "",
-      details: "",
-      faqs: "",
-      imageUrl: "",
-      organizer: "The Zubin Foundation",
-      status: "Draft",
+      location: {
+        venue: "",
+        address: "",
+        district: "",
+        onlineEvent: false,
+      },
+      startDate: today,
+      endDate: today,
+      coverImageUrl: "",
+      isPrivate: false,
+      status: "draft",
+      registrationFormId: "",
+      sessions: [],
+      capacity: undefined,
+      tags: [],
     },
   })
-
-  // Update the selected form title when the form changes
-  useEffect(() => {
-    const formId = form.watch("registrationForm")
-    if (formId) {
-      const selectedForm = availableForms.find((form) => form.id === formId)
-      if (selectedForm) {
-        setSelectedFormTitle(selectedForm.title)
-      }
-    } else {
-      setSelectedFormTitle("")
-    }
-  }, [form.watch("registrationForm")])
 
   // Handle form submission
   async function onSubmit(data: EventFormValues) {
     try {
       setIsSubmitting(true)
 
-      // Validate time logic
-      const startTime = data.startTime
-      const endTime = data.endTime
-
-      if (startTime >= endTime) {
+      // Validate date logic
+      if (data.startDate > data.endDate) {
         toast({
-          title: "Invalid Time Range",
-          description: "End time must be after start time. Please adjust the event times.",
+          title: "Invalid Date Range",
+          description: "End date must be after start date. Please adjust the event dates.",
           variant: "destructive"
         })
         setIsSubmitting(false)
@@ -160,10 +143,11 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       }
 
       // Create a new event object with the form data
-      const newEvent = {
-        id: eventId || String(Date.now()), // Use existing ID or generate a new one
+      const newEvent: ZubinEvent = {
+        _id: eventId || `temp-${Date.now()}`,
         ...data,
-        registrations: 0, // New events start with 0 registrations
+        createdBy: "current-user-id", // This should come from your auth context
+        createdAt: new Date(),
       }
 
       // Simulate network delay
@@ -197,7 +181,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
 
       const url = URL.createObjectURL(file)
       setPreviewImage(url)
-      form.setValue("imageUrl", url)
+      form.setValue("coverImageUrl", url)
     }
   }
 
@@ -210,10 +194,11 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsList className="grid w-full grid-cols-4 mb-8">
             <TabsTrigger value="basic">Basic Information</TabsTrigger>
-            <TabsTrigger value="details">Details & FAQs</TabsTrigger>
-            <TabsTrigger value="image">Event Image</TabsTrigger>
+            <TabsTrigger value="location">Location & Schedule</TabsTrigger>
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
+            <TabsTrigger value="details">Details & Settings</TabsTrigger>
           </TabsList>
 
           <Form {...form}>
@@ -235,109 +220,20 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                   )}
                 />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-base font-medium flex items-center">
-                          Date <span className="text-red-500 ml-1">*</span>
-                        </FormLabel>
-                        <FormControl>
-                          <div className="relative">
-                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                              <CalendarIcon className="h-4 w-4 text-gray-500" />
-                            </div>
-                            <Input
-                              type="date"
-                              placeholder="Select date"
-                              className="pl-10 h-12"
-                              min={formattedToday}
-                              {...field}
-                            />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="startTime"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-medium flex items-center">
-                            Start Time <span className="text-red-500 ml-1">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <Clock className="h-4 w-4 text-gray-500" />
-                              </div>
-                              <Input type="time" placeholder="Select time" className="pl-10 h-12" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="endTime"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-base font-medium flex items-center">
-                            End Time <span className="text-red-500 ml-1">*</span>
-                          </FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                <Clock className="h-4 w-4 text-gray-500" />
-                              </div>
-                              <Input type="time" placeholder="Select time" className="pl-10 h-12" {...field} />
-                            </div>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </div>
-
                 <FormField
                   control={form.control}
-                  name="location"
+                  name="description"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-base font-medium flex items-center">
-                        Location <span className="text-red-500 ml-1">*</span>
+                        Description <span className="text-red-500 ml-1">*</span>
                       </FormLabel>
                       <FormControl>
-                        <Input placeholder="Enter event location" {...field} className="h-12" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="capacity"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-medium flex items-center">
-                        Capacity <span className="text-red-500 ml-1">*</span>
-                      </FormLabel>
-                      <FormControl>
-                        <Input
-                          type="number"
-                          placeholder="Enter maximum number of participants"
-                          {...field}
-                          className="h-12"
+                        <RichTextEditor
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Enter event description..."
+                          minHeight="200px"
                         />
                       </FormControl>
                       <FormMessage />
@@ -352,7 +248,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-base font-medium flex items-center">
-                          Event Category <span className="text-red-500 ml-1">*</span>
+                          Category <span className="text-red-500 ml-1">*</span>
                         </FormLabel>
                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
@@ -401,68 +297,196 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                   />
                 </div>
 
-                <FormField
-                  control={form.control}
-                  name="registrationForm"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-medium">Registration Form</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-medium flex items-center">
+                          Start Date <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
                         <FormControl>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Select a registration form" />
-                          </SelectTrigger>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                              <CalendarIcon className="h-4 w-4 text-gray-500" />
+                            </div>
+                            <Input
+                              type="date"
+                              placeholder="Select date"
+                              className="pl-10 h-12"
+                              min={formattedToday}
+                              value={format(field.value, "yyyy-MM-dd")}
+                              onChange={(e) => field.onChange(new Date(e.target.value))}
+                            />
+                          </div>
                         </FormControl>
-                        <SelectContent>
-                          {availableForms.map((form) => (
-                            <SelectItem key={form.id} value={form.id}>
-                              {form.title}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>
-                        {selectedFormTitle
-                          ? `Selected form: ${selectedFormTitle}`
-                          : "Select a form to use for event registration"}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
+                  <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-medium flex items-center">
+                          End Date <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                              <CalendarIcon className="h-4 w-4 text-gray-500" />
+                            </div>
+                            <Input
+                              type="date"
+                              placeholder="Select date"
+                              className="pl-10 h-12"
+                              min={formattedToday}
+                              value={format(field.value, "yyyy-MM-dd")}
+                              onChange={(e) => field.onChange(new Date(e.target.value))}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </TabsContent>
+
+              <TabsContent value="location" className="space-y-6">
                 <FormField
                   control={form.control}
-                  name="organizer"
+                  name="location.onlineEvent"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-medium">Organizer</FormLabel>
+                    <FormItem className="flex items-center space-x-2">
                       <FormControl>
-                        <Input {...field} className="h-12" />
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
                       </FormControl>
-                      <FormMessage />
+                      <FormLabel>Online Event</FormLabel>
                     </FormItem>
                   )}
                 />
 
+                {form.watch("location.onlineEvent") ? (
+                  <FormField
+                    control={form.control}
+                    name="location.meetingLink"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-base font-medium flex items-center">
+                          Meeting Link <span className="text-red-500 ml-1">*</span>
+                        </FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                              <Link className="h-4 w-4 text-gray-500" />
+                            </div>
+                            <Input
+                              placeholder="Enter meeting link"
+                              {...field}
+                              className="pl-10 h-12"
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ) : (
+                  <>
+                    <FormField
+                      control={form.control}
+                      name="location.venue"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-base font-medium flex items-center">
+                            Venue <span className="text-red-500 ml-1">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <div className="relative">
+                              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                                <MapPin className="h-4 w-4 text-gray-500" />
+                              </div>
+                              <Input
+                                placeholder="Enter venue name"
+                                {...field}
+                                className="pl-10 h-12"
+                              />
+                            </div>
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="location.address"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-base font-medium flex items-center">
+                            Address <span className="text-red-500 ml-1">*</span>
+                          </FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter full address"
+                              {...field}
+                              className="h-12"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="location.district"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-base font-medium flex items-center">
+                            District <span className="text-red-500 ml-1">*</span>
+                          </FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-12">
+                                <SelectValue placeholder="Select a district" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {hongKongDistricts.map((district) => (
+                                <SelectItem key={district} value={district}>
+                                  {district}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </>
+                )}
+              </TabsContent>
+
+              <TabsContent value="sessions" className="space-y-6">
                 <FormField
                   control={form.control}
-                  name="status"
+                  name="sessions"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-base font-medium">Event Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Draft">Draft</SelectItem>
-                          <SelectItem value="Published">Published</SelectItem>
-                          <SelectItem value="Cancelled">Cancelled</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormControl>
+                        <EventSessions
+                          sessions={field.value}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -472,55 +496,10 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
               <TabsContent value="details" className="space-y-6">
                 <FormField
                   control={form.control}
-                  name="details"
+                  name="coverImageUrl"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-base font-medium">Event Details</FormLabel>
-                      <FormControl>
-                        <RichTextEditor
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          placeholder="Enter detailed information about the event..."
-                          minHeight="300px"
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Provide detailed information about the event. You can use formatting options like bold, italic,
-                        and lists.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="faqs"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-medium">Frequently Asked Questions</FormLabel>
-                      <FormControl>
-                        <RichTextEditor
-                          value={field.value || ""}
-                          onChange={field.onChange}
-                          placeholder="Enter FAQs about the event..."
-                          minHeight="300px"
-                        />
-                      </FormControl>
-                      <FormDescription>Add frequently asked questions and answers about the event.</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </TabsContent>
-
-              <TabsContent value="image" className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="imageUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-medium">Event Image</FormLabel>
+                      <FormLabel className="text-base font-medium">Event Cover Image</FormLabel>
                       <FormControl>
                         <div className="space-y-4">
                           <Input
@@ -544,6 +523,98 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                         </div>
                       </FormControl>
                       <FormDescription>Upload an image for the event (optional).</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="isPrivate"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center space-x-2">
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormLabel>Private Event</FormLabel>
+                      <FormDescription>
+                        Private events are only visible to invited participants.
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-medium">Event Status</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-12">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {eventStatuses.map((status) => (
+                            <SelectItem key={status.id} value={status.id}>
+                              {status.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="registrationFormId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-medium flex items-center">
+                        Registration Form <span className="text-red-500 ml-1">*</span>
+                      </FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-12">
+                            <SelectValue placeholder="Select a registration form" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {/* This should be populated from your forms data */}
+                          <SelectItem value="form1">Basic Registration Form</SelectItem>
+                          <SelectItem value="form2">Detailed Participant Information</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="capacity"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-medium">Event Capacity</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          placeholder="Enter maximum number of participants"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                          className="h-12"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Leave empty for unlimited capacity.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

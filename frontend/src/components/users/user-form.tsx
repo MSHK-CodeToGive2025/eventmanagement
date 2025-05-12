@@ -1,50 +1,90 @@
+/**
+ * UserForm Component
+ * 
+ * A form component for creating and editing users. It handles:
+ * - User creation with validation
+ * - User editing with pre-filled data
+ * - Role selection
+ * - Active status toggle
+ * - Form validation using Zod
+ * 
+ * The form includes fields for:
+ * - Username (required)
+ * - Password (required for new users, optional for existing)
+ * - First Name (required)
+ * - Last Name (required)
+ * - Mobile (required)
+ * - Email (optional)
+ * - Role (required)
+ * - Active Status (toggle)
+ */
+
 import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
-import { type User, type UserFormData, type UserRole, allPermissions } from "@/types/user-types"
+import { type User, type UserRole } from "@/types/user-types"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { 
+  UsernameField, 
+  PasswordField, 
+  NameFields, 
+  ContactFields, 
+  RoleField, 
+  ActiveStatusField 
+} from "./form-fields"
 
+// Form validation schema
 const userFormSchema = z.object({
-  name: z.string().min(2, {
-    message: "Name must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  role: z.enum(["admin", "staff", "participant", "unregistered"]),
-  status: z.enum(["active", "inactive", "pending", "suspended"]),
-  phone: z.string().optional(),
-  department: z.string().optional(),
-  permissions: z.array(z.string()).optional(),
+  username: z.string().min(3, "Username must be at least 3 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters").optional(),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  mobile: z.string().min(8, "Mobile number must be at least 8 digits"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
+  role: z.enum(["admin", "staff", "participant"]),
+  isActive: z.boolean(),
 })
 
+export type UserFormValues = z.infer<typeof userFormSchema>
+
 interface UserFormProps {
+  /** Existing user data for editing mode */
   user?: User
-  onSubmit: (data: UserFormData) => Promise<void>
-  isLoading: boolean
+  /** Callback function when form is submitted */
+  onSubmit: (data: UserFormValues) => Promise<void>
+  /** Callback function when form is canceled */
+  onCancel: () => void
+  /** Loading state of the form */
+  isSubmitting?: boolean
+  /** Error message to display */
+  error?: string
+  /** Whether to hide the form title card */
   hideTitle?: boolean
 }
 
-export function UserForm({ user, onSubmit, isLoading, hideTitle = false }: UserFormProps) {
+export function UserForm({ user, onSubmit, onCancel, isSubmitting, error, hideTitle = false }: UserFormProps) {
   const [selectedRole, setSelectedRole] = useState<UserRole>(user?.role || "participant")
 
-  const form = useForm<UserFormData>({
+  const isEditing = !!user
+
+  const form = useForm<UserFormValues>({
     resolver: zodResolver(userFormSchema),
     defaultValues: {
-      name: user?.name || "",
+      username: user?.username || "",
+      password: "",
+      firstName: user?.firstName || "",
+      lastName: user?.lastName || "",
+      mobile: user?.mobile || "",
       email: user?.email || "",
       role: user?.role || "participant",
-      status: user?.status || "active",
-      phone: user?.phone || "",
-      department: user?.department || "",
-      permissions: user?.permissions || [],
+      isActive: user?.isActive ?? true,
     },
   })
 
@@ -52,151 +92,70 @@ export function UserForm({ user, onSubmit, isLoading, hideTitle = false }: UserF
   useEffect(() => {
     if (user) {
       form.reset({
-        name: user.name,
-        email: user.email,
+        username: user.username,
+        password: "",
+        firstName: user.firstName,
+        lastName: user.lastName,
+        mobile: user.mobile,
+        email: user.email || "",
         role: user.role,
-        status: user.status,
-        phone: user.phone || "",
-        department: user.department || "",
-        permissions: user.permissions || [],
+        isActive: user.isActive,
       })
       setSelectedRole(user.role)
     }
   }, [user, form])
 
-  // Handle role change to update permissions
+  // Handle role change
   const handleRoleChange = (role: UserRole) => {
     setSelectedRole(role)
   }
 
+  const handleSubmit = async (data: UserFormValues) => {
+    try {
+      await onSubmit(data)
+    } catch (err) {
+      // Error is handled by the parent component
+      console.error("Form submission error:", err)
+    }
+  }
+
+  // Form content component
   const formContent = (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+            <span className="block sm:inline">{error}</span>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Full Name</FormLabel>
-                <FormControl>
-                  <Input placeholder="John Doe" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="email"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Email</FormLabel>
-                <FormControl>
-                  <Input placeholder="john.doe@example.com" type="email" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="role"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Role</FormLabel>
-                <Select
-                  onValueChange={(value: UserRole) => {
-                    field.onChange(value)
-                    handleRoleChange(value)
-                  }}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="staff">Staff</SelectItem>
-                    <SelectItem value="participant">Participant</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormDescription>This determines what the user can access in the system.</FormDescription>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="status"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Status</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a status" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="phone"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Phone Number (Optional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="+1 (555) 123-4567" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="department"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Department (Optional)</FormLabel>
-                <FormControl>
-                  <Input placeholder="Marketing" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <UsernameField control={form.control} />
+          <PasswordField control={form.control} isEditing={isEditing} />
+          <NameFields control={form.control} />
+          <ContactFields control={form.control} />
+          <RoleField control={form.control} />
+          <ActiveStatusField control={form.control} />
         </div>
 
-        <div className="flex justify-end space-x-4">
-          <Button variant="outline" type="button" onClick={() => form.reset()}>
-            Reset
+        <div className="flex justify-end gap-4">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Cancel
           </Button>
-          <Button type="submit" disabled={isLoading}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {user ? "Update User" : "Create User"}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : isEditing ? "Update User" : "Create User"}
           </Button>
         </div>
       </form>
     </Form>
   )
 
+  // Return form with or without title card
   if (hideTitle) {
     return formContent
   }

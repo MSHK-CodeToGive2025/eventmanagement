@@ -1,6 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useUserManagement } from "@/contexts/user-management-context"
-import { User, UserFormData } from "@/types/user-types"
+import { User } from "@/types/user-types"
 import RouteGuard from "@/components/route-guard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { UserList } from "@/components/users/user-list"
@@ -29,12 +29,18 @@ export default function UsersManagementPage() {
     setSelectedUser,
     fetchUsers,
     addUser,
-    editUser,
     removeUser,
     searchForUsers,
     filterUsersList,
     changeUserPassword,
   } = useUserManagement()
+
+  // Initialize with mock data
+  useEffect(() => {
+    if (users.length === 0) {
+      fetchUsers()
+    }
+  }, [users.length, fetchUsers])
 
   const [currentView, setCurrentView] = useState<UserView>(UserView.LIST)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
@@ -49,27 +55,29 @@ export default function UsersManagementPage() {
   const [sortField, setSortField] = useState<string>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  const handleAddUser = async (data: UserFormData) => {
-    const newUser = await addUser(data)
-    if (newUser) {
-      setCurrentView(UserView.LIST)
+  const handleAddUser = async (userData: Partial<User>): Promise<void> => {
+    try {
+      const success = await addUser(userData)
+      if (success) {
+        setCurrentView(UserView.LIST)
+        // Refresh the users list
+        await fetchUsers()
+      }
+    } catch (error) {
+      console.error("Error adding user:", error)
     }
   }
 
-  const handleEditUser = async (data: UserFormData) => {
-    if (!selectedUser) return
-    const updatedUser = await editUser(selectedUser.id, data)
-    if (updatedUser) {
-      setCurrentView(UserView.DETAILS)
-    }
+  // TODO Edit user
+  const handleEditUser = async () => {
   }
 
   const handleDeleteUser = async () => {
     if (!userToDelete) return
-    const success = await removeUser(userToDelete.id)
+    const success = await removeUser(userToDelete._id)
     if (success) {
       setUserToDelete(null)
-      if (selectedUser?.id === userToDelete.id) {
+      if (selectedUser?._id === userToDelete._id) {
         setSelectedUser(null)
         setCurrentView(UserView.LIST)
       }
@@ -136,8 +144,8 @@ export default function UsersManagementPage() {
       case UserView.CHANGE_PASSWORD:
         return selectedUser ? (
           <PasswordChangeForm
-            userId={selectedUser.id}
-            username={selectedUser.name}
+            userId={selectedUser._id}
+            username={selectedUser.username}
             onSubmit={handlePasswordChange}
             isLoading={loading}
             hideTitle
@@ -228,11 +236,11 @@ export default function UsersManagementPage() {
       case UserView.CREATE:
         return "Add New User"
       case UserView.EDIT:
-        return `Edit User: ${selectedUser?.name || ""}`
+        return `Edit User: ${selectedUser?.username || ""}`
       case UserView.DETAILS:
-        return `User: ${selectedUser?.name || ""}`
+        return `User: ${selectedUser?.username || ""}`
       case UserView.CHANGE_PASSWORD:
-        return `Change Password: ${selectedUser?.name || ""}`
+        return `Change Password: ${selectedUser?.username || ""}`
       case UserView.LIST:
       default:
         return "All Users"

@@ -1,47 +1,101 @@
-export type UserRole = "admin" | "staff" | "participant" | "unregistered"
+/**
+ * Represents the possible roles a user can have in the system
+ * - admin: Full system access and control
+ * - staff: Can manage events and forms
+ * - participant: Can register for events and submit forms
+ */
+export type UserRole = "admin" | "staff" | "participant"
 
+/**
+ * Represents the possible statuses a user account can have
+ * Note: Currently using isActive boolean instead of this enum
+ * @deprecated Use isActive boolean instead
+ */
 export type UserStatus = "active" | "inactive" | "pending" | "suspended"
 
+/**
+ * Represents a user in the system
+ * @property _id - Unique identifier for the user
+ * @property username - Unique username for login
+ * @property passwordHash - Hashed password (never store plain text)
+ * @property mobile - User's mobile number (required for contact)
+ * @property email - User's email address (optional)
+ * @property role - User's role in the system (admin/staff/participant)
+ * @property firstName - User's first name
+ * @property lastName - User's last name
+ * @property createdAt - When the user account was created
+ * @property updatedAt - When the user account was last updated
+ * @property lastLogin - When the user last logged in (optional)
+ * @property isActive - Whether the user account is active
+ */
 export interface User {
-  id: string
-  name: string
-  username?: string
-  email: string
-  role: UserRole
-  status: UserStatus
-  lastLogin: string
-  createdAt: string
-  permissions?: string[]
-  profileImage?: string
-  phone?: string
-  department?: string
+  _id: string;
+  username: string;
+  passwordHash: string;
+  mobile: string;
+  email?: string;
+  role: UserRole;
+  firstName: string;
+  lastName: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastLogin?: Date;
+  isActive: boolean;
 }
 
-export interface UserFormData {
-  name: string
-  username?: string
-  email: string
-  role: UserRole
-  status: UserStatus
-  phone?: string
-  department?: string
-  permissions?: string[]
+/**
+ * Data required for creating a new user
+ * Excludes system-generated fields and makes password required
+ */
+export interface CreateUserData {
+  username: string;
+  password: string;
+  mobile: string;
+  email?: string;
+  role: UserRole;
+  firstName: string;
+  lastName: string;
+  isActive: boolean;
 }
 
-export const defaultPermissions = {
-  admin: ["manage_users", "manage_events", "manage_forms", "manage_templates", "view_analytics", "manage_settings"],
-  staff: ["manage_events", "manage_forms", "manage_templates", "view_analytics"],
-  participant: ["register_events", "submit_forms", "view_own_data"],
+/**
+ * Data that can be updated for an existing user
+ * Makes all fields optional and excludes system-generated fields
+ */
+export interface UpdateUserData {
+  username?: string;
+  password?: string;
+  mobile?: string;
+  email?: string;
+  role?: UserRole;
+  firstName?: string;
+  lastName?: string;
+  isActive?: boolean;
 }
 
-export const allPermissions = [
-  { id: "manage_users", label: "Manage Users" },
-  { id: "manage_events", label: "Manage Events" },
-  { id: "manage_forms", label: "Manage Forms" },
-  { id: "manage_templates", label: "Manage Templates" },
-  { id: "view_analytics", label: "View Analytics" },
-  { id: "manage_settings", label: "Manage Settings" },
-  { id: "register_events", label: "Register for Events" },
-  { id: "submit_forms", label: "Submit Forms" },
-  { id: "view_own_data", label: "View Own Data" },
-]
+/**
+ * Filter criteria for searching users
+ */
+export interface UserFilterCriteria {
+  role?: UserRole;
+  isActive?: boolean;
+  phone?: string;
+  searchQuery?: string;
+  searchFields?: Array<keyof User>;
+}
+
+/**
+ * Sort criteria for user list
+ */
+export interface UserSortCriteria {
+  field: keyof User;
+  direction: "asc" | "desc";
+}
+
+/**
+ * Pagination parameters for user list
+ */
+export interface UserPaginationParams {
+  page: number;
+  itemsPerPage: number;
+}

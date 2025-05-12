@@ -1,3 +1,4 @@
+/*
 // Event types
 export interface ZubinEvent {
     eventId: string
@@ -9,12 +10,13 @@ export interface ZubinEvent {
     category: string
     targetGroup: string
     capacity: number
-    registeredCount: number
+    registeredCount?: number
     imageUrl?: string
     eventDetails: string
     associatedRegistrationForm: RegistrationForm
 }
-  
+*/
+/*  
 // Registration form types
 export interface RegistrationForm {
   formId: string
@@ -38,7 +40,8 @@ export interface FormField {
     message?: string
   }
 }
-  
+*/  
+/*
 // Registration submission types
 export interface EventRegistration {
   registrationId: string
@@ -47,7 +50,7 @@ export interface EventRegistration {
   status: "pending" | "confirmed" | "cancelled"
   formData: Record<string, any>
 }
-  
+ 
   // Mock storage for registrations
   export const registrationStore: Record<string, EventRegistration[]> = {}
   
@@ -80,7 +83,7 @@ export interface EventRegistration {
       }
     }
   }
-  
+*/  
   // Function to generate a unique ID
   export function generateId(): string {
     return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)

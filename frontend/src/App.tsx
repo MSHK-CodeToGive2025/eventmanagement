@@ -16,6 +16,7 @@ import EnhancedEventDetailPage from './pages/public/enhanced-events/enhanced-eve
 import { AnalyticsDashboard } from './pages/internal/analytics/analytics-dashboard';
 import SignUp from './pages/public/sign-up';
 import EventRemindersPage from './pages/internal/events-builder/event-reminders-page';
+import ManageRegistrations from './pages/internal/events-builder/manage-registrations';
 
 const App: React.FC = () => {
 
@@ -36,6 +37,7 @@ const App: React.FC = () => {
               <Route path="/events/:id/edit" element={<EventAdminForm />} />
               <Route path="/manage/events-builder" element={<EventsBuilderPage />} />
               <Route path="/manage/events/:id/reminders" element={<EventRemindersPage />} />
+              <Route path="/manage/events/:id/registrations" element={<ManageRegistrations />} />
               <Route path="/manage/forms" element={<FormsPage />} />
               <Route path="/manage/forms/new" element={<NewFormPage />} />
               <Route path="/manage/users" element={<UserManagementPage />} />

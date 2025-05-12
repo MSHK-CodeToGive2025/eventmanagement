@@ -5,11 +5,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Calendar, Clock, MapPin, Search, Filter, ChevronLeft, ChevronRight, SortAsc, X } from "lucide-react"
 import { useNavigate } from "react-router-dom"
-import type { ZubinEvent } from "@/types/enhanced-event-types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
-import { enhancedEvents } from "@/types/mock-enhanced-event-data"
+import { mockZubinEvents } from "../../../types/mock-enhanced-event-data"
+import { ZubinEvent } from "@/types/event-types"
 
 /**
  * Helper function to extract unique categories from events array
@@ -32,18 +32,22 @@ export default function EnhancedEventsPage() {
   // State for events data and loading status
   const [events, setEvents] = useState<ZubinEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
+  const [selectedTargetGroup, setSelectedTargetGroup] = useState<string | null>(null)
+  const [selectedLocation, setSelectedLocation] = useState<string | null>(null)
   const [startDate, setStartDate] = useState<Date | null>(null)
   const [endDate, setEndDate] = useState<Date | null>(null)
+  const [showImages, setShowImages] = useState(true)
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [eventsPerPage, setEventsPerPage] = useState(9)
 
-  // Sorting state - options: date-asc, date-desc, title-asc, title-desc, capacity-asc, capacity-desc
+  // Sorting state - options: date-asc, date-desc, title-asc, title-desc
   const [sortBy, setSortBy] = useState<string>("date-asc")
 
   // Mobile filter visibility state
@@ -55,16 +59,32 @@ export default function EnhancedEventsPage() {
    */
   useEffect(() => {
     const fetchEvents = async () => {
-      await new Promise((resolve) => setTimeout(resolve, 500)) // Simulate API delay
-      setEvents(enhancedEvents)
-      setLoading(false)
+      try {
+        setLoading(true)
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 500))
+        setEvents(mockZubinEvents)
+      } catch (error) {
+        console.error("Error fetching events:", error)
+        setError("Failed to fetch events")
+      } finally {
+        setLoading(false)
+      }
     }
 
     fetchEvents()
   }, [])
 
-  // Get unique categories for filter dropdown using useMemo for performance
+  // Get unique categories, target groups, and locations for filter dropdowns using useMemo for performance
   const categories = useMemo(() => getUniqueCategories(events), [events])
+  const targetGroups = useMemo(() => {
+    const groups = events.map((event) => event.targetGroup)
+    return [...new Set(groups)]
+  }, [events])
+  const locations = useMemo(() => {
+    const locs = events.map((event) => event.location)
+    return [...new Set(locs)]
+  }, [events])
 
   /**
    * Filter and sort events based on current filter and sort states
@@ -73,14 +93,13 @@ export default function EnhancedEventsPage() {
   const filteredEvents = useMemo(() => {
     let result = [...events]
 
-    // Apply search filter across title, details, and location
+    // Apply search filter across title and description
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       result = result.filter(
         (event) =>
-          event.eventTitle.toLowerCase().includes(query) ||
-          (event.eventDetails && event.eventDetails.toLowerCase().includes(query)) ||
-          event.location.toLowerCase().includes(query),
+          event.title.toLowerCase().includes(query) ||
+          (event.description && event.description.toLowerCase().includes(query))
       )
     }
 
@@ -89,43 +108,47 @@ export default function EnhancedEventsPage() {
       result = result.filter((event) => event.category === selectedCategory)
     }
 
+    // Apply target group filter
+    if (selectedTargetGroup) {
+      result = result.filter((event) => event.targetGroup === selectedTargetGroup)
+    }
+
+    // Apply location filter
+    if (selectedLocation) {
+      result = result.filter((event) => event.location.venue === selectedLocation)
+    }
+
     // Apply date range filter
     if (startDate) {
       const start = new Date(startDate)
       start.setHours(0, 0, 0, 0)
-      result = result.filter((event) => new Date(event.date) >= start)
+      result = result.filter((event) => new Date(event.startDate) >= start)
     }
 
     if (endDate) {
       const end = new Date(endDate)
       end.setHours(23, 59, 59, 999)
-      result = result.filter((event) => new Date(event.date) <= end)
+      result = result.filter((event) => new Date(event.startDate) <= end)
     }
 
     // Apply sorting based on selected sort option
     switch (sortBy) {
       case "date-asc":
-        result.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+        result.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
         break
       case "date-desc":
-        result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        result.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
         break
       case "title-asc":
-        result.sort((a, b) => a.eventTitle.localeCompare(b.eventTitle))
+        result.sort((a, b) => a.title.localeCompare(b.title))
         break
       case "title-desc":
-        result.sort((a, b) => b.eventTitle.localeCompare(a.eventTitle))
-        break
-      case "capacity-asc":
-        result.sort((a, b) => a.capacity - b.capacity)
-        break
-      case "capacity-desc":
-        result.sort((a, b) => b.capacity - a.capacity)
+        result.sort((a, b) => b.title.localeCompare(a.title))
         break
     }
 
     return result
-  }, [events, searchQuery, selectedCategory, startDate, endDate, sortBy])
+  }, [events, searchQuery, selectedCategory, selectedTargetGroup, selectedLocation, startDate, endDate, sortBy])
 
   // Calculate pagination values
   const totalPages = Math.ceil(filteredEvents.length / eventsPerPage)
@@ -148,6 +171,8 @@ export default function EnhancedEventsPage() {
   const resetFilters = () => {
     setSearchQuery("")
     setSelectedCategory(null)
+    setSelectedTargetGroup(null)
+    setSelectedLocation(null)
     setStartDate(null)
     setEndDate(null)
     setSortBy("date-asc")
@@ -159,11 +184,14 @@ export default function EnhancedEventsPage() {
    * @param eventId - The ID of the event to view
    */
   const navigateToEvent = (eventId: string) => {
-    navigate(`/enhanced-events/${eventId}`)
+    const event = events.find(e => e._id === eventId)
+    if (event) {
+      navigate(`/enhanced-events/${eventId}`, { state: { event } })
+    }
   }
 
   // Check if any filters are currently applied
-  const hasActiveFilters = searchQuery || selectedCategory || startDate || endDate
+  const hasActiveFilters = searchQuery || selectedCategory || selectedTargetGroup || selectedLocation || startDate || endDate
 
   // Loading state UI
   if (loading) {
@@ -202,7 +230,7 @@ export default function EnhancedEventsPage() {
 
       {/* <h1 className="text-3xl font-bold mb-6">Enhanced Events</h1> */}
       <div className=" mb-8">
-        <h1 className="text-3xl font-bold mb-4">Upcoming Events</h1>
+        <h1 className="text-3xl font-bold mb-4">Upcoming Zubin Events</h1>
         <p className="text-gray-600 mx-auto ">
           Discover and register for events organized by The Zubin Foundation to support ethnic minorities in Hong Kong.
         </p>
@@ -217,7 +245,7 @@ export default function EnhancedEventsPage() {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
             <Input
               type="text"
-              placeholder="Search events by title, description or location..."
+              placeholder="Search events by title or description..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value)
@@ -240,8 +268,6 @@ export default function EnhancedEventsPage() {
               <SelectItem value="date-desc">Date (Latest)</SelectItem>
               <SelectItem value="title-asc">Title (A-Z)</SelectItem>
               <SelectItem value="title-desc">Title (Z-A)</SelectItem>
-              <SelectItem value="capacity-asc">Capacity (Low-High)</SelectItem>
-              <SelectItem value="capacity-desc">Capacity (High-Low)</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -265,6 +291,52 @@ export default function EnhancedEventsPage() {
                 {categories.map((category) => (
                   <SelectItem key={category} value={category}>
                     {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Target Group Filter */}
+          <div className="w-[180px]">
+            <Select
+              value={selectedTargetGroup || ""}
+              onValueChange={(value) => {
+                setSelectedTargetGroup(value || null)
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Target Group" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Target Groups</SelectItem>
+                {targetGroups.map((group) => (
+                  <SelectItem key={group} value={group}>
+                    {group}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Location Filter */}
+          <div className="w-[180px]">
+            <Select
+              value={selectedLocation || ""}
+              onValueChange={(value) => {
+                setSelectedLocation(value || null)
+                setCurrentPage(1)
+              }}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Location" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Locations</SelectItem>
+                {locations.map((location) => (
+                  <SelectItem key={location.venue} value={location.venue}>
+                    {location.venue}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -308,6 +380,18 @@ export default function EnhancedEventsPage() {
             </div>
           </div>
 
+          {/* Show Images Toggle */}
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="show-images" className="text-sm">Show Images</Label>
+            <input
+              type="checkbox"
+              id="show-images"
+              checked={showImages}
+              onChange={(e) => setShowImages(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+            />
+          </div>
+
           {/* Clear Filters Button */}
           {hasActiveFilters && (
             <Button variant="ghost" onClick={resetFilters} className="text-red-500 hover:text-red-700 hover:bg-red-50">
@@ -341,6 +425,32 @@ export default function EnhancedEventsPage() {
                   className="h-3 w-3 ml-1 cursor-pointer"
                   onClick={() => {
                     setSelectedCategory(null)
+                    setCurrentPage(1)
+                  }}
+                />
+              </Badge>
+            )}
+            {/* Target Group Filter Badge */}
+            {selectedTargetGroup && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                Target Group: {selectedTargetGroup}
+                <X
+                  className="h-3 w-3 ml-1 cursor-pointer"
+                  onClick={() => {
+                    setSelectedTargetGroup(null)
+                    setCurrentPage(1)
+                  }}
+                />
+              </Badge>
+            )}
+            {/* Location Filter Badge */}
+            {selectedLocation && (
+              <Badge variant="secondary" className="flex items-center gap-1">
+                Location: {selectedLocation}
+                <X
+                  className="h-3 w-3 ml-1 cursor-pointer"
+                  onClick={() => {
+                    setSelectedLocation(null)
                     setCurrentPage(1)
                   }}
                 />
@@ -430,6 +540,54 @@ export default function EnhancedEventsPage() {
               </Select>
             </div>
 
+            {/* Mobile Target Group Filter */}
+            <div>
+              <Label htmlFor="mobile-target-group">Target Group</Label>
+              <Select
+                value={selectedTargetGroup || ""}
+                onValueChange={(value) => {
+                  setSelectedTargetGroup(value || null)
+                  setCurrentPage(1)
+                }}
+              >
+                <SelectTrigger id="mobile-target-group">
+                  <SelectValue placeholder="All Target Groups" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Target Groups</SelectItem>
+                  {targetGroups.map((group) => (
+                    <SelectItem key={group} value={group}>
+                      {group}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Mobile Location Filter */}
+            <div>
+              <Label htmlFor="mobile-location">Location</Label>
+              <Select
+                value={selectedLocation || ""}
+                onValueChange={(value) => {
+                  setSelectedLocation(value || null)
+                  setCurrentPage(1)
+                }}
+              >
+                <SelectTrigger id="mobile-location">
+                  <SelectValue placeholder="All Locations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  {locations.map((location) => (
+                    <SelectItem key={location.venue} value={location.venue}>
+                      {location.venue}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Mobile Date Range Filter */}
             <div>
               <Label>Date Range</Label>
@@ -476,10 +634,20 @@ export default function EnhancedEventsPage() {
                   <SelectItem value="date-desc">Date (Latest)</SelectItem>
                   <SelectItem value="title-asc">Title (A-Z)</SelectItem>
                   <SelectItem value="title-desc">Title (Z-A)</SelectItem>
-                  <SelectItem value="capacity-asc">Capacity (Low-High)</SelectItem>
-                  <SelectItem value="capacity-desc">Capacity (High-Low)</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Mobile Show Images Toggle */}
+            <div className="flex items-center space-x-2">
+              <Label htmlFor="mobile-show-images" className="text-sm">Show Images</Label>
+              <input
+                type="checkbox"
+                id="mobile-show-images"
+                checked={showImages}
+                onChange={(e) => setShowImages(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+              />
             </div>
 
             {/* Mobile Clear Filters Button */}
@@ -506,6 +674,30 @@ export default function EnhancedEventsPage() {
                   className="h-3 w-3 ml-1 cursor-pointer"
                   onClick={() => {
                     setSelectedCategory(null)
+                    setCurrentPage(1)
+                  }}
+                />
+              </Badge>
+            )}
+            {selectedTargetGroup && (
+              <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                Target Group: {selectedTargetGroup}
+                <X
+                  className="h-3 w-3 ml-1 cursor-pointer"
+                  onClick={() => {
+                    setSelectedTargetGroup(null)
+                    setCurrentPage(1)
+                  }}
+                />
+              </Badge>
+            )}
+            {selectedLocation && (
+              <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                Location: {selectedLocation}
+                <X
+                  className="h-3 w-3 ml-1 cursor-pointer"
+                  onClick={() => {
+                    setSelectedLocation(null)
                     setCurrentPage(1)
                   }}
                 />
@@ -562,46 +754,47 @@ export default function EnhancedEventsPage() {
       {currentEvents.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {currentEvents.map((event) => (
-            <Card key={event.eventId} className="overflow-hidden hover:shadow-md transition-shadow">
+            <Card key={event._id} className="overflow-hidden hover:shadow-md transition-shadow">
               {/* Event Image */}
-              <div className="relative h-48">
-                <img
-                  src={event.imageUrl || "/placeholder.svg?height=200&width=400&query=event"}
-                  alt={event.eventTitle}
-                  className="object-cover w-full h-full"
-                />
-              </div>
+              {showImages && (
+                <div className="relative h-48">
+                  <img
+                    src={event.coverImageUrl || "/placeholder.svg?height=200&width=400&query=event"}
+                    alt={event.title}
+                    className="object-cover w-full h-full"
+                  />
+                </div>
+              )}
               {/* Event Details */}
               <CardContent className="p-4">
-                <h2 className="text-xl font-semibold mb-2 line-clamp-1">{event.eventTitle}</h2>
+                <h2 className="text-xl font-semibold mb-2 line-clamp-1">{event.title}</h2>
                 <div className="space-y-2 mb-4">
-                  {/* Event Date */}
+                  {/* Event Date Range */}
                   <div className="flex items-center text-sm text-gray-600">
                     <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span>{new Date(event.date).toLocaleDateString()}</span>
-                  </div>
-                  {/* Event Time */}
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Clock className="h-4 w-4 mr-2 flex-shrink-0" />
                     <span>
-                      {event.startTime} - {event.endTime}
+                      {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
                     </span>
                   </div>
                   {/* Event Location */}
                   <div className="flex items-center text-sm text-gray-600">
                     <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
-                    <span className="line-clamp-1">{event.location}</span>
+                    <span className="line-clamp-1">{event.location.venue}</span>
                   </div>
                 </div>
+                {/* Event Tags */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">
+                    {event.category}
+                  </span>
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                    {event.targetGroup}
+                  </span>
+                </div>
                 {/* Event Footer */}
-                <div className="flex items-center justify-between">
-                  <div className="flex space-x-2">
-                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">
-                      {event.category}
-                    </span>
-                  </div>
+                <div className="flex justify-end">
                   <Button
-                    onClick={() => navigateToEvent(event.eventId)}
+                    onClick={() => navigateToEvent(event._id)}
                     className="bg-yellow-400 hover:bg-yellow-500 text-black"
                     size="sm"
                   >

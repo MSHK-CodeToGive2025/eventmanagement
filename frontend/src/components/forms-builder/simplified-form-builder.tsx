@@ -3,11 +3,17 @@
  * 
  * A drag-and-drop form builder that allows users to create and customize forms with various field types.
  * Features include:
- * - Drag and drop field reordering
- * - Nested sections for organizing fields
+ * - Drag and drop field reordering (only for top-level fields)
+ * - Nested sections for organizing fields (fields within sections are static)
  * - Field property editing
  * - Form validation
  * - Field duplication and deletion
+ * 
+ * Drag and Drop Implementation:
+ * - Only top-level fields (fields without a parent) can be dragged and reordered
+ * - Fields within sections are static and cannot be reordered
+ * - The drag handle (grip icon) is only shown for top-level fields
+ * - Section children are rendered in a static order
  */
 
 import type React from "react"
@@ -25,12 +31,12 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, GripVertical, Trash2, Copy, ChevronDown, ChevronRight } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useToast } from "@/hooks/use-toast"
 import { FieldEditor } from "./field-editor"
 import { FieldPreview } from "./field-preview"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useToast } from "@/hooks/use-toast"
 
-// Form validation schema using Zod
+// Define the form schema
 const formBuilderSchema = z.object({
   title: z.string().min(2, {
     message: "Form title is required and must be at least 2 characters.",
@@ -43,7 +49,7 @@ const formBuilderSchema = z.object({
 
 type FormBuilderValues = z.infer<typeof formBuilderSchema>
 
-// Predefined form categories for selection
+// Predefined categories
 const predefinedCategories = [
   { value: "registration", label: "Registration" },
   { value: "feedback", label: "Feedback" },
@@ -54,8 +60,9 @@ const predefinedCategories = [
   { value: "other", label: "Other" },
 ]
 
-// Available field types that can be added to the form
+// Define field types
 const fieldTypes = [
+  { id: "section", label: "Section", icon: <Plus className="h-4 w-4" /> },
   { id: "text", label: "Text Input", icon: <Plus className="h-4 w-4" /> },
   { id: "textarea", label: "Text Area", icon: <Plus className="h-4 w-4" /> },
   { id: "email", label: "Email", icon: <Plus className="h-4 w-4" /> },
@@ -66,10 +73,9 @@ const fieldTypes = [
   { id: "checkbox", label: "Checkboxes", icon: <Plus className="h-4 w-4" /> },
   { id: "date", label: "Date Picker", icon: <Plus className="h-4 w-4" /> },
   { id: "file", label: "File Upload", icon: <Plus className="h-4 w-4" /> },
-  { id: "section", label: "Section", icon: <Plus className="h-4 w-4" /> },
 ]
 
-// Type definition for form fields
+// Define field interface
 export interface FormFieldType {
   id: string
   type: string
@@ -83,7 +89,6 @@ export interface FormFieldType {
   children?: string[]
 }
 
-// Props interface for the form builder component
 interface SimplifiedFormBuilderProps {
   onClose: () => void
   onSave: (data: any) => void
@@ -112,8 +117,10 @@ export default function SimplifiedFormBuilder({
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null)
   const [nextFieldId, setNextFieldId] = useState(defaultFields.length + 1)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
+  const [customCategory, setCustomCategory] = useState("")
+  const [open, setOpen] = useState(false)
 
-  // Initialize form with react-hook-form
+  // Initialize the form
   const form = useForm<FormBuilderValues>({
     resolver: zodResolver(formBuilderSchema),
     defaultValues: defaultValues || {
@@ -123,7 +130,7 @@ export default function SimplifiedFormBuilder({
     },
   })
 
-  // Initialize expanded sections on component mount
+  // Initialize expanded sections
   useEffect(() => {
     const initialExpandedState: Record<string, boolean> = {}
     fields.forEach((field) => {
@@ -134,13 +141,24 @@ export default function SimplifiedFormBuilder({
     setExpandedSections(initialExpandedState)
   }, [])
 
-  // Form submission handler
+  // Handle form submission
   const onSubmit = useCallback(
     (data: FormBuilderValues) => {
       if (fields.length === 0) {
         toast({
           title: "Error",
-          description: "Please add at least one field to your form",
+          description: "Please add at least one section to your form",
+          variant: "destructive",
+        })
+        return
+      }
+
+      // Check if there are any top-level fields that are not sections
+      const hasNonSectionTopLevelFields = fields.some(field => !field.parentId && field.type !== "section");
+      if (hasNonSectionTopLevelFields) {
+        toast({
+          title: "Error",
+          description: "All top-level fields must be sections",
           variant: "destructive",
         })
         return
@@ -157,6 +175,7 @@ export default function SimplifiedFormBuilder({
 
       console.log("Form saved:", formData)
       
+      // Show success toast
       toast({
         title: "Form saved",
         description: "Your form has been saved successfully",
@@ -167,7 +186,7 @@ export default function SimplifiedFormBuilder({
     [fields, onSave, toast, formId],
   )
 
-  // Toggle section expansion state
+  // Toggle section expansion
   const toggleSectionExpansion = useCallback((sectionId: string) => {
     setExpandedSections((prev) => ({
       ...prev,
@@ -175,14 +194,24 @@ export default function SimplifiedFormBuilder({
     }))
   }, [])
 
-  // Add a new field to the form
+  // Add a new field
   const addField = useCallback(
     (type: string, parentId: string | null = null) => {
+      // If trying to add a non-section field at the top level, show a toast message
+      if (!parentId && type !== "section") {
+        toast({
+          title: "Invalid Operation",
+          description: "Please add a section first before adding other field types.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const newField: FormFieldType = {
         id: `field_${nextFieldId}`,
         type,
         label: `New ${type.charAt(0).toUpperCase() + type.slice(1)} Field`,
-        required: false,
+        required: type !== "section", // Only set required for non-section fields
         parentId,
         options:
           type === "dropdown" || type === "multiselect" || type === "radio" || type === "checkbox"
@@ -194,7 +223,7 @@ export default function SimplifiedFormBuilder({
 
       setNextFieldId((prevId) => prevId + 1)
 
-      // Initialize section as expanded
+      // If this is a section, initialize it as expanded
       if (type === "section") {
         setExpandedSections((prev) => ({
           ...prev,
@@ -202,34 +231,43 @@ export default function SimplifiedFormBuilder({
         }))
       }
 
-      // Add field to parent section if specified
+      // If adding to a section, update the section's children array
       if (parentId) {
         setFields((prevFields) => {
+          // Create a new array to avoid mutating the state directly
           const updatedFields = [...prevFields]
           const parentIndex = updatedFields.findIndex((f) => f.id === parentId)
 
-          if (parentIndex !== -1 && updatedFields[parentIndex].children) {
-            updatedFields[parentIndex].children = [...(updatedFields[parentIndex].children || []), newField.id]
+          if (parentIndex !== -1) {
+            // Create a new parent field object with updated children
+            const parentField = {
+              ...updatedFields[parentIndex],
+              children: [...(updatedFields[parentIndex].children || []), newField.id]
+            }
+            // Replace the parent field in the array
+            updatedFields[parentIndex] = parentField
           }
 
+          // Add the new field to the array
           return [...updatedFields, newField]
         })
       } else {
+        // If not adding to a section, just add the new field
         setFields((prevFields) => [...prevFields, newField])
       }
 
       setSelectedFieldId(newField.id)
-      setActiveTab("properties")
+      setActiveTab("properties") // Switch to properties tab when adding a new field
     },
-    [nextFieldId],
+    [nextFieldId, toast],
   )
 
-  // Update field properties
+  // Update a field
   const updateField = useCallback((id: string, updates: Partial<FormFieldType>) => {
     setFields((prevFields) => prevFields.map((field) => (field.id === id ? { ...field, ...updates } : field)))
   }, [])
 
-  // Duplicate an existing field
+  // Duplicate a field
   const duplicateField = useCallback(
     (id: string) => {
       const fieldToDuplicate = fields.find((field) => field.id === id)
@@ -244,7 +282,7 @@ export default function SimplifiedFormBuilder({
 
       setNextFieldId((prevId) => prevId + 1)
 
-      // Initialize duplicated section as expanded
+      // If duplicating a section, initialize it as expanded
       if (fieldToDuplicate.type === "section") {
         setExpandedSections((prev) => ({
           ...prev,
@@ -252,7 +290,7 @@ export default function SimplifiedFormBuilder({
         }))
       }
 
-      // Add duplicated field to parent section if it exists
+      // If the field has a parent, update the parent's children array
       if (newField.parentId) {
         setFields((prevFields) => {
           const updatedFields = [...prevFields]
@@ -273,20 +311,21 @@ export default function SimplifiedFormBuilder({
     [fields, nextFieldId],
   )
 
-  // Delete a field and its children if it's a section
+  // Delete a field
   const deleteField = useCallback(
     (id: string) => {
+      // Get the field to delete
       const fieldToDelete = fields.find((field) => field.id === id)
       if (!fieldToDelete) return
 
-      // Collect all IDs to delete (including children)
+      // If it's a section, also delete all its children
       const idsToDelete = new Set<string>([id])
 
       if (fieldToDelete.type === "section" && fieldToDelete.children) {
         fieldToDelete.children.forEach((childId) => {
           idsToDelete.add(childId)
 
-          // Delete nested children if they exist
+          // Also delete any nested children (if the child is a section)
           const childField = fields.find((f) => f.id === childId)
           if (childField?.type === "section" && childField.children) {
             childField.children.forEach((nestedChildId) => idsToDelete.add(nestedChildId))
@@ -294,7 +333,7 @@ export default function SimplifiedFormBuilder({
         })
       }
 
-      // Update parent's children array if field has a parent
+      // If the field has a parent, update the parent's children array
       if (fieldToDelete.parentId) {
         setFields((prevFields) => {
           const updatedFields = [...prevFields]
@@ -319,7 +358,7 @@ export default function SimplifiedFormBuilder({
     [fields, selectedFieldId],
   )
 
-  // Handle drag and drop reordering of fields
+  // Handle drag and drop reordering
   const handleDragEnd = useCallback(
     (result: DropResult) => {
       if (!result.destination) return
@@ -329,27 +368,28 @@ export default function SimplifiedFormBuilder({
       const sourceDroppableId = result.source.droppableId
       const destinationDroppableId = result.destination.droppableId
 
-      // Handle reordering within the same list
+      // If moving within the same list
       if (sourceDroppableId === destinationDroppableId) {
         if (sourceDroppableId === "form-fields") {
-          // Reorder main form fields
+          // Moving within the main form fields
           const reorderedFields = Array.from(fields.filter((f) => !f.parentId))
           const [movedItem] = reorderedFields.splice(sourceIndex, 1)
           reorderedFields.splice(destinationIndex, 0, movedItem)
 
+          // Update the fields array while preserving fields with parents
           setFields((prevFields) => {
             const fieldsWithParents = prevFields.filter((f) => f.parentId)
             return [...reorderedFields, ...fieldsWithParents]
           })
         } else {
-          // Reorder fields within a section
+          // Moving within a section
           const sectionId = sourceDroppableId.replace("section-", "")
           const sectionFields = fields.filter((f) => f.parentId === sectionId)
           const reorderedSectionFields = Array.from(sectionFields)
           const [movedItem] = reorderedSectionFields.splice(sourceIndex, 1)
           reorderedSectionFields.splice(destinationIndex, 0, movedItem)
 
-          // Update section's children order
+          // Update the section's children array
           const sectionField = fields.find((f) => f.id === sectionId)
           if (sectionField && sectionField.children) {
             const newChildrenOrder = reorderedSectionFields.map((f) => f.id)
@@ -365,12 +405,12 @@ export default function SimplifiedFormBuilder({
           }
         }
       } else {
-        // Handle moving between different lists
+        // Moving between different lists
         const sourceParentId = sourceDroppableId === "form-fields" ? null : sourceDroppableId.replace("section-", "")
         const destParentId =
           destinationDroppableId === "form-fields" ? null : destinationDroppableId.replace("section-", "")
 
-        // Get fields for source and destination
+        // Get the relevant fields for source and destination
         const sourceFields = sourceParentId
           ? fields.filter((f) => f.parentId === sourceParentId)
           : fields.filter((f) => !f.parentId)
@@ -379,9 +419,10 @@ export default function SimplifiedFormBuilder({
           ? fields.filter((f) => f.parentId === destParentId)
           : fields.filter((f) => !f.parentId)
 
+        // Get the field being moved
         const fieldToMove = sourceFields[sourceIndex]
 
-        // Update field's parent
+        // Update the field's parent
         setFields((prevFields) => {
           return prevFields.map((field) => {
             if (field.id === fieldToMove.id) {
@@ -391,7 +432,7 @@ export default function SimplifiedFormBuilder({
           })
         })
 
-        // Update children arrays of both source and destination parents
+        // Update the children arrays of both source and destination parents
         if (sourceParentId) {
           const sourceParent = fields.find((f) => f.id === sourceParentId)
           if (sourceParent && sourceParent.children) {
@@ -430,11 +471,18 @@ export default function SimplifiedFormBuilder({
     [fields],
   )
 
-  // Get the currently selected field
+  // Handle custom category input
+  const handleCustomCategoryChange = (value: string) => {
+    setCustomCategory(value)
+    form.setValue("category", value)
+  }
+
+  // Get the selected field
   const selectedField = selectedFieldId ? fields.find((field) => field.id === selectedFieldId) : null
 
-  // Prevent form submission on Enter key in options input
+  // Handle form submission prevention
   const handleFormKeyDown = (e: React.KeyboardEvent<HTMLFormElement>) => {
+    // Only prevent default if the target is a textarea with class containing "options-input"
     if (
       e.key === "Enter" &&
       e.target instanceof HTMLTextAreaElement &&
@@ -448,6 +496,112 @@ export default function SimplifiedFormBuilder({
   const renderField = (field: FormFieldType, index: number, parentId: string | null = null) => {
     const isSection = field.type === "section"
     const isExpanded = expandedSections[field.id] || false
+    // Check if the field is nested within a section
+    const isNestedField = parentId !== null
+
+    // Common field content that's shared between draggable and non-draggable fields
+    const fieldContent = (
+      <div
+        className={cn(
+          "mb-4 border rounded-md shadow-sm",
+          selectedFieldId === field.id ? "ring-2 ring-primary" : "border-gray-200",
+        )}
+      >
+        <div className="flex items-center bg-white border-b rounded-t-md p-2">
+          {/* Only show drag handle for top-level fields */}
+          {!isNestedField && (
+            <div className="cursor-move mr-2">
+              <GripVertical className="h-5 w-5 text-gray-400" />
+            </div>
+          )}
+
+          {/* Section expansion controls */}
+          {isSection && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="p-0 mr-1"
+              onClick={() => toggleSectionExpansion(field.id)}
+            >
+              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </Button>
+          )}
+
+          {/* Field label and controls */}
+          <span
+            className="text-sm font-medium flex-1 cursor-pointer"
+            onClick={() => {
+              setSelectedFieldId(field.id)
+              setActiveTab("properties")
+            }}
+          >
+            {field.type}: {field.label}
+          </span>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              duplicateField(field.id)
+            }}
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation()
+              deleteField(field.id)
+            }}
+          >
+            <Trash2 className="h-4 w-4 text-destructive" />
+          </Button>
+        </div>
+
+        <FieldPreview field={field} isSelected={selectedFieldId === field.id} />
+
+        {/* Render section children if expanded - Note: Children are static and cannot be reordered */}
+        {isSection && isExpanded && field.children && field.children.length > 0 && (
+          <div className="ml-6 pl-2 border-l-2 border-gray-200 mt-2">
+            <div className="space-y-2">
+              {field.children?.map((childId, childIndex) => {
+                const childField = fields.find((f) => f.id === childId)
+                if (!childField) return null
+                return renderField(childField, childIndex, field.id)
+              })}
+            </div>
+
+            {/* Add field to section button */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2 w-full text-sm"
+              onClick={() => {
+                // Set the containing section as the selected field
+                setSelectedFieldId(field.id)
+                setActiveTab("fields")
+              }}
+            >
+              <Plus className="h-3 w-3 mr-1" /> Add Field to Section
+            </Button>
+          </div>
+        )}
+      </div>
+    )
+
+    // Conditional rendering based on field nesting:
+    // - Nested fields (within sections) are rendered without drag and drop functionality
+    // - Top-level fields are wrapped with Draggable for reordering
+    if (isNestedField) {
+      return fieldContent
+    }
 
     return (
       <Draggable key={field.id} draggableId={field.id} index={index}>
@@ -455,95 +609,9 @@ export default function SimplifiedFormBuilder({
           <div
             ref={provided.innerRef}
             {...provided.draggableProps}
-            className={cn(
-              "mb-4 border rounded-md shadow-sm",
-              selectedFieldId === field.id ? "ring-2 ring-primary" : "border-gray-200",
-            )}
+            {...provided.dragHandleProps}
           >
-            {/* Field header with controls */}
-            <div className="flex items-center bg-white border-b rounded-t-md p-2">
-              <div {...provided.dragHandleProps} className="cursor-move mr-2">
-                <GripVertical className="h-5 w-5 text-gray-400" />
-              </div>
-
-              {isSection && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="p-0 mr-1"
-                  onClick={() => toggleSectionExpansion(field.id)}
-                >
-                  {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                </Button>
-              )}
-
-              <span
-                className="text-sm font-medium flex-1 cursor-pointer"
-                onClick={() => {
-                  setSelectedFieldId(field.id)
-                  setActiveTab("properties")
-                }}
-              >
-                {field.type}: {field.label}
-              </span>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  duplicateField(field.id)
-                }}
-              >
-                <Copy className="h-4 w-4" />
-              </Button>
-
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  deleteField(field.id)
-                }}
-              >
-                <Trash2 className="h-4 w-4 text-destructive" />
-              </Button>
-            </div>
-
-            {/* Field preview */}
-            <FieldPreview field={field} isSelected={selectedFieldId === field.id} />
-
-            {/* Render section children if expanded */}
-            {isSection && isExpanded && field.children && field.children.length > 0 && (
-              <div className="ml-6 pl-2 border-l-2 border-gray-200 mt-2">
-                <Droppable droppableId={`section-${field.id}`}>
-                  {(provided) => (
-                    <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                      {field.children?.map((childId, childIndex) => {
-                        const childField = fields.find((f) => f.id === childId)
-                        if (!childField) return null
-                        return renderField(childField, childIndex, field.id)
-                      })}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-
-                {/* Add field to section button */}
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="mt-2 w-full text-sm"
-                  onClick={() => setActiveTab("fields")}
-                >
-                  <Plus className="h-3 w-3 mr-1" /> Add Field to Section
-                </Button>
-              </div>
-            )}
+            {fieldContent}
           </div>
         )}
       </Draggable>
@@ -563,13 +631,13 @@ export default function SimplifiedFormBuilder({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6" onKeyDown={handleFormKeyDown}>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
+              {/* Left Card - Form Details (60%) */}
+              <div className="lg:col-span-6">
                 <Card>
                   <CardContent className="p-6 space-y-6">
                     <h3 className="text-xl font-bold">Form Details</h3>
 
-                    {/* Form title field */}
                     <FormField
                       control={form.control}
                       name="title"
@@ -586,7 +654,6 @@ export default function SimplifiedFormBuilder({
                       )}
                     />
 
-                    {/* Form category field */}
                     <FormField
                       control={form.control}
                       name="category"
@@ -617,7 +684,6 @@ export default function SimplifiedFormBuilder({
                       )}
                     />
 
-                    {/* Form description field */}
                     <FormField
                       control={form.control}
                       name="description"
@@ -632,14 +698,13 @@ export default function SimplifiedFormBuilder({
                       )}
                     />
 
-                    {/* Form fields section */}
                     <div className="space-y-4">
                       <h4 className="font-medium">Form Fields</h4>
 
                       <div className="min-h-[300px] border-2 border-dashed border-gray-200 rounded-md p-4 bg-gray-50">
                         {fields.length === 0 ? (
                           <div className="flex items-center justify-center h-full text-muted-foreground">
-                            Add form fields from the panel on the right
+                            Add a section to contain your form fields
                           </div>
                         ) : (
                           <DragDropContext onDragEnd={handleDragEnd}>
@@ -659,8 +724,8 @@ export default function SimplifiedFormBuilder({
                 </Card>
               </div>
 
-              {/* Form controls panel */}
-              <div className="space-y-6">
+              {/* Right Card - Form Controls (40%) */}
+              <div className="lg:col-span-4">
                 <Card>
                   <CardContent className="p-6">
                     <h3 className="text-xl font-bold mb-4">Form Controls</h3>
@@ -676,36 +741,43 @@ export default function SimplifiedFormBuilder({
                         <TabsTrigger value="properties">Properties</TabsTrigger>
                       </TabsList>
 
-                      {/* Add fields tab */}
                       <TabsContent value="fields" className="space-y-2 border p-3 rounded-md">
                         <div className="bg-muted p-2 rounded-md mb-2">
                           <p className="text-sm font-medium">
                             {selectedField && selectedField.type === "section"
                               ? `Add field to section: ${selectedField.label}`
-                              : "Add field to form"}
+                              : "Add a section to contain your form fields"}
                           </p>
                         </div>
-                        {fieldTypes.map((type) => (
-                          <Button
-                            key={type.id}
-                            type="button"
-                            variant="outline"
-                            className="w-full justify-start text-left h-10 mb-2"
-                            onClick={() => {
-                              if (selectedField && selectedField.type === "section") {
-                                addField(type.id, selectedField.id)
-                              } else {
-                                addField(type.id)
-                              }
-                            }}
-                          >
-                            {type.icon}
-                            <span className="ml-2">{type.label}</span>
-                          </Button>
-                        ))}
+                        {fieldTypes
+                          .filter(type => {
+                            // If we're adding to a section, show all field types except sections
+                            if (selectedField?.type === "section") {
+                              return type.id !== "section"
+                            }
+                            // If we're at the top level, only show section type
+                            return type.id === "section"
+                          })
+                          .map((type) => (
+                            <Button
+                              key={type.id}
+                              type="button"
+                              variant="outline"
+                              className="w-full justify-start text-left h-10 mb-2"
+                              onClick={() => {
+                                if (selectedField && selectedField.type === "section") {
+                                  addField(type.id, selectedField.id)
+                                } else {
+                                  addField(type.id)
+                                }
+                              }}
+                            >
+                              {type.icon}
+                              <span className="ml-2">{type.label}</span>
+                            </Button>
+                          ))}
                       </TabsContent>
 
-                      {/* Properties tab */}
                       <TabsContent value="properties" className="min-h-[400px] border p-3 rounded-md">
                         {selectedField ? (
                           <FieldEditor field={selectedField} onUpdate={updateField} />
@@ -722,12 +794,14 @@ export default function SimplifiedFormBuilder({
                   </CardContent>
                 </Card>
               </div>
+            </div>
 
-              {/* Form action buttons */}
-              <div className="w-full flex justify-start gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={onClose} className="h-12 px-6">
-                  Cancel
-                </Button>
+            {/* Form Actions */}
+            <div className="flex justify-between pt-4">
+              <Button type="button" variant="outline" onClick={onClose} className="h-12 px-6">
+                Cancel
+              </Button>
+              <div className="flex space-x-2">
                 <Button type="submit" className="h-12 px-6">
                   Save Form
                 </Button>
@@ -739,4 +813,5 @@ export default function SimplifiedFormBuilder({
     </div>
   )
 }
+
 
