@@ -133,7 +133,7 @@ export default function EnhancedEventDetailPage() {
         attendee: {
           firstName: formValues.firstName || user.firstName,
           lastName: formValues.lastName || user.lastName,
-          phone: formValues.phone || user.mobile,
+          phone: formValues.phone || user.phoneNumber,
           email: formValues.email || user.email
         },
         sessions: selectedSessions,

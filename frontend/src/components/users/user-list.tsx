@@ -338,7 +338,7 @@ export function UserList({
               getSortedPaginatedUsers().map((user) => (
                 <TableRow key={user._id}>
                   <TableCell className="font-medium">{user.username}</TableCell>
-                  <TableCell>{user.mobile || "-"}</TableCell>
+                  <TableCell>{user.phoneNumber || "-"}</TableCell>
                   <TableCell>{user.email}</TableCell>
                   <TableCell>
                     <Badge className={getRoleBadgeColor(user.role)} variant="outline">
