@@ -72,7 +72,7 @@ export class UserService {
         "INVALID_USERNAME"
       )
     }
-    if (data.mobile && data.mobile.length < 8) {
+    if (data.phoneNumber && data.phoneNumber.length < 8) {
       throw new UserServiceError(
         "Mobile number must be at least 8 digits",
         "INVALID_MOBILE"
@@ -102,7 +102,7 @@ export class UserService {
       const newUser: User = {
         _id: Math.random().toString(36).substr(2, 9),
         ...data,
-        passwordHash: "hashed_" + data.password, // In real app, use proper hashing
+        password: "hashed_" + data.password, // In real app, use proper hashing
         createdAt: new Date(),
         updatedAt: new Date(),
       }
@@ -152,7 +152,7 @@ export class UserService {
       }
 
       if (data.password) {
-        updatedUser.passwordHash = "hashed_" + data.password // In real app, use proper hashing
+        updatedUser.password = "hashed_" + data.password // In real app, use proper hashing
       }
 
       this.users[userIndex] = updatedUser
@@ -232,7 +232,7 @@ export class UserService {
         filteredUsers = filteredUsers.filter(user => user.isActive === criteria.isActive)
       }
       if (criteria.phone) {
-        filteredUsers = filteredUsers.filter(user => user.mobile.includes(criteria.phone!))
+        filteredUsers = filteredUsers.filter(user => user.phoneNumber.includes(criteria.phone!))
       }
       if (criteria.searchQuery) {
         const query = criteria.searchQuery.toLowerCase()
@@ -241,7 +241,7 @@ export class UserService {
           user.firstName.toLowerCase().includes(query) ||
           user.lastName.toLowerCase().includes(query) ||
           user.email?.toLowerCase().includes(query) ||
-          user.mobile.includes(query)
+          user.phoneNumber.includes(query)
         )
       }
 
@@ -328,7 +328,7 @@ export async function filterUsers(filters: {
     if (filters.status !== undefined && user.isActive !== filters.status) {
       return false
     }
-    if (filters.phone && !user.mobile.includes(filters.phone)) {
+    if (filters.phone && !user.phoneNumber.includes(filters.phone)) {
       return false
     }
     return true

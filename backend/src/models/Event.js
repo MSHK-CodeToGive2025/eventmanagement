@@ -1,6 +1,9 @@
 import mongoose from 'mongoose';
 
 const eventSchema = new mongoose.Schema({
+  // We don't need to explicitly define _id in the eventSchema. 
+  // In Mongoose, the _id field is automatically added to all schemas by default. 
+  // When you create a new document using this schema, Mongoose will automatically generate a unique _id field using MongoDB's ObjectId.
   title: {
     type: String,
     required: true,
@@ -10,74 +13,171 @@ const eventSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  image: {
-    data: {
-      type: Buffer,
-      required: false
-    },
-    contentType: {
-      type: String,
-      required: false
-    }
-  },
   category: {
     type: String,
     required: true,
-    enum: ['educational', 'career', 'support']
+    enum: [
+      "Education & Training",
+      "Cultural Exchange",
+      "Health & Wellness",
+      "Career Development",
+      "Community Building",
+      "Language Learning",
+      "Social Integration",
+      "Youth Programs",
+      "Women's Empowerment",
+      "Other"
+    ]
   },
-  date: {
+  targetGroup: {
+    type: String,
+    required: true,
+    enum: [
+      "All Hong Kong Residents",
+      "Ethnic Minorities",
+      "South Asian Community",
+      "Women",
+      "Youth (13-25)",
+      "Children (0-12)",
+      "Seniors (65+)",
+      "Professionals",
+      "Newcomers to Hong Kong",
+      "Other"
+    ]
+  },
+  location: {
+    venue: {
+      type: String,
+      required: true
+    },
+    address: {
+      type: String,
+      required: true
+    },
+    district: {
+      type: String,
+      required: true,
+      enum: [
+        "Central and Western",
+        "Eastern",
+        "Islands",
+        "Kowloon City",
+        "Kwai Tsing",
+        "Kwun Tong",
+        "North",
+        "Sai Kung",
+        "Sha Tin",
+        "Sham Shui Po",
+        "Southern",
+        "Tai Po",
+        "Tsuen Wan",
+        "Tuen Mun",
+        "Wan Chai",
+        "Wong Tai Sin",
+        "Yau Tsim Mong",
+        "Yuen Long"
+      ]
+    },
+    onlineEvent: {
+      type: Boolean,
+      required: true
+    },
+    meetingLink: {
+      type: String,
+      required: function() {
+        return this.location.onlineEvent;
+      }
+    }
+  },
+  startDate: {
     type: Date,
     required: true
   },
-  startTime: {
-    type: String,
+  endDate: {
+    type: Date,
     required: true
   },
-  endTime: {
+  coverImageUrl: {
     type: String,
+    required: false
+  },
+  isPrivate: {
+    type: Boolean,
+    required: true,
+    default: false
+  },
+  status: {
+    type: String,
+    enum: ['Draft', 'Published', 'Cancelled', 'Completed'],
+    default: 'Draft'
+  },
+  registrationFormId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RegistrationForm',
     required: true
   },
-  location: {
-    type: String,
-    required: true
-  },
+  sessions: [{
+    title: {
+      type: String,
+      required: true
+    },
+    description: String,
+    date: {
+      type: Date,
+      required: true
+    },
+    startTime: {
+      type: String,
+      required: true
+    },
+    endTime: {
+      type: String,
+      required: true
+    },
+    location: {
+      venue: String,
+      meetingLink: String
+    },
+    capacity: Number
+  }],
   capacity: {
     type: Number,
-    required: true,
+    required: false,
     min: 1
   },
-  registeredParticipants: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  waitlist: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-  organizer: {
+  createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  status: {
-    type: String,
-    enum: ['upcoming', 'ongoing', 'completed', 'cancelled'],
-    default: 'upcoming'
-  },
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  updatedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  updatedAt: {
+    type: Date
+  },
+  tags: [{
+    type: String
+  }],
+  registeredCount: {
+    type: Number,
+    default: 0
   }
 });
 
 // Virtual field for available spots
 eventSchema.virtual('availableSpots').get(function() {
-  return this.capacity - this.registeredParticipants.length;
+  return this.capacity ? this.capacity - this.registeredCount : null;
 });
 
 // Virtual field for whether the event is full
 eventSchema.virtual('isFull').get(function() {
-  return this.registeredParticipants.length >= this.capacity;
+  return this.capacity ? this.registeredCount >= this.capacity : false;
 });
 
 // Ensure virtuals are included in JSON output

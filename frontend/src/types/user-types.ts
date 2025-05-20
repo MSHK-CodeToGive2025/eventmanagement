@@ -31,8 +31,8 @@ export type UserStatus = "active" | "inactive" | "pending" | "suspended"
 export interface User {
   _id: string;
   username: string;
-  passwordHash: string;
-  mobile: string;
+  password: string;
+  phoneNumber: string;
   email?: string;
   role: UserRole;
   firstName: string;

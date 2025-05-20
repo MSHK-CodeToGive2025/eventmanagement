@@ -2,35 +2,56 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema({
-  email: {
+  username: {
     type: String,
     required: true,
     unique: true,
-    trim: true,
-    lowercase: true
+    trim: true
   },
   password: {
     type: String,
     required: true,
     minlength: 6
   },
-  name: {
+  phoneNumber: {
     type: String,
     required: true,
     trim: true
+  },
+  email: {
+    type: String,
+    trim: true,
+    lowercase: true
   },
   role: {
     type: String,
     enum: ['admin', 'staff', 'participant'],
     default: 'participant'
   },
-  phoneNumber: {
+  firstName: {
     type: String,
+    required: true,
+    trim: true
+  },
+  lastName: {
+    type: String,
+    required: true,
     trim: true
   },
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  },
+  lastLogin: {
+    type: Date
+  },
+  isActive: {
+    type: Boolean,
+    default: true
   }
 });
 
@@ -45,6 +66,12 @@ userSchema.pre('save', async function(next) {
   } catch (error) {
     next(error);
   }
+});
+
+// Update the updatedAt timestamp before saving
+userSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
 });
 
 // Method to compare password
