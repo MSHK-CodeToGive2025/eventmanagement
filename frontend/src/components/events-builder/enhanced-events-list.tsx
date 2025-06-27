@@ -714,12 +714,14 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                           <Users className="h-4 w-4 mr-2" />
                           Manage Registrations
                         </DropdownMenuItem>
+                        {/* 
                         <DropdownMenuItem
                           onClick={() => (window.location.href = `/manage/events/${event._id}/reminders`)}
                         >
                           <MessageSquare className="h-4 w-4 mr-2" />
                           Send WhatsApp Reminders
                         </DropdownMenuItem>
+                        */}
                         <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteClick(event._id)}>
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete

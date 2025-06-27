@@ -196,7 +196,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4 mb-8">
             <TabsTrigger value="basic">Basic Information</TabsTrigger>
-            <TabsTrigger value="location">Location & Schedule</TabsTrigger>
+            <TabsTrigger value="location">Location</TabsTrigger>
             <TabsTrigger value="sessions">Sessions</TabsTrigger>
             <TabsTrigger value="details">Details & Settings</TabsTrigger>
           </TabsList>
@@ -540,8 +540,13 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                         />
                       </FormControl>
                       <FormLabel>Private Event</FormLabel>
+                      {/* 
                       <FormDescription>
                         Private events are only visible to invited participants.
+                      </FormDescription>
+                      */}
+                      <FormDescription>
+                        Private events are NOT visible to public.
                       </FormDescription>
                     </FormItem>
                   )}
