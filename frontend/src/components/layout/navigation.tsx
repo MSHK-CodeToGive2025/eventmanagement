@@ -26,7 +26,10 @@ export function Navigation() {
   const [isManagementOpen, setIsManagementOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const location = useLocation()
-  const { isAuthenticated, logout } = useAuth()
+  const { isAuthenticated, user, logout } = useAuth()
+
+  // Check if user has management access
+  const hasManagementAccess = user?.role === 'admin' || user?.role === 'staff'
 
   // Track scroll position to add shadow when scrolled
   useEffect(() => {
@@ -115,7 +118,7 @@ export function Navigation() {
               />
             </Link>
 
-            {isAuthenticated && (
+            {isAuthenticated && hasManagementAccess && (
               <div className="relative">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -272,7 +275,7 @@ export function Navigation() {
               <ArrowRight className="h-4 w-4" />
             </Link>
 
-            {isAuthenticated && (
+            {isAuthenticated && hasManagementAccess && (
               <>
                 <button
                   onClick={toggleManagement}
