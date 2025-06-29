@@ -5,6 +5,8 @@ import cors from 'cors';
 import authRoutes from './routes/auth.js';
 import eventRoutes from './routes/events.js';
 import usersRoutes from './routes/users.js';
+import eventRegistrationRoutes from './routes/eventRegistrations.js';
+import registrationFormRoutes from './routes/registrationForms.js';
 
 dotenv.config();
 
@@ -18,6 +20,8 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/event-registrations', eventRegistrationRoutes);
+app.use('/api/registration-forms', registrationFormRoutes);
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)

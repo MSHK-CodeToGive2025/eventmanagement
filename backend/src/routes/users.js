@@ -30,19 +30,21 @@ router.post('/', auth, async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized: Only admin can create users' });
     }
 
-    const { email, password, name, phoneNumber, role } = req.body;
+    const { username, password, firstName, lastName, mobile, email, role } = req.body;
     
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
     const newUser = new User({
-      email,
+      username,
       password,
-      name,
-      phoneNumber,
+      firstName,
+      lastName,
+      mobile,
+      email,
       role
     });
 
@@ -66,10 +68,10 @@ router.put('/:id', auth, async (req, res) => {
       return res.status(403).json({ message: 'Unauthorized: Only admin can update users' });
     }
 
-    const { name, email, phoneNumber, role } = req.body;
+    const { firstName, lastName, email, mobile, role, isActive } = req.body;
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
-      { name, email, phoneNumber, role },
+      { firstName, lastName, email, mobile, role, isActive },
       { new: true }
     ).select('-password');
 

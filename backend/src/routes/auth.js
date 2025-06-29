@@ -9,13 +9,13 @@ const expiresIn = '24h';
 // Register new user
 router.post('/register', async (req, res) => { 
   try {
-    const { email, password, name, phoneNumber, role } = req.body;
-    console.log('[AUTH] Registration attempt:', { email: email, name: name, role: role });
+    const { username, password, firstName, lastName, mobile, email, role } = req.body;
+    console.log('[AUTH] Registration attempt:', { username: username, firstName: firstName, role: role });
 
     // Check if user already exists
-    let user = await User.findOne({ email });
+    let user = await User.findOne({ username });
     if (user) {
-      console.log('[AUTH] Registration failed: User exists:', { email });
+      console.log('[AUTH] Registration failed: User exists:', { username });
       return res.status(400).json({ message: 'User already exists' });
     }
 
@@ -37,17 +37,19 @@ router.post('/register', async (req, res) => {
 
     // Create new user
     user = new User({
-      email,
+      username,
       password,
-      name,
-      phoneNumber,
+      firstName,
+      lastName,
+      mobile,
+      email,
       role: role || 'participant'
     });
 
     await user.save();
     console.log('[AUTH] User registered successfully:', { 
       userId: user._id, 
-      email: user.email, 
+      username: user.username, 
       role: user.role 
     });
 
@@ -62,9 +64,10 @@ router.post('/register', async (req, res) => {
       token,
       user: {
         id: user._id,
-        email: user.email,
-        role: user.role,
-        name: user.name
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
       }
     });
   } catch (error) {
@@ -80,20 +83,20 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
 
   try {
-    const { email, password } = req.body;
-    console.log('[AUTH] Login attempt:', { email: email });
+    const { username, password } = req.body;
+    console.log('[AUTH] Login attempt:', { username: username });
 
     // Check if user exists
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ username });
     if (!user) {
-      console.log('[AUTH] Login failed: User not found:', { email });
+      console.log('[AUTH] Login failed: User not found:', { username });
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      console.log('[AUTH] Login failed: Invalid password:', { email });
+      console.log('[AUTH] Login failed: Invalid password:', { username });
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
@@ -105,7 +108,7 @@ router.post('/login', async (req, res) => {
     );
     console.log('[AUTH] Login successful:', { 
       userId: user._id, 
-      email: user.email, 
+      username: user.username, 
       role: user.role 
     });
 
@@ -113,9 +116,10 @@ router.post('/login', async (req, res) => {
       token,
       user: {
         id: user._id,
-        email: user.email,
-        role: user.role,
-        name: user.name
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        role: user.role
       }
     });
   } catch (error) {
@@ -139,7 +143,7 @@ router.get('/me', auth, async (req, res) => {
     }
     console.log('[AUTH] User profile retrieved successfully:', { 
       userId: user._id, 
-      email: user.email, 
+      username: user.username, 
       role: user.role 
     });
     res.json(user);

@@ -29,8 +29,7 @@ const eventRegistrationSchema = new mongoose.Schema({
     }
   },
   sessions: [{
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Event.sessions'
+    type: String // Session IDs as strings (matching frontend interface)
   }],
   formResponses: [{
     sectionId: {
