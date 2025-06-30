@@ -1,0 +1,71 @@
+name: Build and Deploy to Amazon ECS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+      - 'backend/**'
+
+jobs:
+  deploy-backend:
+    name: Build & Deploy Backend
+    runs-on: ubuntu-latest
+    if: ${{ contains(github.event.head_commit.message, 'backend/') || contains(github.event.head_commit.message, 'backend') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-east-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push backend image to ECR
+        run: |
+          docker build -t backend ./backend
+          docker tag backend:latest 889351697031.dkr.ecr.ap-east-1.amazonaws.com/mshk-codetogive2025/eventmanagement-backend:latest
+          docker push 889351697031.dkr.ecr.ap-east-1.amazonaws.com/mshk-codetogive2025/eventmanagement-backend:latest
+
+      - name: Update ECS service with new backend image
+        run: |
+          aws ecs update-service \
+            --cluster arn:aws:ecs:ap-east-1:889351697031:cluster/eventmanagement-cluster \
+            --service arn:aws:ecs:ap-east-1:889351697031:service/eventmanagement-cluster/eventmanagement-task-backend-service \
+            --force-new-deployment
+
+  deploy-frontend:
+    name: Build & Deploy Frontend
+    runs-on: ubuntu-latest
+    if: ${{ contains(github.event.head_commit.message, 'frontend/') || contains(github.event.head_commit.message, 'frontend') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-east-1
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push frontend image to ECR
+        run: |
+          docker build -t frontend ./frontend
+          docker tag frontend:latest 889351697031.dkr.ecr.ap-east-1.amazonaws.com/mshk-codetogive2025/eventmanagement-frontend:latest
+          docker push 889351697031.dkr.ecr.ap-east-1.amazonaws.com/mshk-codetogive2025/eventmanagement-frontend:latest
+
+      - name: Update ECS service with new frontend image
+        run: |
+          aws ecs update-service \
+            --cluster arn:aws:ecs:ap-east-1:889351697031:cluster/eventmanagement-cluster \
+            --service arn:aws:ecs:ap-east-1:889351697031:service/eventmanagement-cluster/eventmanagement-task-frontend-service \
+            --force-new-deployment 
