@@ -157,4 +157,18 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-For support, please contact the Zubin Foundation team or create an issue in the repository. 
+For support, please contact the Zubin Foundation team or create an issue in the repository.
+
+## GitHub Actions Deployment Workflow
+
+This project uses GitHub Actions to automate deployment to Amazon ECS. The workflow is defined in `.github/workflows/deploy.yml` and is triggered on every push to the `main` branch that modifies files in the `backend/` or `frontend/` directories.
+
+### How it works:
+- **Backend and Frontend Jobs:**
+  - When you push changes to `backend/` or `frontend/`, the corresponding job builds a Docker image, pushes it to Amazon ECR, and updates the ECS service to deploy the new image.
+- **AWS Credentials:**
+  - The workflow uses secrets (`AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`) configured in the repository settings for authentication.
+- **No Commit Message Restriction:**
+  - The jobs always run when files in the relevant directories change, regardless of the commit message.
+
+You can monitor workflow runs and their status in the **Actions** tab of the GitHub repository. 
