@@ -279,7 +279,7 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
     const result = await twilioClient.messages.create({
       body: message,
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-      to: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER_TO}`
+      to: `whatsapp:${to}`
     });
     
     console.log('WhatsApp message sent successfully:', result.sid);
