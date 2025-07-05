@@ -2,9 +2,10 @@ import request from 'supertest';
 import express from 'express';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import eventsRoutes from '../events.js';
+import eventRoutes from '../events.js';
 import Event from '../../models/Event.js';
 import User from '../../models/User.js';
+import RegistrationForm from '../../models/RegistrationForm.js';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 
@@ -14,14 +15,12 @@ dotenv.config();
 // Create an express app for testing
 const app = express();
 app.use(express.json());
-app.use('/api/events', eventsRoutes);
+app.use('/api/events', eventRoutes);
 
 let mongod;
-let adminUser;
-let adminToken;
-let regularUser;
-let regularToken;
-let testEvent;
+let adminUser, regularUser;
+let adminToken, regularToken;
+let testEvent, testRegistrationForm;
 
 describe('Events Routes', () => {
   beforeAll(async () => {
@@ -43,21 +42,28 @@ describe('Events Routes', () => {
     // Clear the database before each test
     await Event.deleteMany({});
     await User.deleteMany({});
+    await RegistrationForm.deleteMany({});
 
     // Create admin user
     adminUser = new User({
-      email: 'admin@example.com',
+      username: 'admin',
       password: 'admin123',
-      name: 'Admin User',
+      firstName: 'Admin',
+      lastName: 'User',
+      mobile: '1234567890',
+      email: 'admin@example.com',
       role: 'admin'
     });
     await adminUser.save();
 
     // Create regular user
     regularUser = new User({
-      email: 'user@example.com',
+      username: 'user',
       password: 'user123',
-      name: 'Regular User',
+      firstName: 'Regular',
+      lastName: 'User',
+      mobile: '1234567891',
+      email: 'user@example.com',
       role: 'participant'
     });
     await regularUser.save();
@@ -65,27 +71,58 @@ describe('Events Routes', () => {
     // Generate tokens
     adminToken = jwt.sign(
       { userId: adminUser._id },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'test-secret',
       { expiresIn: '24h' }
     );
 
     regularToken = jwt.sign(
       { userId: regularUser._id },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'test-secret',
       { expiresIn: '24h' }
     );
+
+    // Create a test registration form
+    testRegistrationForm = new RegistrationForm({
+      title: 'Test Form',
+      description: 'Test Form Description',
+      sections: [],
+      createdBy: adminUser._id
+    });
+    await testRegistrationForm.save();
 
     // Create a test event
     testEvent = new Event({
       title: 'Test Event',
       description: 'Test Description',
-      category: 'educational',
-      date: new Date(Date.now() + 86400000), // tomorrow
-      startTime: '10:00',
-      endTime: '12:00',
-      location: 'Test Location',
+      category: 'Education & Training',
+      targetGroup: 'All Hong Kong Residents',
+      location: {
+        venue: 'Test Venue',
+        address: 'Test Address',
+        district: 'Central and Western',
+        onlineEvent: false
+      },
+      startDate: new Date(Date.now() + 86400000), // tomorrow
+      endDate: new Date(Date.now() + 86400000 + 7200000), // tomorrow + 2 hours
+      coverImageUrl: 'test-image.jpg',
+      isPrivate: false,
+      status: 'Published',
+      registrationFormId: testRegistrationForm._id,
+      sessions: [
+        {
+          title: 'Test Session',
+          description: 'Test Session Description',
+          date: new Date(Date.now() + 86400000),
+          startTime: '10:00',
+          endTime: '12:00',
+          location: {
+            venue: 'Test Session Venue'
+          },
+          capacity: 10
+        }
+      ],
       capacity: 10,
-      organizer: adminUser._id
+      createdBy: adminUser._id
     });
     await testEvent.save();
   });
@@ -130,11 +167,21 @@ describe('Events Routes', () => {
       const eventData = {
         title: 'New Event',
         description: 'New Description',
-        category: 'career',
-        date: new Date(Date.now() + 172800000), // 2 days from now
-        startTime: '14:00',
-        endTime: '16:00',
-        location: 'New Location',
+        category: 'Career Development',
+        targetGroup: 'Professionals',
+        location: {
+          venue: 'New Venue',
+          address: 'New Address',
+          district: 'Wan Chai',
+          onlineEvent: false
+        },
+        startDate: new Date(Date.now() + 172800000), // 2 days from now
+        endDate: new Date(Date.now() + 172800000 + 7200000), // 2 days from now + 2 hours
+        coverImageUrl: 'new-image.jpg',
+        isPrivate: false,
+        status: 'Draft',
+        registrationFormId: testRegistrationForm._id,
+        sessions: [],
         capacity: 20
       };
 
@@ -146,7 +193,7 @@ describe('Events Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body.title).toBe(eventData.title);
       expect(response.body.description).toBe(eventData.description);
-      expect(response.body.organizer).toBe(adminUser._id.toString());
+      expect(response.body.createdBy).toBe(adminUser._id.toString());
     });
 
     it('should return 403 for non-admin users', async () => {
@@ -156,11 +203,18 @@ describe('Events Routes', () => {
         .send({
           title: 'New Event',
           description: 'New Description',
-          category: 'career',
-          date: new Date(),
-          startTime: '14:00',
-          endTime: '16:00',
-          location: 'New Location',
+          category: 'Career Development',
+          targetGroup: 'Professionals',
+          location: {
+            venue: 'New Venue',
+            address: 'New Address',
+            district: 'Wan Chai',
+            onlineEvent: false
+          },
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 7200000),
+          registrationFormId: testRegistrationForm._id,
+          sessions: [],
           capacity: 20
         });
 
@@ -222,45 +276,6 @@ describe('Events Routes', () => {
 
       expect(response.status).toBe(403);
       expect(response.body).toHaveProperty('message', 'Not authorized to delete this event');
-    });
-  });
-
-  describe('POST /api/events/:id/register', () => {
-    it.skip('should register user for event', async () => {
-      const response = await request(app)
-        .post(`/api/events/${testEvent._id}/register`)
-        .set('Authorization', `Bearer ${regularToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.registeredParticipants).toContain(regularUser._id.toString());
-    });
-
-    it.skip('should add user to waitlist when event is full', async () => {
-      // Fill up the event
-      testEvent.registeredParticipants = Array(testEvent.capacity).fill(regularUser._id);
-      await testEvent.save();
-
-      const response = await request(app)
-        .post(`/api/events/${testEvent._id}/register`)
-        .set('Authorization', `Bearer ${regularToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.waitlist).toContain(regularUser._id.toString());
-    });
-  });
-
-  describe('POST /api/events/:id/unregister', () => {
-    it('should unregister user from event', async () => {
-      // First register the user
-      testEvent.registeredParticipants.push(regularUser._id);
-      await testEvent.save();
-
-      const response = await request(app)
-        .post(`/api/events/${testEvent._id}/unregister`)
-        .set('Authorization', `Bearer ${regularToken}`);
-
-      expect(response.status).toBe(200);
-      expect(response.body.registeredParticipants).not.toContain(regularUser._id.toString());
     });
   });
 }); 

@@ -6,58 +6,41 @@ import auth from '../middleware/auth.js';
 const router = express.Router();
 const expiresIn = '24h';
 
-// Register new user
+// Register new user (public registration - always creates participants, except first user is admin)
 router.post('/register', async (req, res) => { 
   try {
-    const { username, password, firstName, lastName, mobile, email, role } = req.body;
-    console.log('[AUTH] Registration attempt:', { username: username, firstName: firstName, role: role });
+    const { username, password, firstName, lastName, mobile, email } = req.body;
+    if (!username || !password || !firstName || !lastName || !mobile) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
 
     // Check if user already exists
-    let user = await User.findOne({ username });
-    if (user) {
-      console.log('[AUTH] Registration failed: User exists:', { username });
+    const existingUser = await User.findOne({ username });
+    if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    // If trying to create staff or admin role, check if the request is from an admin
-    if (role === 'staff' || role === 'admin') {
-      const authHeader = req.headers.authorization;
-      if (!authHeader) {
-        return res.status(403).json({ message: 'Unauthorized: Only admin can create staff or admin users' });
-      }
+    // First user is admin, all others are participant
+    const userCount = await User.countDocuments();
+    const userRole = userCount === 0 ? 'admin' : 'participant';
 
-      const token = authHeader.split(' ')[1];
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const adminUser = await User.findById(decoded.userId);
-
-      if (!adminUser || adminUser.role !== 'admin') {
-        return res.status(403).json({ message: 'Unauthorized: Only admin can create staff or admin users' });
-      }
-    }
-
-    // Create new user
-    user = new User({
+    const user = new User({
       username,
       password,
       firstName,
       lastName,
       mobile,
       email,
-      role: role || 'participant'
+      role: userRole
     });
 
     await user.save();
-    console.log('[AUTH] User registered successfully:', { 
-      userId: user._id, 
-      username: user.username, 
-      role: user.role 
-    });
 
     // Create JWT token
     const token = jwt.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
-      { expiresIn: expiresIn }
+      { expiresIn: '24h' }
     );
 
     res.status(201).json({
@@ -71,10 +54,6 @@ router.post('/register', async (req, res) => {
       }
     });
   } catch (error) {
-    console.error('[AUTH] Registration error:', { 
-      error: error.message, 
-      stack: error.stack 
-    });
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

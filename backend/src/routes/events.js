@@ -41,6 +41,24 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Get published, non-private events (for public display)
+router.get('/public', async (req, res) => {
+  try {
+    const events = await Event.find({
+      status: 'Published',
+      isPrivate: false
+    })
+      .populate('createdBy', 'firstName lastName email')
+      .sort({ startDate: 1 });
+    
+    console.log(`[EVENTS] Found ${events.length} published, non-private events`);
+    res.json(events);
+  } catch (error) {
+    console.error('[EVENTS] Error fetching public events:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get single event
 router.get('/:id', async (req, res) => {
   try {
@@ -260,7 +278,7 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
     const result = await twilioClient.messages.create({
       body: message,
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-      to: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER_TO}`
+      to: `whatsapp:${to}`
     });
     
     console.log('WhatsApp message sent successfully:', result.sid);

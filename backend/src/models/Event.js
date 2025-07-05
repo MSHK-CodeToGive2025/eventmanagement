@@ -119,7 +119,7 @@ const eventSchema = new mongoose.Schema({
   sessions: [{
     _id: {
       type: mongoose.Schema.Types.ObjectId,
-      default: mongoose.Types.ObjectId
+      default: () => new mongoose.Types.ObjectId()
     },
     title: {
       type: String,

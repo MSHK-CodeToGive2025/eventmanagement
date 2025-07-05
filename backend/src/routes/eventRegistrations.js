@@ -177,4 +177,22 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
+// Get user's own registrations
+router.get('/my-registrations', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(403).json({ message: 'User not found' });
+    }
+
+    const registrations = await EventRegistration.find({ userId: req.user.userId })
+      .populate('eventId', 'title startDate endDate location category targetGroup coverImageUrl')
+      .sort({ registeredAt: -1 });
+
+    res.json(registrations);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 export default router; 
