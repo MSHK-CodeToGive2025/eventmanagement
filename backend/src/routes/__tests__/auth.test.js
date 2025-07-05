@@ -43,10 +43,12 @@ describe('Auth Routes', () => {
   describe('POST /api/auth/register', () => {
     it('should register a new user successfully', async () => {
       const userData = {
-        email: 'test@example.com',
+        username: 'testuser',
         password: 'password123',
-        name: 'Test User',
-        phoneNumber: '1234567890'
+        firstName: 'Test',
+        lastName: 'User',
+        mobile: '1234567890',
+        email: 'test@example.com'
       };
 
       const response = await request(app)
@@ -56,23 +58,27 @@ describe('Auth Routes', () => {
       expect(response.status).toBe(201);
       expect(response.body).toHaveProperty('token');
       expect(response.body.user).toHaveProperty('id');
-      expect(response.body.user.email).toBe(userData.email);
-      expect(response.body.user.name).toBe(userData.name);
-      expect(response.body.user.role).toBe('participant');
+      expect(response.body.user.username).toBe(userData.username);
+      expect(response.body.user.firstName).toBe(userData.firstName);
+      expect(response.body.user.lastName).toBe(userData.lastName);
+      expect(response.body.user.role).toBe('admin');
 
       // Verify the user was actually saved to the database
-      const savedUser = await User.findOne({ email: userData.email });
+      const savedUser = await User.findOne({ username: userData.username });
       expect(savedUser).toBeTruthy();
-      expect(savedUser.name).toBe(userData.name);
-      expect(savedUser.phoneNumber).toBe(userData.phoneNumber);
+      expect(savedUser.firstName).toBe(userData.firstName);
+      expect(savedUser.lastName).toBe(userData.lastName);
+      expect(savedUser.mobile).toBe(userData.mobile);
     });
 
     it('should return 400 if user already exists', async () => {
       const userData = {
-        email: 'existing@example.com',
+        username: 'existinguser',
         password: 'password123',
-        name: 'Existing User',
-        phoneNumber: '1234567890'
+        firstName: 'Existing',
+        lastName: 'User',
+        mobile: '1234567890',
+        email: 'existing@example.com'
       };
 
       // First create a user
@@ -89,7 +95,7 @@ describe('Auth Routes', () => {
       expect(response.body).toHaveProperty('message', 'User already exists');
 
       // Verify only one user exists in the database
-      const users = await User.find({ email: userData.email });
+      const users = await User.find({ username: userData.username });
       expect(users.length).toBe(1);
     });
 
@@ -98,7 +104,7 @@ describe('Auth Routes', () => {
         .post('/api/auth/register')
         .send({
           // Missing required fields
-          email: 'test@example.com'
+          username: 'testuser'
         });
 
       expect(response.status).toBe(500);
@@ -107,9 +113,12 @@ describe('Auth Routes', () => {
     it('should create admin user when requested by existing admin', async () => {
       // First create an admin user
       const adminUser = new User({
-        email: 'admin@example.com',
+        username: 'admin',
         password: 'admin123',
-        name: 'Admin User',
+        firstName: 'Admin',
+        lastName: 'User',
+        mobile: '1234567890',
+        email: 'admin@example.com',
         role: 'admin'
       });
       await adminUser.save();
@@ -117,14 +126,17 @@ describe('Auth Routes', () => {
       // Generate token for admin
       const adminToken = jwt.sign(
         { userId: adminUser._id },
-        process.env.JWT_SECRET,
+        process.env.JWT_SECRET || 'test-secret',
         { expiresIn: '24h' }
       );
 
       const newAdminData = {
-        email: 'newadmin@example.com',
+        username: 'newadmin',
         password: 'password123',
-        name: 'New Admin',
+        firstName: 'New',
+        lastName: 'Admin',
+        mobile: '1234567891',
+        email: 'newadmin@example.com',
         role: 'admin'
       };
 
@@ -142,9 +154,12 @@ describe('Auth Routes', () => {
     beforeEach(async () => {
       // Create a test user for login tests
       testUser = new User({
-        email: 'login@example.com',
+        username: 'loginuser',
         password: 'password123',
-        name: 'Login User'
+        firstName: 'Login',
+        lastName: 'User',
+        mobile: '1234567890',
+        email: 'login@example.com'
       });
       await testUser.save();
     });
@@ -153,14 +168,15 @@ describe('Auth Routes', () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          email: 'login@example.com',
+          username: 'loginuser',
           password: 'password123'
         });
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('token');
-      expect(response.body.user.email).toBe('login@example.com');
-      expect(response.body.user.name).toBe('Login User');
+      expect(response.body.user.username).toBe('loginuser');
+      expect(response.body.user.firstName).toBe('Login');
+      expect(response.body.user.lastName).toBe('User');
       testToken = response.body.token;
     });
 
@@ -168,7 +184,7 @@ describe('Auth Routes', () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          email: 'login@example.com',
+          username: 'loginuser',
           password: 'wrongpassword'
         });
 
@@ -176,11 +192,11 @@ describe('Auth Routes', () => {
       expect(response.body).toHaveProperty('message', 'Invalid credentials');
     });
 
-    it('should return 400 with non-existent email', async () => {
+    it('should return 400 with non-existent username', async () => {
       const response = await request(app)
         .post('/api/auth/login')
         .send({
-          email: 'nonexistent@example.com',
+          username: 'nonexistentuser',
           password: 'password123'
         });
 
@@ -193,15 +209,18 @@ describe('Auth Routes', () => {
     beforeEach(async () => {
       // Create a test user and get token
       testUser = new User({
-        email: 'me@example.com',
+        username: 'meuser',
         password: 'password123',
-        name: 'Me User'
+        firstName: 'Me',
+        lastName: 'User',
+        mobile: '1234567890',
+        email: 'me@example.com'
       });
       await testUser.save();
 
       testToken = jwt.sign(
         { userId: testUser._id },
-        process.env.JWT_SECRET,
+        process.env.JWT_SECRET || 'test-secret',
         { expiresIn: '24h' }
       );
     });
@@ -212,8 +231,9 @@ describe('Auth Routes', () => {
         .set('Authorization', `Bearer ${testToken}`);
 
       expect(response.status).toBe(200);
-      expect(response.body.email).toBe('me@example.com');
-      expect(response.body.name).toBe('Me User');
+      expect(response.body.username).toBe('meuser');
+      expect(response.body.firstName).toBe('Me');
+      expect(response.body.lastName).toBe('User');
       expect(response.body).not.toHaveProperty('password');
     });
 

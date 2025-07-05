@@ -16,10 +16,8 @@ app.use(express.json());
 app.use('/api/users', usersRoutes);
 
 let mongod;
-let adminUser;
-let adminToken;
-let regularUser;
-let regularToken;
+let adminUser, regularUser;
+let adminToken, regularToken;
 
 describe('Users Routes', () => {
   beforeAll(async () => {
@@ -43,18 +41,24 @@ describe('Users Routes', () => {
 
     // Create admin user
     adminUser = new User({
-      email: 'admin@example.com',
+      username: 'admin',
       password: 'admin123',
-      name: 'Admin User',
+      firstName: 'Admin',
+      lastName: 'User',
+      mobile: '1234567890',
+      email: 'admin@example.com',
       role: 'admin'
     });
     await adminUser.save();
 
     // Create regular user
     regularUser = new User({
-      email: 'user@example.com',
+      username: 'user',
       password: 'user123',
-      name: 'Regular User',
+      firstName: 'Regular',
+      lastName: 'User',
+      mobile: '1234567891',
+      email: 'user@example.com',
       role: 'participant'
     });
     await regularUser.save();
@@ -62,13 +66,13 @@ describe('Users Routes', () => {
     // Generate tokens
     adminToken = jwt.sign(
       { userId: adminUser._id },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'test-secret',
       { expiresIn: '24h' }
     );
 
     regularToken = jwt.sign(
       { userId: regularUser._id },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'test-secret',
       { expiresIn: '24h' }
     );
   });
@@ -105,10 +109,12 @@ describe('Users Routes', () => {
   describe('POST /api/users', () => {
     it('should create new user for admin', async () => {
       const newUserData = {
-        email: 'newuser@example.com',
+        username: 'newuser',
         password: 'newuser123',
-        name: 'New User',
-        phoneNumber: '1234567890',
+        firstName: 'New',
+        lastName: 'User',
+        mobile: '1234567892',
+        email: 'newuser@example.com',
         role: 'participant'
       };
 
@@ -118,15 +124,17 @@ describe('Users Routes', () => {
         .send(newUserData);
 
       expect(response.status).toBe(201);
-      expect(response.body.email).toBe(newUserData.email);
-      expect(response.body.name).toBe(newUserData.name);
+      expect(response.body.username).toBe(newUserData.username);
+      expect(response.body.firstName).toBe(newUserData.firstName);
+      expect(response.body.lastName).toBe(newUserData.lastName);
       expect(response.body.role).toBe(newUserData.role);
       expect(response.body).not.toHaveProperty('password');
 
       // Verify user was created in database
-      const createdUser = await User.findOne({ email: newUserData.email });
+      const createdUser = await User.findOne({ username: newUserData.username });
       expect(createdUser).toBeTruthy();
-      expect(createdUser.name).toBe(newUserData.name);
+      expect(createdUser.firstName).toBe(newUserData.firstName);
+      expect(createdUser.lastName).toBe(newUserData.lastName);
     });
 
     it('should return 403 for non-admin users', async () => {
@@ -134,23 +142,27 @@ describe('Users Routes', () => {
         .post('/api/users')
         .set('Authorization', `Bearer ${regularToken}`)
         .send({
-          email: 'test@example.com',
+          username: 'testuser',
           password: 'test123',
-          name: 'Test User'
+          firstName: 'Test',
+          lastName: 'User',
+          mobile: '1234567890'
         });
 
       expect(response.status).toBe(403);
       expect(response.body).toHaveProperty('message', 'Unauthorized: Only admin can create users');
     });
 
-    it('should return 400 for duplicate email', async () => {
+    it('should return 400 for duplicate username', async () => {
       const response = await request(app)
         .post('/api/users')
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
-          email: 'user@example.com', // already exists
+          username: 'user', // already exists
           password: 'test123',
-          name: 'Test User'
+          firstName: 'Test',
+          lastName: 'User',
+          mobile: '1234567890'
         });
 
       expect(response.status).toBe(400);
@@ -161,9 +173,10 @@ describe('Users Routes', () => {
   describe('PUT /api/users/:id', () => {
     it('should update user for admin', async () => {
       const updateData = {
-        name: 'Updated Name',
+        firstName: 'Updated',
+        lastName: 'Name',
         email: 'updated@example.com',
-        phoneNumber: '9876543210',
+        mobile: '9876543210',
         role: 'staff'
       };
 
@@ -173,15 +186,17 @@ describe('Users Routes', () => {
         .send(updateData);
 
       expect(response.status).toBe(200);
-      expect(response.body.name).toBe(updateData.name);
+      expect(response.body.firstName).toBe(updateData.firstName);
+      expect(response.body.lastName).toBe(updateData.lastName);
       expect(response.body.email).toBe(updateData.email);
-      expect(response.body.phoneNumber).toBe(updateData.phoneNumber);
+      expect(response.body.mobile).toBe(updateData.mobile);
       expect(response.body.role).toBe(updateData.role);
       expect(response.body).not.toHaveProperty('password');
 
       // Verify user was updated in database
       const updatedUser = await User.findById(regularUser._id);
-      expect(updatedUser.name).toBe(updateData.name);
+      expect(updatedUser.firstName).toBe(updateData.firstName);
+      expect(updatedUser.lastName).toBe(updateData.lastName);
       expect(updatedUser.email).toBe(updateData.email);
     });
 
@@ -190,7 +205,7 @@ describe('Users Routes', () => {
         .put(`/api/users/${regularUser._id}`)
         .set('Authorization', `Bearer ${regularToken}`)
         .send({
-          name: 'Updated Name'
+          firstName: 'Updated'
         });
 
       expect(response.status).toBe(403);
@@ -203,7 +218,7 @@ describe('Users Routes', () => {
         .put(`/api/users/${nonExistentId}`)
         .set('Authorization', `Bearer ${adminToken}`)
         .send({
-          name: 'Updated Name'
+          firstName: 'Updated'
         });
 
       expect(response.status).toBe(404);

@@ -33,10 +33,28 @@ const upload = multer({
 router.get('/', async (req, res) => {
   try {
     const events = await Event.find()
-      .populate('organizer', 'firstName lastName email')
-      .sort({ date: 1 });
+      .populate('createdBy', 'firstName lastName email')
+      .sort({ startDate: 1 });
     res.json(events);
   } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get published, non-private events (for public display)
+router.get('/public', async (req, res) => {
+  try {
+    const events = await Event.find({
+      status: 'Published',
+      isPrivate: false
+    })
+      .populate('createdBy', 'firstName lastName email')
+      .sort({ startDate: 1 });
+    
+    console.log(`[EVENTS] Found ${events.length} published, non-private events`);
+    res.json(events);
+  } catch (error) {
+    console.error('[EVENTS] Error fetching public events:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -45,9 +63,8 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const event = await Event.findById(req.params.id)
-      .populate('organizer', 'name email')
-      .populate('registeredParticipants', 'name email phoneNumber')
-      .populate('waitlist', 'name email phoneNumber');
+      .populate('createdBy', 'firstName lastName email')
+      .populate('updatedBy', 'firstName lastName email');
     
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
@@ -67,26 +84,17 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
       return res.status(403).json({ message: 'Not authorized to create events' });
     }
 
-    const eventData = { ...req.body, organizer: req.user.userId };
+    const eventData = { ...req.body, createdBy: req.user.userId };
     
     // Add image data if an image was uploaded
     if (req.file) {
-      eventData.image = {
-        data: req.file.buffer,
-        contentType: req.file.mimetype
-      };
+      eventData.coverImageUrl = req.file.buffer.toString('base64');
     }
 
     const event = new Event(eventData);
     await event.save();
     
-    // Don't send image data in response
-    const eventResponse = event.toObject();
-    if (eventResponse.image) {
-      delete eventResponse.image.data;
-    }
-    
-    res.status(201).json(eventResponse);
+    res.status(201).json(event);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -103,18 +111,15 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
     }
 
     // Only admin or event creator can update
-    if (!user || (user.role !== 'admin' && event.organizer.toString() !== req.user.userId)) {
+    if (!user || (user.role !== 'admin' && event.createdBy.toString() !== req.user.userId)) {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
 
-    const updateData = { ...req.body };
+    const updateData = { ...req.body, updatedBy: req.user.userId };
     
     // Add image data if an image was uploaded
     if (req.file) {
-      updateData.image = {
-        data: req.file.buffer,
-        contentType: req.file.mimetype
-      };
+      updateData.coverImageUrl = req.file.buffer.toString('base64');
     }
 
     const updatedEvent = await Event.findByIdAndUpdate(
@@ -123,13 +128,7 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    // Don't send image data in response
-    const eventResponse = updatedEvent.toObject();
-    if (eventResponse.image) {
-      delete eventResponse.image.data;
-    }
-
-    res.json(eventResponse);
+    res.json(updatedEvent);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
@@ -146,7 +145,7 @@ router.delete('/:id', auth, async (req, res) => {
     }
 
     // Only admin or event creator can delete
-    if (!user || (user.role !== 'admin' && event.organizer.toString() !== req.user.userId)) {
+    if (!user || (user.role !== 'admin' && event.createdBy.toString() !== req.user.userId)) {
       return res.status(403).json({ message: 'Not authorized to delete this event' });
     }
 
@@ -169,7 +168,7 @@ router.post('/:id/register', auth, async (req, res) => {
     }
 
     const event = await Event.findById(req.params.id)
-      .populate('organizer', 'name email')
+      .populate('createdBy', 'name email')
       .populate('registeredParticipants', 'name email phoneNumber')
       .populate('waitlist', 'name email phoneNumber');
 
@@ -197,7 +196,7 @@ router.post('/:id/register', auth, async (req, res) => {
 
     // Populate the response data
     const populatedEvent = await Event.findById(event._id)
-      .populate('organizer', 'name email')
+      .populate('createdBy', 'name email')
       .populate('registeredParticipants', 'name email phoneNumber')
       .populate('waitlist', 'name email phoneNumber');
 
@@ -211,7 +210,7 @@ router.post('/:id/register', auth, async (req, res) => {
 router.post('/:id/unregister', auth, async (req, res) => {
   try {
     let event = await Event.findById(req.params.id)
-      .populate('organizer', 'firstName lastName email')
+      .populate('createdBy', 'firstName lastName email')
       .populate('registeredParticipants', 'firstName lastName email')
       .populate('waitlist', 'firstName lastName email');
 
@@ -243,7 +242,7 @@ router.post('/:id/unregister', auth, async (req, res) => {
     
     // Get the updated populated event
     const populatedEvent = await Event.findById(rawEvent._id)
-      .populate('organizer', 'firstName lastName email')
+      .populate('createdBy', 'firstName lastName email')
       .populate('registeredParticipants', 'firstName lastName email')
       .populate('waitlist', 'firstName lastName email');
 
@@ -257,12 +256,12 @@ router.post('/:id/unregister', auth, async (req, res) => {
 router.get('/:id/image', async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-    if (!event || !event.image || !event.image.data) {
+    if (!event || !event.coverImageUrl) {
       return res.status(404).json({ message: 'Image not found' });
     }
 
-    res.set('Content-Type', event.image.contentType);
-    res.send(event.image.data);
+    res.set('Content-Type', 'image/jpeg');
+    res.send(Buffer.from(event.coverImageUrl, 'base64'));
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
