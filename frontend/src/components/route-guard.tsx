@@ -12,7 +12,7 @@ interface RouteGuardProps {
 export default function RouteGuard({ children, requiredRoles }: RouteGuardProps) {
   const navigate = useNavigate()
   const location = useLocation()
-  const { userRole, isAuthenticated } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const [authorized, setAuthorized] = useState(false)
 
   useEffect(() => {
@@ -24,7 +24,7 @@ export default function RouteGuard({ children, requiredRoles }: RouteGuardProps)
       }
 
       // Check if the user has any of the required roles
-      return isAuthenticated && requiredRoles.includes(userRole)
+      return isAuthenticated && user?.role && requiredRoles.includes(user.role)
     }
 
     if (!checkAuth()) {
@@ -34,7 +34,7 @@ export default function RouteGuard({ children, requiredRoles }: RouteGuardProps)
     } else {
       setAuthorized(true)
     }
-  }, [location.pathname, requiredRoles, navigate, isAuthenticated, userRole])
+  }, [location.pathname, requiredRoles, navigate, isAuthenticated, user])
 
   return authorized ? <>{children}</> : null
 }

@@ -208,19 +208,23 @@ export function Navigation() {
           </nav>
 
           <div className="hidden md:flex items-center space-x-2">
+            {/*
             <LanguageSelector />
+            */}
             {!isAuthenticated ? (
               <>
                 <Button variant="ghost" size="sm" asChild>
-                  <Link to="/login">Sign In</Link>
+                  <Link to="/sign-in">Sign In</Link>
                 </Button>
                 <Button size="sm" className="bg-yellow-400 hover:bg-yellow-500 text-black" asChild>
-                  <Link to="/register">Sign Up</Link>
+                  <Link to="/sign-up">Sign Up</Link>
                 </Button>
               </>
             ) : (
               <div className="flex items-center space-x-2">
+                {/*
                 <NotificationBell />
+                */}
                 <UserMenu />
               </div>
             )}
@@ -334,6 +338,7 @@ export function Navigation() {
                       <Users className="h-5 w-5 mr-2" />
                       Users
                     </Link>
+                    {/*
                     <Link
                       to="/manage/analytics"
                       className={cn(
@@ -347,23 +352,26 @@ export function Navigation() {
                       <BarChart3 className="h-5 w-5 mr-2" />
                       Analytics
                     </Link>
+                    */}
                   </div>
                 )}
               </>
             )}
 
             <div className="pt-4 border-t border-gray-200">
+              {/*
               <div className="flex items-center mb-4">
                 <LanguageSelector className="mr-2" />
                 <span className="text-sm text-gray-500">Select Language</span>
               </div>
+              */}
               {!isAuthenticated && (
                 <div className="flex flex-col space-y-2">
                   <Button variant="outline" asChild onClick={closeMenu}>
-                    <Link to="/login">Sign In</Link>
+                    <Link to="/sign-in">Sign In</Link>
                   </Button>
                   <Button className="bg-yellow-400 hover:bg-yellow-500 text-black" asChild onClick={closeMenu}>
-                    <Link to="/register">Sign Up</Link>
+                    <Link to="/sign-up">Sign Up</Link>
                   </Button>
                 </div>
               )}

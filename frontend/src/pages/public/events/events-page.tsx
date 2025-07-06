@@ -54,7 +54,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Separator } from "@/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { allEvents } from "@/types/mock-event-data"
+import eventService, { Event } from "@/services/eventService"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -75,13 +75,10 @@ interface DateRangePreset {
   getValue: () => DateRange;
 }
 
-// Get only published events
-const publishedEvents = allEvents.filter((event) => event.status === "Published")
-
 // Extract unique categories, locations, and target audiences for filters
-const categories = [...new Set(publishedEvents.map((event) => event.category))]
-const locations = [...new Set(publishedEvents.map((event) => event.location))]
-const audiences = [...new Set(publishedEvents.map((event) => event.targetAudience))]
+const getCategories = (events: Event[]) => [...new Set(events.map((event: Event) => event.category))]
+const getLocations = (events: Event[]) => [...new Set(events.map((event: Event) => event.location.district))]
+const getAudiences = (events: Event[]) => [...new Set(events.map((event: Event) => event.targetGroup))]
 
 // Date range presets
 const dateRangePresets: DateRangePreset[] = [
@@ -124,6 +121,11 @@ const dateRangePresets: DateRangePreset[] = [
 export default function EventsPage() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
+
+  // State for events from backend
+  const [events, setEvents] = useState<Event[]>([])
+  const [eventsLoading, setEventsLoading] = useState(true)
+  const [eventsError, setEventsError] = useState<string | null>(null)
 
   // State for search and filters
   const [searchQuery, setSearchQuery] = useState("")
@@ -240,6 +242,24 @@ export default function EventsPage() {
     eventsPerPage,
     setSearchParams,
   ])
+
+  // Fetch events from backend
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setEventsLoading(true)
+        const publicEvents = await eventService.getPublicEvents()
+        setEvents(publicEvents)
+      } catch (err) {
+        console.error('Error fetching events:', err)
+        setEventsError('Failed to load events')
+      } finally {
+        setEventsLoading(false)
+      }
+    }
+
+    fetchEvents()
+  }, [])
 
   // Load filters from URL on initial load
   useEffect(() => {

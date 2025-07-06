@@ -1,8 +1,19 @@
 import { cn } from "@/lib/utils"
-import type { User } from "@/types/user-types"
+
+// Union type to handle both auth service User and user-types User
+type UserType = {
+  _id: string;
+  username: string;
+  firstName?: string;
+  lastName?: string;
+  mobile?: string;
+  phoneNumber?: string;
+  email?: string;
+  name?: string;
+}
 
 interface AvatarProps {
-  user: User | null | undefined
+  user: UserType | null | undefined
   size?: "sm" | "md" | "lg"
   className?: string
 }
@@ -23,6 +34,11 @@ export function Avatar({ user, size = "md", className }: AvatarProps) {
     if (user.username === "admin") return "A"
     if (user.username === "staff") return "S"
     if (user.username === "nelson") return "N"
+
+    // If we have firstName and lastName, use their initials
+    if (user.firstName && user.lastName) {
+      return (user.firstName.charAt(0) + user.lastName.charAt(0)).toUpperCase()
+    }
 
     // If we have a name, use its initials
     if (user.name) {

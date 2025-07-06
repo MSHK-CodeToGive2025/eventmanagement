@@ -31,7 +31,9 @@ export function UserMenu() {
     if (user.username === "staff") return "staff"
     if (user.username === "nelson") return "nelson"
 
-    return user.name || user.username || "User"
+    return user.firstName && user.lastName 
+      ? `${user.firstName} ${user.lastName}` 
+      : user.username || "User"
   }
 
   return (
@@ -55,29 +57,26 @@ export function UserMenu() {
           <DropdownMenuItem asChild>
             <Link to="/profile" className="cursor-pointer flex items-center">
               <UserCircle className="mr-2 h-4 w-4" />
-              <span>Profile</span>
+              <span>My Profile</span>
             </Link>
           </DropdownMenuItem>
+          {/*
           <DropdownMenuItem asChild>
             <Link to="/profile/events" className="cursor-pointer flex items-center">
               <Calendar className="mr-2 h-4 w-4" />
               <span>My Events</span>
             </Link>
           </DropdownMenuItem>
+          */}
           <DropdownMenuItem asChild>
             <Link to="/profile/registrations" className="cursor-pointer flex items-center">
               <FileText className="mr-2 h-4 w-4" />
-              <span>My Registrations</span>
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/profile/notifications" className="cursor-pointer flex items-center">
-              <Bell className="mr-2 h-4 w-4" />
-              <span>Notification Settings</span>
+              <span>My Event Registrations</span>
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
+        {/*
         <DropdownMenuItem asChild>
           <Link to="/settings" className="cursor-pointer flex items-center">
             <Settings className="mr-2 h-4 w-4" />
@@ -90,6 +89,7 @@ export function UserMenu() {
             <span>Help & Support</span>
           </Link>
         </DropdownMenuItem>
+        */}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
           <LogOut className="mr-2 h-4 w-4" />

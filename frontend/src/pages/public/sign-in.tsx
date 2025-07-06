@@ -15,7 +15,7 @@ export default function SignIn() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [formData, setFormData] = useState({
-    identifier: "", // Can be username, email, or mobile
+    username: "",
     password: "",
     rememberMe: false,
   })
@@ -34,7 +34,7 @@ export default function SignIn() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.identifier || !formData.password) {
+    if (!formData.username || !formData.password) {
       setError("Please enter your credentials")
       return
     }
@@ -43,64 +43,13 @@ export default function SignIn() {
     setError("")
 
     try {
-      // In a real app, this would be an API call to authenticate the user
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Mock authentication logic
-      if (formData.identifier === "admin" && formData.password === "abcd1234") {
-        login({
-          id: "1",
-          username: "admin",
-          name: "Admin User",
-          email: "admin@example.com",
-          role: "admin",
-          status: "active",
-          lastLogin: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        })
-        navigate("/")
-      } else if (formData.identifier === "staff" && formData.password === "abcd4321") {
-        login({
-          id: "2",
-          username: "staff",
-          name: "Staff User",
-          email: "staff@example.com",
-          role: "staff",
-          status: "active",
-          lastLogin: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        })
-        navigate("/")
-      } else if (formData.identifier === "nelson" && formData.password === "abcd1111") {
-        login({
-          id: "3",
-          username: "nelson",
-          name: "Nelson",
-          email: "nelson@example.com",
-          role: "participant",
-          status: "active",
-          lastLogin: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        })
-        navigate("/")
-      } else if (formData.password === "password") {
-        // For demo purposes, any username with password "password" is a participant
-        login({
-          id: "4",
-          username: formData.identifier,
-          name: formData.identifier,
-          email: `${formData.identifier}@example.com`,
-          role: "participant",
-          status: "active",
-          lastLogin: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-        })
-        navigate("/")
-      } else {
-        setError("Invalid credentials. Please try again.")
-      }
-    } catch (err) {
-      setError("Failed to sign in. Please try again.")
+      await login({
+        username: formData.username,
+        password: formData.password,
+      })
+      navigate("/")
+    } catch (err: any) {
+      setError(err.message || "Failed to sign in. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -125,12 +74,12 @@ export default function SignIn() {
             <form onSubmit={handleSubmit}>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="identifier">Username / Email / Mobile</Label>
+                  <Label htmlFor="username">Username</Label>
                   <Input
-                    id="identifier"
-                    name="identifier"
-                    placeholder="Enter your username, email, or mobile"
-                    value={formData.identifier}
+                    id="username"
+                    name="username"
+                    placeholder="Enter your username"
+                    value={formData.username}
                     onChange={handleChange}
                     required
                   />
@@ -172,16 +121,14 @@ export default function SignIn() {
 
             <div className="mt-4 text-center text-sm">
               <p>Demo accounts:</p>
-              <p className="text-gray-500">Admin: admin / abcd1234</p>
-              <p className="text-gray-500">Staff: staff / abcd4321</p>
-              <p className="text-gray-500">Participant: nelson / abcd1111</p>
-              <p className="text-gray-500">Generic: any username / password</p>
+              <p className="text-gray-500">Admin: admin / admin123</p>
+              <p className="text-gray-500">Super Admin: superadmin / super123</p>
             </div>
           </CardContent>
           <CardFooter className="flex justify-center">
             <div className="text-sm text-center">
               Don't have an account?{" "}
-              <Link to="/register" className="text-yellow-500 hover:underline">
+              <Link to="/sign-up" className="text-yellow-500 hover:underline">
                 Sign Up
               </Link>
             </div>

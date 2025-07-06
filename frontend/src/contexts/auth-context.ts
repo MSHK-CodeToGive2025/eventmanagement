@@ -1,105 +1,96 @@
 import React, { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { User, UserRole } from "@/types/user-types"
+import AuthService, { User, LoginCredentials, RegisterData } from "@/services/authService"
 
 interface AuthContextType {
   user: User | null
-  userRole: UserRole
-  isAuthenticated: boolean
-  login: (user: User) => void
+  loading: boolean
+  login: (credentials: LoginCredentials) => Promise<void>
+  register: (userData: RegisterData) => Promise<void>
   logout: () => void
+  isAuthenticated: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
-  const [userRole, setUserRole] = useState<UserRole>("unregistered")
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [isLoading, setIsLoading] = useState(true)
-
-  // Initialize auth state from localStorage on mount
-  useEffect(() => {
-    const initializeAuth = () => {
-      const storedUser = localStorage.getItem("user")
-      if (storedUser) {
-        try {
-          const parsedUser = JSON.parse(storedUser)
-          setUser(parsedUser)
-          setUserRole(parsedUser.role)
-          setIsAuthenticated(true)
-        } catch (error) {
-          console.error("Failed to parse stored user:", error)
-          setUser(null)
-          setUserRole("unregistered")
-          setIsAuthenticated(false)
-        }
-      } else {
-        setUser(null)
-        setUserRole("unregistered")
-        setIsAuthenticated(false)
-      }
-      setIsLoading(false)
-    }
-
-    initializeAuth()
-
-    // Listen for storage events (in case user logs in/out in another tab)
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === "user") {
-        if (event.newValue) {
-          try {
-            const parsedUser = JSON.parse(event.newValue)
-            setUser(parsedUser)
-            setUserRole(parsedUser.role)
-            setIsAuthenticated(true)
-          } catch (error) {
-            console.error("Failed to parse stored user:", error)
-            setUser(null)
-            setUserRole("unregistered")
-            setIsAuthenticated(false)
-          }
-        } else {
-          setUser(null)
-          setUserRole("unregistered")
-          setIsAuthenticated(false)
-        }
-      }
-    }
-
-    window.addEventListener("storage", handleStorageChange)
-    return () => window.removeEventListener("storage", handleStorageChange)
-  }, [])
-
-  const login = (newUser: User) => {
-    localStorage.setItem("user", JSON.stringify(newUser))
-    setUser(newUser)
-    setUserRole(newUser.role)
-    setIsAuthenticated(true)
-  }
-
-  const logout = () => {
-    localStorage.removeItem("user")
-    setUser(null)
-    setUserRole("unregistered")
-    setIsAuthenticated(false)
-  }
-
-  // Don't render children until we've initialized auth state
-  if (isLoading) {
-    return null
-  }
-
-  return React.createElement(
-    AuthContext.Provider,
-    { value: { user, userRole, isAuthenticated, login, logout } },
-    children
-  )
-}
-
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext)
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
+}
+
+interface AuthProviderProps {
+  children: ReactNode
+}
+
+export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const authService = AuthService.getInstance()
+
+  // Initialize auth state on mount
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        if (authService.isAuthenticated()) {
+          const currentUser = await authService.getCurrentUser()
+          setUser(currentUser)
+        }
+      } catch (error) {
+        console.error("Failed to get current user:", error)
+        authService.logout()
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    initializeAuth()
+  }, [])
+
+  const login = async (credentials: LoginCredentials) => {
+    try {
+      setLoading(true)
+      const response = await authService.login(credentials)
+      
+      // Get full user details
+      const currentUser = await authService.getCurrentUser()
+      setUser(currentUser)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const register = async (userData: RegisterData) => {
+    try {
+      setLoading(true)
+      const response = await authService.register(userData)
+      
+      // Get full user details
+      const currentUser = await authService.getCurrentUser()
+      setUser(currentUser)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const logout = () => {
+    authService.logout()
+    setUser(null)
+  }
+
+  const value: AuthContextType = {
+    user,
+    loading,
+    login,
+    register,
+    logout,
+    isAuthenticated: !!user,
+  }
+
+  return React.createElement(
+    AuthContext.Provider,
+    { value },
+    children
+  )
 }
