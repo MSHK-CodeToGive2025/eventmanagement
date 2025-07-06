@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { allEvents } from "@/types/mock-event-data"
 import { ArrowRight, Calendar, Users, Heart, Play, Pause } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
+import eventService, { Event } from "@/services/eventService"
 
 export default function LandingPage() {
   // State to track which elements have been clicked
@@ -35,6 +35,11 @@ export default function LandingPage() {
 
   // State to track auto-play mode
   const [autoPlay, setAutoPlay] = useState(false)
+
+  // State for events
+  const [events, setEvents] = useState<Event[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   // Ref to store timeouts for cleanup
   const timeoutsRef = useRef<NodeJS.Timeout[]>([])
@@ -70,6 +75,24 @@ export default function LandingPage() {
       timeoutsRef.current = []
     }
   }, [autoPlay])
+
+  // Fetch events from backend
+  useEffect(() => {
+    const fetchEvents = async () => {
+      try {
+        setLoading(true)
+        const publicEvents = await eventService.getPublicEvents()
+        setEvents(publicEvents)
+      } catch (err) {
+        console.error('Error fetching events:', err)
+        setError('Failed to load events')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchEvents()
+  }, [])
 
   // Function to toggle auto-play
   const toggleAutoPlay = () => {
@@ -761,46 +784,77 @@ export default function LandingPage() {
         <div className="container mx-auto px-4">
           <h2 className="text-3xl font-bold mb-6 text-center">Upcoming Events</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {allEvents
-              .filter((event) => new Date(event.date) > new Date() && event.status === "Published")
-              .slice(0, 3)
-              .map((event) => (
-                <div key={event.id} className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
-                  <div className="h-40 mb-4 overflow-hidden rounded-md bg-gray-100">
-                    <img
-                      src={event.image || "/placeholder.svg?key=event-default"}
-                      alt={event.title}
-                      className="w-full h-full object-cover"
-                      onError={(e) => {
-                        // Safe error handling with proper type checking
-                        if (e && e.currentTarget) {
-                          e.currentTarget.src = "/placeholder.svg?key=event-fallback"
-                        }
-                      }}
-                    />
-                  </div>
-                  <div className="flex items-center mb-2">
-                    <span className="text-sm font-medium bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                      {event.category}
-                    </span>
-                    <span className="text-sm text-gray-500 ml-2">
-                      {new Date(event.date).toLocaleDateString("en-US", {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-bold mb-2 line-clamp-2">{event.title}</h3>
-                  <p className="text-gray-600 mb-4 line-clamp-2">{event.description}</p>
-                  <Link
-                    to={`/events/${event.id}`}
-                    className="text-yellow-500 hover:text-yellow-600 font-medium inline-flex items-center"
-                  >
-                    View Details <ArrowRight className="ml-1 h-4 w-4" />
-                  </Link>
+            {loading ? (
+              // Loading state
+              Array.from({ length: 3 }).map((_, index) => (
+                <div key={index} className="bg-white p-6 rounded-lg shadow animate-pulse">
+                  <div className="h-40 mb-4 bg-gray-200 rounded-md"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded mb-4"></div>
+                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
                 </div>
-              ))}
+              ))
+            ) : error ? (
+              // Error state
+              <div className="col-span-3 text-center py-8">
+                <p className="text-gray-500">{error}</p>
+                <Button 
+                  onClick={() => window.location.reload()} 
+                  className="mt-4 bg-yellow-400 hover:bg-yellow-500 text-black"
+                >
+                  Try Again
+                </Button>
+              </div>
+            ) : events.length === 0 ? (
+              // No events state
+              <div className="col-span-3 text-center py-8">
+                <p className="text-gray-500">No upcoming events at the moment.</p>
+                <p className="text-gray-400 text-sm mt-2">Check back soon for new events!</p>
+              </div>
+            ) : (
+              // Events display
+              events
+                .filter((event: Event) => new Date(event.startDate) > new Date() && event.status === "Published")
+                .slice(0, 3)
+                .map((event: Event) => (
+                  <div key={event._id} className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
+                    <div className="h-40 mb-4 overflow-hidden rounded-md bg-gray-100">
+                      <img
+                        src={event.coverImageUrl || "/placeholder.svg?key=event-default"}
+                        alt={event.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          // Safe error handling with proper type checking
+                          if (e && e.currentTarget) {
+                            e.currentTarget.src = "/placeholder.svg?key=event-fallback"
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center mb-2">
+                      <span className="text-sm font-medium bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                        {event.category}
+                      </span>
+                      <span className="text-sm text-gray-500 ml-2">
+                        {new Date(event.startDate).toLocaleDateString("en-US", {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold mb-2 line-clamp-2">{event.title}</h3>
+                    <p className="text-gray-600 mb-4 line-clamp-2">{event.description}</p>
+                    <Link
+                      to={`/events/${event._id}`}
+                      className="text-yellow-500 hover:text-yellow-600 font-medium inline-flex items-center"
+                    >
+                      View Details <ArrowRight className="ml-1 h-4 w-4" />
+                    </Link>
+                  </div>
+                ))
+            )}
           </div>
           <div className="text-center mt-8">
             <Link to="/events">

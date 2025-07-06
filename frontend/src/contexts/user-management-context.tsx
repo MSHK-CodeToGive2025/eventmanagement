@@ -34,6 +34,8 @@ interface UserManagementContextType {
   setSelectedUser: (user: User | null) => void
   /** Function to change a user's password */
   changeUserPassword: (userId: string, newPassword: string) => Promise<boolean>
+  /** Function to reset a user's password */
+  resetUserPassword: (userId: string) => Promise<{ success: boolean; tempPassword?: string; user?: any }>
 }
 
 const UserManagementContext = createContext<UserManagementContextType | undefined>(undefined)
@@ -248,9 +250,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
       setLoading(true)
       setError(null)
 
-      // In a real app, this would call an API to change the password
-      // For this demo, we'll just simulate a successful password change
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await userService.changeUserPassword(userId, newPassword)
 
       toast({
         title: "Success",
@@ -266,6 +266,25 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
       })
       console.error(err)
       return false
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  /**
+   * Resets a user's password with a temporary password
+   */
+  const resetUserPassword = async (userId: string) => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const result = await userService.resetUserPassword(userId)
+      return { success: true, tempPassword: result.temporaryPassword, user: result.user }
+    } catch (error: any) {
+      setError(error.message || "Failed to reset password")
+      console.error("Error resetting password:", error)
+      return { success: false }
     } finally {
       setLoading(false)
     }
@@ -292,6 +311,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
         filterUsersList,
         setSelectedUser,
         changeUserPassword,
+        resetUserPassword,
       }}
     >
       {children}

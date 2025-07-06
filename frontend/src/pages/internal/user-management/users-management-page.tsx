@@ -8,10 +8,12 @@ import { UserForm } from "@/components/users/user-form"
 import { UserDetails } from "@/components/users/user-details"
 import { DeleteUserDialog } from "@/components/users/delete-user-dialog"
 import { PasswordChangeForm } from "@/components/users/password-change-form"
+import { PasswordResetForm } from "@/components/users/password-reset-form"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Users } from "lucide-react"
 import { PaginationControls } from "@/components/ui/pagination-controls"
+import { useAuth } from "@/contexts/auth-context"
 
 enum UserView {
   LIST = "list",
@@ -19,6 +21,7 @@ enum UserView {
   EDIT = "edit",
   DETAILS = "details",
   CHANGE_PASSWORD = "change_password",
+  RESET_PASSWORD = "reset_password",
 }
 
 export default function UsersManagementPage() {
@@ -33,7 +36,13 @@ export default function UsersManagementPage() {
     searchForUsers,
     filterUsersList,
     changeUserPassword,
+    resetUserPassword,
   } = useUserManagement()
+  
+  const { user: currentUser } = useAuth()
+  
+  // Check if current user has admin privileges (can create/edit/delete users)
+  const isAdmin = currentUser?.role === 'admin'
 
   // Initialize with mock data
   useEffect(() => {
@@ -114,6 +123,11 @@ export default function UsersManagementPage() {
     setCurrentView(UserView.CHANGE_PASSWORD)
   }
 
+  const resetPasswordView = (user: User) => {
+    setSelectedUser(user)
+    setCurrentView(UserView.RESET_PASSWORD)
+  }
+
   const handlePageChange = (page: number) => {
     setCurrentPage(page)
   }
@@ -138,15 +152,25 @@ export default function UsersManagementPage() {
   const renderContent = () => {
     switch (currentView) {
       case UserView.CREATE:
-        return <UserForm onSubmit={handleAddUser} isLoading={loading} hideTitle />
+        return isAdmin ? <UserForm onSubmit={handleAddUser} isLoading={loading} hideTitle /> : <div>Access denied. Only administrators can create users.</div>
       case UserView.EDIT:
-        return <UserForm user={selectedUser || undefined} onSubmit={handleEditUser} isLoading={loading} hideTitle />
+        return isAdmin ? <UserForm user={selectedUser || undefined} onSubmit={handleEditUser} isLoading={loading} hideTitle /> : <div>Access denied. Only administrators can edit users.</div>
       case UserView.CHANGE_PASSWORD:
         return selectedUser ? (
           <PasswordChangeForm
             userId={selectedUser._id}
             username={selectedUser.username}
             onSubmit={handlePasswordChange}
+            isLoading={loading}
+            hideTitle
+          />
+        ) : null
+      case UserView.RESET_PASSWORD:
+        return selectedUser ? (
+          <PasswordResetForm
+            userId={selectedUser._id}
+            username={selectedUser.username}
+            onReset={resetUserPassword}
             isLoading={loading}
             hideTitle
           />
@@ -164,10 +188,12 @@ export default function UsersManagementPage() {
             <TabsContent value="details">
               <UserDetails
                 user={selectedUser}
-                onEdit={() => setCurrentView(UserView.EDIT)}
-                onDelete={() => openDeleteDialog(selectedUser)}
+                onEdit={isAdmin ? () => setCurrentView(UserView.EDIT) : () => {}}
+                onDelete={isAdmin ? () => openDeleteDialog(selectedUser) : () => {}}
                 onChangePassword={() => changePasswordView(selectedUser)}
+                onResetPassword={() => resetPasswordView(selectedUser)}
                 hideBackButton
+                showAdminActions={isAdmin}
               />
             </TabsContent>
             <TabsContent value="security">
@@ -205,9 +231,9 @@ export default function UsersManagementPage() {
               onSearch={searchForUsers}
               onFilter={filterUsersList}
               onView={viewUser}
-              onEdit={editUserView}
-              onDelete={openDeleteDialog}
-              onAddNew={() => setCurrentView(UserView.CREATE)}
+              onEdit={isAdmin ? editUserView : () => {}}
+              onDelete={isAdmin ? openDeleteDialog : () => {}}
+              onAddNew={isAdmin ? () => setCurrentView(UserView.CREATE) : () => {}}
               onChangePassword={changePasswordView}
               currentPage={currentPage}
               itemsPerPage={itemsPerPage}
@@ -216,6 +242,7 @@ export default function UsersManagementPage() {
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={handleSort}
+              showAdminActions={isAdmin}
             />
 
             <PaginationControls
@@ -241,6 +268,8 @@ export default function UsersManagementPage() {
         return `User: ${selectedUser?.username || ""}`
       case UserView.CHANGE_PASSWORD:
         return `Change Password: ${selectedUser?.username || ""}`
+      case UserView.RESET_PASSWORD:
+        return `Reset Password: ${selectedUser?.username || ""}`
       case UserView.LIST:
       default:
         return "All Users"
@@ -248,7 +277,7 @@ export default function UsersManagementPage() {
   }
 
   return (
-    <RouteGuard requiredRoles={["admin"]}>
+    <RouteGuard requiredRoles={["admin", "staff"]}>
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center gap-3 mb-6">
           <Users className="h-8 w-8 text-primary" />

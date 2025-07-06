@@ -1,4 +1,5 @@
 import { useAuth } from '@/contexts/auth-context';
+import { getUserName } from '@/services/authService';
 
 const Dashboard: React.FC = () => {
   const { user, logout } = useAuth();
@@ -10,7 +11,7 @@ const Dashboard: React.FC = () => {
           <div className="flex justify-between h-16">
             <div className="flex items-center">
               <h1 className="text-xl font-semibold text-gray-900">
-                Welcome, {user?.name}
+                Welcome, {user ? getUserName(user) : 'User'}
               </h1>
             </div>
             <div className="flex items-center">

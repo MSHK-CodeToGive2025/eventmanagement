@@ -74,6 +74,8 @@ interface UserListProps {
   sortDirection?: "asc" | "desc"
   /** Callback when sort changes */
   onSort?: (field: string) => void
+  /** Whether to show admin actions (create, edit, delete) */
+  showAdminActions?: boolean
 }
 
 export function UserList({
@@ -91,6 +93,7 @@ export function UserList({
   sortField = "username",
   sortDirection = "asc",
   onSort,
+  showAdminActions = true,
 }: UserListProps) {
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<UserRole | "">("")
@@ -218,10 +221,12 @@ export function UserList({
           </div>
           <Button type="submit">Search</Button>
         </form>
-        <Button onClick={onAddNew}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add New User
-        </Button>
+        {showAdminActions && (
+          <Button onClick={onAddNew}>
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add New User
+          </Button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-4 items-end">
@@ -366,18 +371,22 @@ export function UserList({
                           <Eye className="mr-2 h-4 w-4" />
                           View Details
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onEdit(user)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          Edit User
-                        </DropdownMenuItem>
+                        {showAdminActions && (
+                          <DropdownMenuItem onClick={() => onEdit(user)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Edit User
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem onClick={() => onChangePassword(user)}>
                           <Key className="mr-2 h-4 w-4" />
                           Change Password
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="text-red-600" onClick={() => onDelete(user)}>
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete User
-                        </DropdownMenuItem>
+                        {showAdminActions && (
+                          <DropdownMenuItem className="text-red-600" onClick={() => onDelete(user)}>
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete User
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

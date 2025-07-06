@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast"
 export default function EventsBuilderPage() {
   const [showEventBuilder, setShowEventBuilder] = useState(false)
   const [editingEventId, setEditingEventId] = useState<string | null>(null)
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
   const { toast } = useToast()
 
   const handleCreateEvent = () => {
@@ -38,30 +39,18 @@ export default function EventsBuilderPage() {
     try {
       console.log("Saving event:", data)
 
-      // Simulate a random error for demonstration purposes (1 in 10 chance)
-      if (Math.random() < 0.1) {
-        throw new Error("Simulated server error")
-      }
-
-      // Check if the event has a registration form
-      if (!data.registrationForm) {
-        // Show a warning toast if no registration form is selected
-        toast({
-          title: "Event Saved with Warning",
-          description: `"${data.title}" has been ${editingEventId ? "updated" : "created"}, but no registration form was selected. Attendees won't be able to register for this event.`,
-          variant: "default"
-        })
-      } else {
-        // Show a success toast
-        toast({
-          title: editingEventId ? "Event Updated Successfully" : "Event Created Successfully",
-          description: `"${data.title}" has been ${editingEventId ? "updated" : "created"} and is now ${data.status === "Published" ? "visible to users" : "saved as " + data.status}.`,
-          variant: "default"
-        })
-      }
+      // Show success toast
+      toast({
+        title: editingEventId ? "Event Updated Successfully" : "Event Created Successfully",
+        description: `"${data.title}" has been ${editingEventId ? "updated" : "created"} and is now ${data.status === "Published" ? "visible to users" : "saved as " + data.status}.`,
+        variant: "default"
+      })
 
       setShowEventBuilder(false)
       setEditingEventId(null)
+      
+      // Trigger events list refresh by incrementing the refresh trigger
+      setRefreshTrigger(prev => prev + 1)
     } catch (error) {
       // Handle errors and show appropriate toast
       console.error("Error saving event:", error)
@@ -97,7 +86,7 @@ export default function EventsBuilderPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <EnhancedEventsList onEditEvent={handleEditEvent} />
+                <EnhancedEventsList onEditEvent={handleEditEvent} refreshTrigger={refreshTrigger} />
               </CardContent>
             </Card>
           </div>

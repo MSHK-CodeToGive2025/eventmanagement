@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Bold, Italic, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, Link } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -14,6 +14,11 @@ interface RichTextEditorProps {
 export function RichTextEditor({ value, onChange, placeholder = "", minHeight = "200px" }: RichTextEditorProps) {
   const [activeTab, setActiveTab] = useState<string>("edit")
   const [htmlValue, setHtmlValue] = useState<string>(value || "")
+
+  // Sync htmlValue with value prop
+  useEffect(() => {
+    setHtmlValue(value || "")
+  }, [value])
 
   const handleChange = (newValue: string) => {
     setHtmlValue(newValue)

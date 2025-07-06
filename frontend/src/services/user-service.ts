@@ -1,6 +1,8 @@
-import { mockUsers } from "@/types/mock-enhanced-event-data"
+import axios from 'axios';
 import type { User, UserRole } from "@/types/user-types"
 import { type CreateUserData, type UpdateUserData, type UserFilterCriteria, type UserSortCriteria, type UserPaginationParams } from "@/types/user-types"
+
+const API_URL = '/api';
 
 /**
  * Interface for user form data when creating/updating users
@@ -21,26 +23,6 @@ interface UserFormData {
  */
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
-/**
- * Fetches all users from the API
- * @returns Promise resolving to an array of users
- */
-export async function getUsers(): Promise<User[]> {
-  await delay(500) // Simulate API delay
-  return [...mockUsers]
-}
-
-/**
- * Fetches a single user by their ID
- * @param id - The user's ID to fetch
- * @returns Promise resolving to the user or null if not found
- */
-export async function getUserById(id: string): Promise<User | null> {
-  await delay(300)
-  const user = mockUsers.find((u) => u._id === id)
-  return user || null
-}
-
 export class UserServiceError extends Error {
   constructor(
     message: string,
@@ -54,7 +36,6 @@ export class UserServiceError extends Error {
 
 export class UserService {
   private static instance: UserService
-  private users: User[] = [...mockUsers]
 
   private constructor() {}
 
@@ -65,155 +46,118 @@ export class UserService {
     return UserService.instance
   }
 
-  private validateUserData(data: Partial<User>): void {
-    if (data.username && data.username.length < 3) {
+  private async makeRequest<T>(config: any): Promise<T> {
+    try {
+      const response = await axios(config);
+      return response.data;
+    } catch (error: any) {
+      if (error.response) {
+        throw new UserServiceError(
+          error.response.data?.message || 'Request failed',
+          error.response.status.toString(),
+          error.response.status
+        );
+      }
       throw new UserServiceError(
-        "Username must be at least 3 characters",
-        "INVALID_USERNAME"
-      )
+        'Network error',
+        'NETWORK_ERROR',
+        500
+      );
     }
-    if (data.phoneNumber && data.phoneNumber.length < 8) {
-      throw new UserServiceError(
-        "Mobile number must be at least 8 digits",
-        "INVALID_MOBILE"
-      )
-    }
-    if (data.email && !data.email.includes("@")) {
-      throw new UserServiceError(
-        "Invalid email address",
-        "INVALID_EMAIL"
-      )
-    }
+  }
+
+  private transformBackendUser(backendUser: any): User {
+    return {
+      _id: backendUser._id,
+      username: backendUser.username,
+      password: '', // Backend doesn't return password
+      phoneNumber: backendUser.mobile || backendUser.phoneNumber || '',
+      email: backendUser.email,
+      role: backendUser.role,
+      firstName: backendUser.firstName,
+      lastName: backendUser.lastName,
+      createdAt: new Date(backendUser.createdAt),
+      updatedAt: new Date(backendUser.updatedAt),
+      lastLogin: backendUser.lastLogin ? new Date(backendUser.lastLogin) : undefined,
+      isActive: backendUser.isActive
+    };
   }
 
   async createUser(data: CreateUserData): Promise<User> {
-    try {
-      this.validateUserData(data)
-
-      // Check if username already exists
-      if (this.users.some(user => user.username === data.username)) {
-        throw new UserServiceError(
-          "Username already exists",
-          "USERNAME_EXISTS",
-          409
-        )
-      }
-
-      const newUser: User = {
-        _id: Math.random().toString(36).substr(2, 9),
-        ...data,
-        password: "hashed_" + data.password, // In real app, use proper hashing
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }
-
-      this.users.push(newUser)
-      return newUser
-    } catch (error) {
-      if (error instanceof UserServiceError) {
-        throw error
-      }
-      throw new UserServiceError(
-        "Failed to create user",
-        "CREATE_ERROR",
-        500
-      )
-    }
+    // Transform frontend data to backend format
+    const backendData = {
+      username: data.username,
+      password: data.password,
+      firstName: data.firstName,
+      lastName: data.lastName,
+      mobile: data.mobile,
+      email: data.email,
+      role: data.role
+    };
+    
+    const backendUser = await this.makeRequest<any>({
+      method: 'POST',
+      url: `${API_URL}/users`,
+      data: backendData
+    });
+    return this.transformBackendUser(backendUser);
   }
 
   async updateUser(id: string, data: UpdateUserData): Promise<User> {
-    try {
-      this.validateUserData(data)
-
-      const userIndex = this.users.findIndex(user => user._id === id)
-      if (userIndex === -1) {
-        throw new UserServiceError(
-          "User not found",
-          "USER_NOT_FOUND",
-          404
-        )
-      }
-
-      // Check username uniqueness if being updated
-      if (data.username && data.username !== this.users[userIndex].username) {
-        if (this.users.some(user => user.username === data.username)) {
-          throw new UserServiceError(
-            "Username already exists",
-            "USERNAME_EXISTS",
-            409
-          )
-        }
-      }
-
-      const updatedUser = {
-        ...this.users[userIndex],
-        ...data,
-        updatedAt: new Date(),
-      }
-
-      if (data.password) {
-        updatedUser.password = "hashed_" + data.password // In real app, use proper hashing
-      }
-
-      this.users[userIndex] = updatedUser
-      return updatedUser
-    } catch (error) {
-      if (error instanceof UserServiceError) {
-        throw error
-      }
-      throw new UserServiceError(
-        "Failed to update user",
-        "UPDATE_ERROR",
-        500
-      )
-    }
+    // Transform frontend data to backend format
+    const backendData: any = {};
+    if (data.firstName !== undefined) backendData.firstName = data.firstName;
+    if (data.lastName !== undefined) backendData.lastName = data.lastName;
+    if (data.email !== undefined) backendData.email = data.email;
+    if (data.mobile !== undefined) backendData.mobile = data.mobile;
+    if (data.role !== undefined) backendData.role = data.role;
+    if (data.isActive !== undefined) backendData.isActive = data.isActive;
+    
+    const backendUser = await this.makeRequest<any>({
+      method: 'PUT',
+      url: `${API_URL}/users/${id}`,
+      data: backendData
+    });
+    return this.transformBackendUser(backendUser);
   }
 
   async deleteUser(id: string): Promise<void> {
-    try {
-      const userIndex = this.users.findIndex(user => user._id === id)
-      if (userIndex === -1) {
-        throw new UserServiceError(
-          "User not found",
-          "USER_NOT_FOUND",
-          404
-        )
-      }
+    await this.makeRequest<{ message: string }>({
+      method: 'DELETE',
+      url: `${API_URL}/users/${id}`
+    });
+  }
 
-      this.users.splice(userIndex, 1)
-    } catch (error) {
-      if (error instanceof UserServiceError) {
-        throw error
-      }
-      throw new UserServiceError(
-        "Failed to delete user",
-        "DELETE_ERROR",
-        500
-      )
-    }
+  async changeUserPassword(id: string, newPassword: string): Promise<void> {
+    await this.makeRequest<{ message: string }>({
+      method: 'PATCH',
+      url: `${API_URL}/users/${id}/password`,
+      data: { newPassword }
+    });
+  }
+
+  async resetUserPassword(id: string): Promise<{ temporaryPassword: string; user: any }> {
+    const response = await this.makeRequest<{ temporaryPassword: string; user: any }>({
+      method: 'POST',
+      url: `${API_URL}/users/${id}/reset-password`
+    });
+    return response;
   }
 
   async getUserById(id: string): Promise<User> {
-    try {
-      const user = this.users.find(user => user._id === id)
-      if (!user) {
-        throw new UserServiceError(
-          "User not found",
-          "USER_NOT_FOUND",
-          404
-        )
-      }
-      return user
-    } catch (error) {
-      if (error instanceof UserServiceError) {
-        throw error
-      }
-      throw new UserServiceError(
-        "Failed to get user",
-        "GET_ERROR",
-        500
-      )
-    }
+    const backendUser = await this.makeRequest<any>({
+      method: 'GET',
+      url: `${API_URL}/users/${id}`
+    });
+    return this.transformBackendUser(backendUser);
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    const backendUsers = await this.makeRequest<any[]>({
+      method: 'GET',
+      url: `${API_URL}/users`
+    });
+    return backendUsers.map(user => this.transformBackendUser(user));
   }
 
   async searchUsers(
@@ -221,116 +165,103 @@ export class UserService {
     sort?: UserSortCriteria,
     pagination?: UserPaginationParams
   ): Promise<{ users: User[]; total: number }> {
-    try {
-      let filteredUsers = [...this.users]
+    // For now, get all users and filter client-side
+    // In a real implementation, you'd pass these parameters to the backend
+    const allUsers = await this.getAllUsers();
+    
+    let filteredUsers = [...allUsers];
 
-      // Apply filters
-      if (criteria.role) {
-        filteredUsers = filteredUsers.filter(user => user.role === criteria.role)
-      }
-      if (criteria.isActive !== undefined) {
-        filteredUsers = filteredUsers.filter(user => user.isActive === criteria.isActive)
-      }
-      if (criteria.phone) {
-        filteredUsers = filteredUsers.filter(user => user.phoneNumber.includes(criteria.phone!))
-      }
-      if (criteria.searchQuery) {
-        const query = criteria.searchQuery.toLowerCase()
-        filteredUsers = filteredUsers.filter(user =>
-          user.username.toLowerCase().includes(query) ||
-          user.firstName.toLowerCase().includes(query) ||
-          user.lastName.toLowerCase().includes(query) ||
-          user.email?.toLowerCase().includes(query) ||
-          user.phoneNumber.includes(query)
-        )
-      }
-
-      // Apply sorting
-      if (sort) {
-        filteredUsers.sort((a, b) => {
-          const aValue = a[sort.field] as string | number | Date
-          const bValue = b[sort.field] as string | number | Date
-          
-          // Handle undefined values
-          if (aValue === undefined && bValue === undefined) return 0
-          if (aValue === undefined) return sort.direction === "asc" ? 1 : -1
-          if (bValue === undefined) return sort.direction === "asc" ? -1 : 1
-          
-          // Compare values
-          if (sort.direction === "asc") {
-            return aValue > bValue ? 1 : -1
-          }
-          return aValue < bValue ? 1 : -1
-        })
-      }
-
-      // Apply pagination
-      const total = filteredUsers.length
-      if (pagination) {
-        const start = (pagination.page - 1) * pagination.itemsPerPage
-        filteredUsers = filteredUsers.slice(start, start + pagination.itemsPerPage)
-      }
-
-      return { users: filteredUsers, total }
-    } catch (error) {
-      if (error instanceof UserServiceError) {
-        throw error
-      }
-      throw new UserServiceError(
-        "Failed to search users",
-        "SEARCH_ERROR",
-        500
-      )
+    // Apply filters
+    if (criteria.role) {
+      filteredUsers = filteredUsers.filter(user => user.role === criteria.role);
     }
+    if (criteria.isActive !== undefined) {
+      filteredUsers = filteredUsers.filter(user => user.isActive === criteria.isActive);
+    }
+    if (criteria.phone) {
+      filteredUsers = filteredUsers.filter(user => user.phoneNumber.includes(criteria.phone!));
+    }
+    if (criteria.searchQuery) {
+      const query = criteria.searchQuery.toLowerCase();
+      filteredUsers = filteredUsers.filter(user =>
+        user.username.toLowerCase().includes(query) ||
+        user.firstName.toLowerCase().includes(query) ||
+        user.lastName.toLowerCase().includes(query) ||
+        user.email?.toLowerCase().includes(query) ||
+        user.phoneNumber.includes(query)
+      );
+    }
+
+    // Apply sorting
+    if (sort) {
+      filteredUsers.sort((a, b) => {
+        const aValue = a[sort.field] as string | number | Date;
+        const bValue = b[sort.field] as string | number | Date;
+        
+        // Handle undefined values
+        if (aValue === undefined && bValue === undefined) return 0;
+        if (aValue === undefined) return sort.direction === "asc" ? 1 : -1;
+        if (bValue === undefined) return sort.direction === "asc" ? -1 : 1;
+        
+        // Compare values
+        if (sort.direction === "asc") {
+          return aValue > bValue ? 1 : -1;
+        }
+        return aValue < bValue ? 1 : -1;
+      });
+    }
+
+    const total = filteredUsers.length;
+
+    // Apply pagination
+    if (pagination) {
+      const start = (pagination.page - 1) * pagination.itemsPerPage;
+      filteredUsers = filteredUsers.slice(start, start + pagination.itemsPerPage);
+    }
+
+    return { users: filteredUsers, total };
   }
 }
 
-/**
- * Searches for users based on a query string
- * @param query - The search query
- * @param searchFields - Optional array of fields to search in
- * @returns Promise resolving to array of matching users
- */
+// Legacy functions for backward compatibility
+export async function getUsers(): Promise<User[]> {
+  const userService = UserService.getInstance();
+  return userService.getAllUsers();
+}
+
+export async function getUserById(id: string): Promise<User | null> {
+  try {
+    const userService = UserService.getInstance();
+    return await userService.getUserById(id);
+  } catch (error) {
+    if (error instanceof UserServiceError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export async function searchUsers(
   query: string,
   searchFields: string[] = ["username", "mobile", "email"],
 ): Promise<User[]> {
-  await delay(400)
-  const lowercaseQuery = query.toLowerCase()
-
-  return mockUsers.filter((user) => {
-    return searchFields.some((field) => {
-      const fieldValue = user[field as keyof User]
-      return fieldValue && typeof fieldValue === "string" && fieldValue.toLowerCase().includes(lowercaseQuery)
-    })
-  })
+  const userService = UserService.getInstance();
+  const result = await userService.searchUsers({ searchQuery: query });
+  return result.users;
 }
 
-/**
- * Filters users based on various criteria
- * @param filters - Object containing filter criteria
- * @param filters.role - Filter by user role
- * @param filters.status - Filter by active status
- * @param filters.phone - Filter by phone number
- * @returns Promise resolving to array of filtered users
- */
 export async function filterUsers(filters: {
   role?: UserRole
   status?: boolean
   phone?: string
 }): Promise<User[]> {
-  await delay(400)
-
-  return mockUsers.filter((user) => {
-    if (filters.role && user.role !== filters.role) {
-      return false
-    }
-    if (filters.status !== undefined && user.isActive !== filters.status) {
-      return false
-    }
-    if (filters.phone && !user.phoneNumber.includes(filters.phone)) {
-      return false
-    }
-    return true
-  })
+  const userService = UserService.getInstance();
+  const criteria: UserFilterCriteria = {};
+  
+  if (filters.role) criteria.role = filters.role;
+  if (filters.status !== undefined) criteria.isActive = filters.status;
+  if (filters.phone) criteria.phone = filters.phone;
+  
+  const result = await userService.searchUsers(criteria);
+  return result.users;
 }

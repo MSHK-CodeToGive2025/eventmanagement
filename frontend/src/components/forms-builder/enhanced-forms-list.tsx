@@ -13,199 +13,48 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { PaginationControls } from "@/components/ui/pagination-controls"
-import { PlusCircle, Edit, Trash2, Copy, Eye, Search, Filter, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react"
+import { PlusCircle, Edit, Trash2, Eye, Search, Filter, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-
-// Mock data for forms with additional fields
-const mockForms = [
-  {
-    id: "1",
-    name: "Event Registration Form",
-    description: "Standard registration form for events",
-    category: "Registration",
-    status: "Published",
-    createdAt: "2023-05-15",
-    updatedAt: "2023-06-10",
-    createdBy: "John Doe",
-    updatedBy: "Jane Smith",
-    fields: 12,
-    tags: ["Registration", "Event"],
-  },
-  {
-    id: "2",
-    name: "Feedback Survey",
-    description: "Post-event feedback collection form",
-    category: "Survey",
-    status: "Draft",
-    createdAt: "2023-04-22",
-    updatedAt: "2023-06-05",
-    createdBy: "Jane Smith",
-    updatedBy: "Jane Smith",
-    fields: 8,
-    tags: ["Survey", "Feedback"],
-  },
-  {
-    id: "3",
-    name: "Speaker Application",
-    description: "Form for speaker submissions",
-    category: "Application",
-    status: "Published",
-    createdAt: "2023-03-10",
-    updatedAt: "2023-05-20",
-    createdBy: "Mark Johnson",
-    updatedBy: "Sarah Williams",
-    fields: 15,
-    tags: ["Application", "Speaker"],
-  },
-  {
-    id: "4",
-    name: "Vendor Registration",
-    description: "Registration form for event vendors",
-    category: "Registration",
-    status: "Published",
-    createdAt: "2023-02-18",
-    updatedAt: "2023-04-15",
-    createdBy: "John Doe",
-    updatedBy: "Mark Johnson",
-    fields: 10,
-    tags: ["Registration", "Vendor"],
-  },
-  {
-    id: "5",
-    name: "Volunteer Sign-up",
-    description: "Form for volunteer registration",
-    category: "Registration",
-    status: "Published",
-    createdAt: "2023-01-25",
-    updatedAt: "2023-03-05",
-    createdBy: "Sarah Williams",
-    updatedBy: "John Doe",
-    fields: 9,
-    tags: ["Registration", "Volunteer"],
-  },
-  {
-    id: "6",
-    name: "Event Evaluation",
-    description: "Form for evaluating event success",
-    category: "Survey",
-    status: "Draft",
-    createdAt: "2023-06-01",
-    updatedAt: "2023-06-02",
-    createdBy: "Jane Smith",
-    updatedBy: "Jane Smith",
-    fields: 14,
-    tags: ["Survey", "Evaluation"],
-  },
-  {
-    id: "7",
-    name: "Sponsor Application",
-    description: "Form for potential sponsors",
-    category: "Application",
-    status: "Published",
-    createdAt: "2023-04-05",
-    updatedAt: "2023-05-12",
-    createdBy: "Mark Johnson",
-    updatedBy: "Mark Johnson",
-    fields: 11,
-    tags: ["Application", "Sponsor"],
-  },
-  {
-    id: "8",
-    name: "Workshop Registration",
-    description: "Registration for workshop attendees",
-    category: "Registration",
-    status: "Published",
-    createdAt: "2023-03-20",
-    updatedAt: "2023-04-10",
-    createdBy: "Sarah Williams",
-    updatedBy: "John Doe",
-    fields: 7,
-    tags: ["Registration", "Workshop"],
-  },
-  {
-    id: "9",
-    name: "Satisfaction Survey",
-    description: "General satisfaction survey",
-    category: "Survey",
-    status: "Draft",
-    createdAt: "2023-05-28",
-    updatedAt: "2023-06-08",
-    createdBy: "Jane Smith",
-    updatedBy: "Sarah Williams",
-    fields: 13,
-    tags: ["Survey", "Satisfaction"],
-  },
-  {
-    id: "10",
-    name: "Media Accreditation",
-    description: "Form for media personnel accreditation",
-    category: "Application",
-    status: "Published",
-    createdAt: "2023-02-10",
-    updatedAt: "2023-03-15",
-    createdBy: "Mark Johnson",
-    updatedBy: "Jane Smith",
-    fields: 16,
-    tags: ["Application", "Media"],
-  },
-  {
-    id: "11",
-    name: "RSVP Form",
-    description: "Simple RSVP form for events",
-    category: "Registration",
-    status: "Published",
-    createdAt: "2023-04-15",
-    updatedAt: "2023-05-10",
-    createdBy: "John Doe",
-    updatedBy: "John Doe",
-    fields: 5,
-    tags: ["Registration", "RSVP"],
-  },
-  {
-    id: "12",
-    name: "Event Feedback Advanced",
-    description: "Detailed feedback collection form",
-    category: "Survey",
-    status: "Published",
-    createdAt: "2023-03-05",
-    updatedAt: "2023-04-20",
-    createdBy: "Jane Smith",
-    updatedBy: "Mark Johnson",
-    fields: 18,
-    tags: ["Survey", "Feedback", "Advanced"],
-  },
-]
+import { formService } from "@/services/formService"
+import { RegistrationForm } from "@/types/form-types"
+import { useAuth } from "@/contexts/auth-context"
 
 // Define types
 type Form = {
-  id: string
-  name: string
-  description: string
-  category: string
-  status: string
-  createdAt: string
-  updatedAt: string
-  createdBy: string
-  updatedBy: string
-  fields: number
-  tags: string[]
+  _id: string
+  title: string
+  description?: string
+  category?: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt?: Date
+  createdBy: {
+    firstName: string
+    lastName: string
+  }
+  updatedBy?: {
+    firstName: string
+    lastName: string
+  }
+  sections?: any[]
 }
 
-type SortField = "name" | "category" | "createdAt" | "updatedAt" | "updatedBy"
+type SortField = "title" | "category" | "createdAt" | "updatedAt" | "updatedBy"
 type SortOrder = "asc" | "desc"
 
 export default function EnhancedFormsList() {
   const navigate = useNavigate()
   const { toast } = useToast()
+  const { user } = useAuth()
 
   // State for all forms and filtered forms
-  const [forms, setForms] = useState<Form[]>(mockForms)
-  const [loading, setLoading] = useState(false)
+  const [forms, setForms] = useState<Form[]>([])
+  const [loading, setLoading] = useState(true)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [formToDelete, setFormToDelete] = useState<string | null>(null)
 
@@ -222,9 +71,32 @@ export default function EnhancedFormsList() {
   const [sortField, setSortField] = useState<SortField>("updatedAt")
   const [sortOrder, setSortOrder] = useState<SortOrder>("desc")
 
+  // Fetch forms from backend
+  const fetchForms = async () => {
+    try {
+      setLoading(true)
+      const formsData = await formService.getAllForms()
+      setForms(formsData as unknown as Form[])
+    } catch (error) {
+      console.error("Error fetching forms:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load forms",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load forms on component mount
+  useEffect(() => {
+    fetchForms()
+  }, [])
+
   // Get unique categories for filters
   const categories = useMemo(() => {
-    return Array.from(new Set(forms.map((form) => form.category)))
+    return Array.from(new Set(forms.map((form) => form.category || "Uncategorized")))
   }, [forms])
 
   // Filter and sort forms
@@ -234,32 +106,38 @@ export default function EnhancedFormsList() {
         // Search term filter
         const matchesSearch =
           searchTerm === "" ||
-          form.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          form.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          form.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          form.updatedBy.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          form.createdBy.toLowerCase().includes(searchTerm.toLowerCase())
+          form.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (form.description && form.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (form.category && form.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (form.updatedBy && `${form.updatedBy.firstName} ${form.updatedBy.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (form.createdBy && `${form.createdBy.firstName} ${form.createdBy.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()))
 
         // Category filter
-        const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(form.category)
+        const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(form.category || "Uncategorized")
 
         return matchesSearch && matchesCategory
       })
       .sort((a, b) => {
-        if (sortField === "name") {
-          return sortOrder === "asc" ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
+        if (sortField === "title") {
+          return sortOrder === "asc" ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)
         } else if (sortField === "category") {
-          return sortOrder === "asc" ? a.category.localeCompare(b.category) : b.category.localeCompare(a.category)
+          const categoryA = a.category || "Uncategorized"
+          const categoryB = b.category || "Uncategorized"
+          return sortOrder === "asc" ? categoryA.localeCompare(categoryB) : categoryB.localeCompare(categoryA)
         } else if (sortField === "createdAt") {
           return sortOrder === "asc"
             ? new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
             : new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         } else if (sortField === "updatedAt") {
+          const updatedAtA = a.updatedAt || a.createdAt
+          const updatedAtB = b.updatedAt || b.createdAt
           return sortOrder === "asc"
-            ? new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
-            : new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+            ? new Date(updatedAtA).getTime() - new Date(updatedAtB).getTime()
+            : new Date(updatedAtB).getTime() - new Date(updatedAtA).getTime()
         } else if (sortField === "updatedBy") {
-          return sortOrder === "asc" ? a.updatedBy.localeCompare(b.updatedBy) : b.updatedBy.localeCompare(a.updatedBy)
+          const updatedByA = a.updatedBy ? `${a.updatedBy.firstName} ${a.updatedBy.lastName}` : "Unknown"
+          const updatedByB = b.updatedBy ? `${b.updatedBy.firstName} ${b.updatedBy.lastName}` : "Unknown"
+          return sortOrder === "asc" ? updatedByA.localeCompare(updatedByB) : updatedByB.localeCompare(updatedByA)
         }
         return 0
       })
@@ -306,37 +184,41 @@ export default function EnhancedFormsList() {
     setDeleteDialogOpen(true)
   }
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (formToDelete) {
-      setForms(forms.filter((form) => form.id !== formToDelete))
-      toast({
-        title: "Form deleted",
-        description: "The form has been deleted successfully",
-      })
-      setDeleteDialogOpen(false)
-      setFormToDelete(null)
+      try {
+        await formService.deleteForm(formToDelete)
+        setForms(forms.filter((form) => form._id !== formToDelete))
+        toast({
+          title: "Form deleted",
+          description: "The form has been deleted successfully",
+        })
+      } catch (error: any) {
+        console.error("Error deleting form:", error)
+        let errorMessage = "Failed to delete form"
+        
+        // Provide more specific error messages
+        if (error.message?.includes("403")) {
+          errorMessage = "Access denied. Only administrators can delete forms. Please log in as an admin user."
+        } else if (error.message?.includes("401")) {
+          errorMessage = "Authentication required. Please log in again."
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      } finally {
+        setDeleteDialogOpen(false)
+        setFormToDelete(null)
+      }
     }
   }
 
-  const handleDuplicate = (id: string) => {
-    const formToDuplicate = forms.find((form) => form.id === id)
-    if (formToDuplicate) {
-      const newForm = {
-        ...formToDuplicate,
-        id: Date.now().toString(),
-        name: `${formToDuplicate.name} (Copy)`,
-        createdAt: new Date().toISOString().split("T")[0],
-        updatedAt: new Date().toISOString().split("T")[0],
-        createdBy: "Current User", // In a real app, this would be the current user
-        updatedBy: "Current User",
-      }
-      setForms([...forms, newForm])
-      toast({
-        title: "Form duplicated",
-        description: "The form has been duplicated successfully",
-      })
-    }
-  }
+
 
   // Get sort icon
   const getSortIcon = (field: SortField) => {
@@ -346,10 +228,29 @@ export default function EnhancedFormsList() {
     return null
   }
 
+  // Helper function to get user display name
+  const getUserDisplayName = (user?: { firstName: string; lastName: string }) => {
+    if (!user) return "Unknown"
+    return `${user.firstName} ${user.lastName}`
+  }
+
+  // Helper function to get field count
+  const getFieldCount = (sections?: any[]) => {
+    if (!sections) return 0
+    return sections.reduce((total, section) => total + (section.fields?.length || 0), 0)
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold">Forms Management</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Forms Management</h1>
+          {user && (
+            <p className="text-sm text-gray-600 mt-1">
+              Logged in as: {user.firstName} {user.lastName} ({user.role})
+            </p>
+          )}
+        </div>
         <Button asChild className="whitespace-nowrap">
           <Link to="/manage/forms/new">
             <PlusCircle className="mr-2 h-4 w-4" />
@@ -390,8 +291,8 @@ export default function EnhancedFormsList() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleSort("name")}>
-                Form Title {sortField === "name" && (sortOrder === "asc" ? "(A-Z)" : "(Z-A)")}
+              <DropdownMenuItem onClick={() => handleSort("title")}>
+                Form Title {sortField === "title" && (sortOrder === "asc" ? "(A-Z)" : "(Z-A)")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleSort("category")}>
                 Category {sortField === "category" && (sortOrder === "asc" ? "(A-Z)" : "(Z-A)")}
@@ -465,8 +366,8 @@ export default function EnhancedFormsList() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("name")}>
-                  <div className="flex items-center">Form Title {getSortIcon("name")}</div>
+                <TableHead className="cursor-pointer" onClick={() => handleSort("title")}>
+                  <div className="flex items-center">Form Title {getSortIcon("title")}</div>
                 </TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("category")}>
                   <div className="flex items-center">Category {getSortIcon("category")}</div>
@@ -485,26 +386,43 @@ export default function EnhancedFormsList() {
             </TableHeader>
             <TableBody>
               {currentItems.map((form) => (
-                <TableRow key={form.id}>
+                <TableRow key={form._id}>
                   <TableCell className="font-medium">
                     <div className="flex flex-col">
-                      {form.name}
-                      <span className="text-xs text-gray-500">{form.description}</span>
+                      <div className="flex items-center gap-2">
+                        {form.title}
+                        <Badge variant={form.isActive ? "default" : "secondary"}>
+                          {form.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </div>
+                      {form.description && (
+                        <span className="text-xs text-gray-500">{form.description}</span>
+                      )}
+                      <span className="text-xs text-gray-400">
+                        {getFieldCount(form.sections)} fields
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{form.category}</Badge>
+                    <Badge variant="outline">{form.category || "Uncategorized"}</Badge>
                   </TableCell>
-                  <TableCell>{form.createdAt}</TableCell>
-                  <TableCell>{form.updatedAt}</TableCell>
-                  <TableCell>{form.updatedBy}</TableCell>
+                  <TableCell>{new Date(form.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    {form.updatedAt 
+                      ? new Date(form.updatedAt).toLocaleDateString()
+                      : new Date(form.createdAt).toLocaleDateString()
+                    }
+                  </TableCell>
+                  <TableCell>
+                    {getUserDisplayName(form.updatedBy || form.createdBy)}
+                  </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="outline" size="sm" asChild>
-                              <Link to={`/manage/forms/${form.id}`}>
+                              <Link to={`/manage/forms/${form._id}`}>
                                 <Eye className="h-4 w-4" />
                                 <span className="sr-only">View</span>
                               </Link>
@@ -518,7 +436,7 @@ export default function EnhancedFormsList() {
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <Button variant="outline" size="sm" asChild>
-                              <Link to={`/manage/forms/${form.id}/edit`}>
+                              <Link to={`/manage/forms/${form._id}/edit`}>
                                 <Edit className="h-4 w-4" />
                                 <span className="sr-only">Edit</span>
                               </Link>
@@ -529,34 +447,26 @@ export default function EnhancedFormsList() {
                           </TooltipContent>
                         </Tooltip>
 
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" onClick={() => handleDuplicate(form.id)}>
-                              <Copy className="h-4 w-4" />
-                              <span className="sr-only">Duplicate</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Create a copy of this form</p>
-                          </TooltipContent>
-                        </Tooltip>
 
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-red-500 hover:text-red-700"
-                              onClick={() => handleDelete(form.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              <span className="sr-only">Delete</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Delete this form</p>
-                          </TooltipContent>
-                        </Tooltip>
+
+                        {user?.role === 'admin' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="text-red-500 hover:text-red-700"
+                                onClick={() => handleDelete(form._id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                <span className="sr-only">Delete</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Delete this form (Admin only)</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                       </TooltipProvider>
                     </div>
                   </TableCell>

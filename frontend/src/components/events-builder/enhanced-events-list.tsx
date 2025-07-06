@@ -36,10 +36,13 @@ import {
   Clock,
   MessageSquare,
   Users,
+  Eye,
 } from "lucide-react"
 import { ZubinEvent, eventCategories, targetGroups, eventStatuses } from "@/types/event-types"
-import { mockZubinEvents } from "@/types/mock-enhanced-event-data"
+// import { mockZubinEvents } from "@/types/mock-enhanced-event-data"
 import { useNavigate } from "react-router-dom"
+import eventService from "@/services/eventService"
+import { useToast } from "@/hooks/use-toast"
 
 // Define the interface for the filter state
 interface FilterState {
@@ -58,10 +61,17 @@ interface FilterState {
 
 interface EnhancedEventsListProps {
   onEditEvent: (eventId: string) => void;
+  refreshTrigger?: number;
 }
 
-export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListProps) {
+export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: EnhancedEventsListProps) {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  // State for events data
+  const [events, setEvents] = useState<ZubinEvent[]>([])
+  const [loading, setLoading] = useState(true)
+  
   // State for search, filters, sorting, and pagination
   const [searchQuery, setSearchQuery] = useState("")
   const [filters, setFilters] = useState<FilterState>({
@@ -84,6 +94,55 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [eventToDelete, setEventToDelete] = useState<string | null>(null)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+
+  // Fetch events from backend
+  const fetchEvents = async () => {
+    try {
+      setLoading(true)
+      const eventsData = await eventService.getEvents()
+      // Transform backend data to match ZubinEvent interface
+      const transformedEvents: ZubinEvent[] = eventsData.map((event: any) => ({
+        _id: event._id,
+        title: event.title,
+        description: event.description,
+        category: event.category,
+        targetGroup: event.targetGroup,
+        location: event.location,
+        startDate: new Date(event.startDate),
+        endDate: new Date(event.endDate),
+        coverImageUrl: event.coverImageUrl,
+        isPrivate: event.isPrivate,
+        status: event.status,
+        registrationFormId: event.registrationFormId,
+        sessions: event.sessions.map((session: any) => ({
+          ...session,
+          date: new Date(session.date)
+        })),
+        capacity: event.capacity,
+        createdBy: event.createdBy,
+        createdAt: new Date(event.createdAt),
+        updatedBy: event.updatedBy,
+        updatedAt: event.updatedAt ? new Date(event.updatedAt) : undefined,
+        tags: event.tags,
+        registeredCount: event.registeredCount
+      }))
+      setEvents(transformedEvents)
+    } catch (error) {
+      console.error("Error fetching events:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load events",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Load events on component mount and when refreshTrigger changes
+  useEffect(() => {
+    fetchEvents()
+  }, [refreshTrigger])
 
   // Reset pagination when filters or search change
   useEffect(() => {
@@ -191,7 +250,7 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
   }
 
   // Filter events based on all filters and search query
-  const filteredEvents = mockZubinEvents.filter((event) => {
+  const filteredEvents = events.filter((event) => {
     // Global search only for title
     const matchesSearch = searchQuery
       ? event.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -214,7 +273,8 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
     const matchesIsPrivate = filters.isPrivate !== null ? event.isPrivate === filters.isPrivate : true;
 
     const matchesLastUpdatedBy = filters.lastUpdatedBy
-      ? event.updatedBy?.toLowerCase().includes(filters.lastUpdatedBy.toLowerCase()) || false
+      ? (event.updatedBy?.firstName?.toLowerCase().includes(filters.lastUpdatedBy.toLowerCase()) || 
+         event.updatedBy?.lastName?.toLowerCase().includes(filters.lastUpdatedBy.toLowerCase()) || false)
       : true;
 
     // Date range filter
@@ -301,11 +361,38 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
     setDeleteDialogOpen(true)
   }
 
-  const handleDeleteConfirm = () => {
-    // In a real app, you would delete the event from your backend here
-    console.log("Deleting event:", eventToDelete)
-    setDeleteDialogOpen(false)
-    setEventToDelete(null)
+  const handleDeleteConfirm = async () => {
+    if (eventToDelete) {
+      try {
+        await eventService.deleteEvent(eventToDelete)
+        setEvents(events.filter((event) => event._id !== eventToDelete))
+        toast({
+          title: "Event deleted",
+          description: "The event has been deleted successfully",
+        })
+      } catch (error: any) {
+        console.error("Error deleting event:", error)
+        let errorMessage = "Failed to delete event"
+        
+        // Provide more specific error messages
+        if (error.message?.includes("403")) {
+          errorMessage = "Access denied. Only administrators can delete events."
+        } else if (error.message?.includes("401")) {
+          errorMessage = "Authentication required. Please log in again."
+        } else if (error.message) {
+          errorMessage = error.message
+        }
+        
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        })
+      } finally {
+        setDeleteDialogOpen(false)
+        setEventToDelete(null)
+      }
+    }
   }
 
   return (
@@ -529,8 +616,16 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
       </div>
 
       {/* Events Table */}
-      <div className="rounded-md border">
-        <Table>
+      {loading ? (
+        <div className="space-y-4">
+          <div className="h-10 bg-gray-200 animate-pulse rounded"></div>
+          {Array.from({ length: 5 }).map((_, index) => (
+            <div key={index} className="h-16 bg-gray-100 animate-pulse rounded"></div>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-md border">
+          <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="cursor-pointer" onClick={() => handleSort("title")}>
@@ -694,7 +789,14 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                   <TableCell>
                     <div className="flex items-center">
                       <UserCircle className="h-4 w-4 mr-1 text-gray-500" />
-                      <span className="text-sm">{event.updatedBy}</span>
+                      <span className="text-sm">
+                        {event.updatedBy 
+                          ? `${event.updatedBy.firstName} ${event.updatedBy.lastName}`
+                          : event.createdBy 
+                            ? `${event.createdBy.firstName} ${event.createdBy.lastName}`
+                            : "Unknown"
+                        }
+                      </span>
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
@@ -706,6 +808,13 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => {
+                          console.log('Viewing event:', event._id, event.title);
+                          navigate(`/enhanced-events/${event._id}`);
+                        }}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => onEditEvent(event._id)}>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit
@@ -746,6 +855,7 @@ export default function EnhancedEventsList({ onEditEvent }: EnhancedEventsListPr
           />
         </div>
       </div>
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

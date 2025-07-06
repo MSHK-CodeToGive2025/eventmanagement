@@ -10,6 +10,8 @@ import UserManagementPage from './pages/internal/user-management/users-managemen
 import { UserManagementProvider } from './contexts/user-management-context';
 import FormsPage from './pages/internal/forms-builder/forms-builder';
 import NewFormPage from './components/forms-builder/new-form-page';
+import FormDetailPage from './pages/internal/forms-builder/form-detail-page';
+import FormEditPage from './pages/internal/forms-builder/form-edit-page';
 import EventsBuilderPage from './pages/internal/events-builder/events-builder-page';
 import EnhancedEventsPage from './pages/public/enhanced-events/enhanced-events-page';
 import EnhancedEventDetailPage from './pages/public/enhanced-events/enhanced-event-detail-page';
@@ -17,6 +19,9 @@ import { AnalyticsDashboard } from './pages/internal/analytics/analytics-dashboa
 import SignUp from './pages/public/sign-up';
 import EventRemindersPage from './pages/internal/events-builder/event-reminders-page';
 import ManageRegistrations from './pages/internal/events-builder/manage-registrations';
+import EventsPage from './pages/public/events/events-page-simple';
+import UserProfile from './pages/public/user-profile';
+import MyRegistrations from './pages/public/my-registrations';
 
 const App: React.FC = () => {
 
@@ -28,8 +33,8 @@ const App: React.FC = () => {
           <div className="flex flex-col min-h-screen bg-white">
             <Navigation />
             <Routes>
-              <Route path="/login" element={<SignIn />} />
-              <Route path="/register" element={<SignUp />} />
+              <Route path="/sign-in" element={<SignIn />} />
+              <Route path="/sign-up" element={<SignUp />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/enhanced-events" element={<EnhancedEventsPage />} />
               <Route path="/enhanced-events/:id" element={<EnhancedEventDetailPage />} />
@@ -40,9 +45,14 @@ const App: React.FC = () => {
               <Route path="/manage/events/:id/registrations" element={<ManageRegistrations />} />
               <Route path="/manage/forms" element={<FormsPage />} />
               <Route path="/manage/forms/new" element={<NewFormPage />} />
+              <Route path="/manage/forms/:id" element={<FormDetailPage />} />
+              <Route path="/manage/forms/:id/edit" element={<FormEditPage />} />
               <Route path="/manage/users" element={<UserManagementPage />} />
               <Route path="/manage/analytics" element={<AnalyticsDashboard />} />
+              <Route path="/profile" element={<UserProfile />} />
+              <Route path="/profile/registrations" element={<MyRegistrations />} />
               <Route path="/" element={<LandingPage />} />
+              <Route path="/events" element={<EventsPage />} />
             </Routes>
           </div>
         </div>

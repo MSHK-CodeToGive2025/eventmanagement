@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -9,10 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { format } from "date-fns"
-import { CalendarIcon, Clock, MapPin, Link, Tag } from "lucide-react"
+import { CalendarIcon, MapPin, Link } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import EventSessions from "./event-sessions"
+import { formService } from "@/services/formService"
+import { RegistrationForm } from "@/types/form-types"
+import eventService, { EventFormData } from "@/services/eventService"
+import { useAuth } from "@/contexts/auth-context"
 import {
   ZubinEvent,
   eventCategories,
@@ -56,7 +60,7 @@ const eventFormSchema = z.object({
   }),
   coverImageUrl: z.string().optional(),
   isPrivate: z.boolean(),
-  status: z.enum(["draft", "published", "cancelled", "completed"]),
+  status: z.enum(["Draft", "Published", "Cancelled", "Completed"]),
   registrationFormId: z.string().min(1, {
     message: "Registration form is required.",
   }),
@@ -94,11 +98,37 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
   const [activeTab, setActiveTab] = useState("basic")
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [registrationForms, setRegistrationForms] = useState<RegistrationForm[]>([])
+  const [loadingForms, setLoadingForms] = useState(true)
   const { toast } = useToast()
+  const { user } = useAuth()
 
   // Format today's date for the min attribute of the date input
   const today = new Date()
   const formattedToday = format(today, "yyyy-MM-dd")
+
+  // Fetch registration forms on component mount
+  useEffect(() => {
+    const fetchForms = async () => {
+      try {
+        setLoadingForms(true)
+        const forms = await formService.getAllForms()
+        setRegistrationForms(forms)
+      } catch (error) {
+        console.error("Error fetching registration forms:", error)
+        toast({
+          title: "Error",
+          description: "Failed to load registration forms",
+          variant: "destructive",
+        })
+      } finally {
+        setLoadingForms(false)
+      }
+    }
+
+    fetchForms()
+  }, [toast])
+
 
   // Initialize the form
   const form = useForm<EventFormValues>({
@@ -118,13 +148,77 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       endDate: today,
       coverImageUrl: "",
       isPrivate: false,
-      status: "draft",
+      status: "Draft",
       registrationFormId: "",
       sessions: [],
       capacity: undefined,
       tags: [],
     },
   })
+
+  // Fetch event data when editing
+  useEffect(() => {
+    const fetchEventData = async () => {
+      if (eventId && !defaultValues) {
+        try {
+          setIsSubmitting(true)
+          const eventData = await eventService.getEvent(eventId)
+          
+          // Transform the event data to match form structure
+          const formData = {
+            title: eventData.title,
+            description: eventData.description,
+            category: eventData.category,
+            targetGroup: eventData.targetGroup,
+            location: eventData.location,
+            startDate: new Date(eventData.startDate),
+            endDate: new Date(eventData.endDate),
+            coverImageUrl: eventData.coverImageUrl || "",
+            isPrivate: eventData.isPrivate,
+            status: eventData.status,
+            registrationFormId: eventData.registrationFormId,
+            sessions: eventData.sessions.map((session: any) => ({
+              _id: session._id,
+              title: session.title,
+              description: session.description,
+              date: new Date(session.date),
+              startTime: session.startTime,
+              endTime: session.endTime,
+              location: session.location,
+              capacity: session.capacity
+            })),
+            capacity: eventData.capacity,
+            tags: eventData.tags || []
+          }
+
+          // Reset form with the fetched data
+          form.reset(formData)
+          
+          // Force a small delay to ensure form fields are properly updated
+          setTimeout(() => {
+            // Trigger form validation to ensure all fields are properly rendered
+            form.trigger()
+          }, 100)
+          
+          // Set preview image if exists
+          if (eventData.coverImageUrl) {
+            setPreviewImage(eventData.coverImageUrl)
+          }
+        } catch (error) {
+          console.error("Error fetching event data:", error)
+          toast({
+            title: "Error",
+            description: "Failed to load event data for editing",
+            variant: "destructive",
+          })
+        } finally {
+          setIsSubmitting(false)
+        }
+      }
+    }
+
+    fetchEventData()
+  }, [eventId, defaultValues, form, toast])
 
   // Handle form submission
   async function onSubmit(data: EventFormValues) {
@@ -142,23 +236,83 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         return
       }
 
-      // Create a new event object with the form data
-      const newEvent: ZubinEvent = {
-        _id: eventId || `temp-${Date.now()}`,
-        ...data,
-        createdBy: "current-user-id", // This should come from your auth context
-        createdAt: new Date(),
+      // Check if user is authenticated
+      if (!user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please log in to create or update events.",
+          variant: "destructive"
+        })
+        setIsSubmitting(false)
+        return
       }
 
-      // Simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      // Transform form data to match backend expectations
+      const eventData: EventFormData = {
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        targetGroup: data.targetGroup,
+        location: data.location,
+        startDate: data.startDate.toISOString(),
+        endDate: data.endDate.toISOString(),
+        coverImageUrl: data.coverImageUrl,
+        isPrivate: data.isPrivate,
+        status: data.status,
+        registrationFormId: data.registrationFormId,
+        sessions: data.sessions.map(session => ({
+          title: session.title,
+          description: session.description,
+          date: session.date.toISOString(),
+          startTime: session.startTime,
+          endTime: session.endTime,
+          location: session.location,
+          capacity: session.capacity
+        })),
+        capacity: data.capacity,
+        tags: data.tags
+      }
 
-      onSave(newEvent)
-    } catch (error) {
+      let savedEvent: any
+
+      if (eventId) {
+        // Update existing event
+        savedEvent = await eventService.updateEvent(eventId, eventData)
+        toast({
+          title: "Event Updated Successfully",
+          description: `"${savedEvent.title}" has been updated successfully.`,
+          variant: "default"
+        })
+      } else {
+        // Create new event
+        savedEvent = await eventService.createEvent(eventData)
+        toast({
+          title: "Event Created Successfully",
+          description: `"${savedEvent.title}" has been created successfully.`,
+          variant: "default"
+        })
+      }
+
+      // Call the onSave callback with the saved event
+      onSave(savedEvent)
+    } catch (error: any) {
       console.error("Error submitting form:", error)
+      
+      let errorMessage = "There was a problem submitting the form. Please try again."
+      
+      if (error.response?.status === 403) {
+        errorMessage = "You don't have permission to create or update events."
+      } else if (error.response?.status === 401) {
+        errorMessage = "Please log in again to continue."
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+
       toast({
         title: "Form Submission Error",
-        description: "There was a problem submitting the form. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       })
     } finally {
@@ -250,7 +404,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                         <FormLabel className="text-base font-medium flex items-center">
                           Category <span className="text-red-500 ml-1">*</span>
                         </FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger className="h-12">
                               <SelectValue placeholder="Select a category" />
@@ -258,8 +412,8 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                           </FormControl>
                           <SelectContent>
                             {eventCategories.map((category) => (
-                              <SelectItem key={category.id} value={category.id}>
-                                {category.name}
+                              <SelectItem key={category} value={category}>
+                                {category}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -277,7 +431,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                         <FormLabel className="text-base font-medium flex items-center">
                           Target Group <span className="text-red-500 ml-1">*</span>
                         </FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger className="h-12">
                               <SelectValue placeholder="Select a target group" />
@@ -285,8 +439,8 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                           </FormControl>
                           <SelectContent>
                             {targetGroups.map((group) => (
-                              <SelectItem key={group.id} value={group.id}>
-                                {group.name}
+                              <SelectItem key={group} value={group}>
+                                {group}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -453,7 +607,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                           <FormLabel className="text-base font-medium flex items-center">
                             District <span className="text-red-500 ml-1">*</span>
                           </FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger className="h-12">
                                 <SelectValue placeholder="Select a district" />
@@ -558,7 +712,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="text-base font-medium">Event Status</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="h-12">
                             <SelectValue placeholder="Select status" />
@@ -566,8 +720,8 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                         </FormControl>
                         <SelectContent>
                           {eventStatuses.map((status) => (
-                            <SelectItem key={status.id} value={status.id}>
-                              {status.name}
+                            <SelectItem key={status} value={status}>
+                              {status}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -585,18 +739,33 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                       <FormLabel className="text-base font-medium flex items-center">
                         Registration Form <span className="text-red-500 ml-1">*</span>
                       </FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Select a registration form" />
+                            <SelectValue placeholder={loadingForms ? "Loading forms..." : "Select a registration form"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {/* This should be populated from your forms data */}
-                          <SelectItem value="form1">Basic Registration Form</SelectItem>
-                          <SelectItem value="form2">Detailed Participant Information</SelectItem>
+                          {loadingForms ? (
+                            <SelectItem value="" disabled>
+                              Loading forms...
+                            </SelectItem>
+                          ) : registrationForms.length === 0 ? (
+                            <SelectItem value="" disabled>
+                              No forms available
+                            </SelectItem>
+                          ) : (
+                            registrationForms.map((form) => (
+                              <SelectItem key={form._id} value={form._id}>
+                                {form.title}
+                              </SelectItem>
+                            ))
+                          )}
                         </SelectContent>
                       </Select>
+                      <FormDescription>
+                        {registrationForms.length === 0 && !loadingForms && "No registration forms found. Please create forms first."}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

@@ -24,8 +24,8 @@ interface RegistrationFormDialogProps {
       response: any;
     }[];
     status: 'pending' | 'confirmed' | 'attended' | 'cancelled' | 'waitlisted';
-    registeredAt: Date;
-    cancelledAt?: Date;
+    registeredAt: string;
+    cancelledAt?: string;
     notes?: string;
   };
   form: RegistrationForm;
@@ -93,7 +93,7 @@ export default function RegistrationFormDialog({
               <div>
                 <p className="text-sm text-gray-500">Registration Date</p>
                 <p className="font-medium">
-                  {format(registration.registeredAt, "MMM d, yyyy")}
+                  {format(new Date(registration.registeredAt), "MMM d, yyyy")}
                 </p>
               </div>
             </div>

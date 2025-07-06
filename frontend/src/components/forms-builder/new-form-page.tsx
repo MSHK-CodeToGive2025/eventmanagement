@@ -13,15 +13,12 @@ export default function NewFormPage() {
   }
 
   const handleSave = (data: any) => {
-    // In a real app, you would save the form data to your backend here
-    console.log("Saving form:", data)
-
-    toast({
-      title: "Form created",
-      description: "Your new form has been created successfully",
-    })
-
-    navigate("/manage/forms")
+    // The SimplifiedFormBuilder will handle the success flow internally
+    // including showing the success modal and calling onClose when done
+    console.log("Form saved successfully:", data)
+    
+    // Don't navigate immediately - let the form builder handle the success flow
+    // The form builder will show its success modal and call onClose when the user closes it
   }
 
   return (

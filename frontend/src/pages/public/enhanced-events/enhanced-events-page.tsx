@@ -8,8 +8,8 @@ import { useNavigate } from "react-router-dom"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
-import { mockZubinEvents } from "../../../types/mock-enhanced-event-data"
 import { ZubinEvent } from "@/types/event-types"
+import eventService from "@/services/eventService"
 
 /**
  * Helper function to extract unique categories from events array
@@ -55,18 +55,55 @@ export default function EnhancedEventsPage() {
 
   /**
    * Fetch events data on component mount
-   * Currently using mock data, but can be replaced with API call
+   * Fetch published, non-private events from backend API
    */
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         setLoading(true)
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500))
-        setEvents(mockZubinEvents)
+        setError(null)
+        
+        // Fetch published, non-private events from backend
+        const fetchedEvents = await eventService.getPublicEvents()
+        
+        // Transform backend events to match ZubinEvent interface
+        const transformedEvents: ZubinEvent[] = fetchedEvents.map(event => ({
+          _id: event._id,
+          title: event.title,
+          description: event.description,
+          category: event.category,
+          targetGroup: event.targetGroup,
+          location: {
+            venue: event.location.venue,
+            address: event.location.address,
+            district: event.location.district,
+            onlineEvent: event.location.onlineEvent,
+            meetingLink: event.location.meetingLink
+          },
+          startDate: new Date(event.startDate),
+          endDate: new Date(event.endDate),
+          coverImageUrl: event.coverImageUrl,
+          isPrivate: event.isPrivate,
+          status: event.status,
+          registrationFormId: event.registrationFormId,
+          sessions: event.sessions.map(session => ({
+            ...session,
+            date: new Date(session.date)
+          })),
+          capacity: event.capacity,
+          createdBy: event.createdBy,
+          createdAt: new Date(event.createdAt),
+          updatedBy: event.updatedBy,
+          updatedAt: event.updatedAt ? new Date(event.updatedAt) : undefined,
+          tags: event.tags,
+          registeredCount: event.registeredCount
+        }))
+        
+        setEvents(transformedEvents)
+        console.log(`[EVENTS] Loaded ${transformedEvents.length} published events`)
       } catch (error) {
         console.error("Error fetching events:", error)
-        setError("Failed to fetch events")
+        setError("Failed to fetch events. Please try again later.")
       } finally {
         setLoading(false)
       }
@@ -192,6 +229,21 @@ export default function EnhancedEventsPage() {
 
   // Check if any filters are currently applied
   const hasActiveFilters = searchQuery || selectedCategory || selectedTargetGroup || selectedLocation || startDate || endDate
+
+  // Error state UI
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Events</h1>
+        <div className="text-center py-12 bg-red-50 rounded-lg">
+          <div className="text-red-600 mb-4">{error}</div>
+          <Button onClick={() => window.location.reload()} variant="outline">
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   // Loading state UI
   if (loading) {

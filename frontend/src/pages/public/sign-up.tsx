@@ -11,12 +11,14 @@ import { useAuth } from "@/contexts/auth-context"
 
 export default function SignUp() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const { register } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
   const [formData, setFormData] = useState({
     username: "",
+    firstName: "",
+    lastName: "",
     email: "",
     mobile: "",
     password: "",
@@ -33,6 +35,16 @@ export default function SignUp() {
   const validateForm = () => {
     if (!formData.username) {
       setError("Username is required")
+      return false
+    }
+
+    if (!formData.firstName) {
+      setError("First name is required")
+      return false
+    }
+
+    if (!formData.lastName) {
+      setError("Last name is required")
       return false
     }
 
@@ -69,19 +81,13 @@ export default function SignUp() {
     setError("")
 
     try {
-      // In a real app, this would be an API call to register the user
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Mock successful registration
-      login({
-        id: "temp-id",
-        name: formData.username,
-        email: formData.email,
-        role: "participant",
-        status: "active",
-        lastLogin: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-        phone: formData.mobile
+      await register({
+        username: formData.username,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email || undefined,
+        mobile: formData.mobile,
+        password: formData.password,
       })
 
       setSuccess("Account created successfully! Redirecting to home page...")
@@ -90,8 +96,8 @@ export default function SignUp() {
       setTimeout(() => {
         navigate("/")
       }, 2000)
-    } catch (err) {
-      setError("Failed to create account. Please try again.")
+    } catch (err: any) {
+      setError(err.message || "Failed to create account. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -141,6 +147,38 @@ export default function SignUp() {
                     className="border-gray-300 focus:border-yellow-500 focus:ring focus:ring-yellow-200"
                   />
                   <p className="text-xs text-gray-500">Required for account creation</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName" className="flex items-center">
+                      First Name <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="firstName"
+                      name="firstName"
+                      placeholder="John"
+                      value={formData.firstName}
+                      onChange={handleChange}
+                      required
+                      className="border-gray-300 focus:border-yellow-500 focus:ring focus:ring-yellow-200"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName" className="flex items-center">
+                      Last Name <span className="text-red-500 ml-1">*</span>
+                    </Label>
+                    <Input
+                      id="lastName"
+                      name="lastName"
+                      placeholder="Doe"
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      required
+                      className="border-gray-300 focus:border-yellow-500 focus:ring focus:ring-yellow-200"
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -232,7 +270,7 @@ export default function SignUp() {
             </div>
             <div className="text-sm text-center">
               Already have an account?{" "}
-              <Link to="/login" className="text-yellow-500 hover:underline">
+              <Link to="/sign-in" className="text-yellow-500 hover:underline">
                 Sign In
               </Link>
             </div>

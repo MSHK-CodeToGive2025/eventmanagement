@@ -37,9 +37,19 @@ export interface ZubinEvent {
   registrationFormId: string; // Reference to the RegistrationForm _id
   sessions: Session[]; // Sessions of the event
   capacity?: number; // Capacity of the event
-  createdBy: string; // Created by of the event
+  createdBy: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  }; // Created by of the event
   createdAt: Date; // Created at of the event
-  updatedBy?: string; // Updated by of the event
+  updatedBy?: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  }; // Updated by of the event
   updatedAt?: Date; // Updated at of the event
   tags?: string[]; // Tags of the event
   registeredCount?: number; // Registered count of the event

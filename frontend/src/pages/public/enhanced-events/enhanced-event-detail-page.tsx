@@ -6,9 +6,31 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Clock, Users, Share2, Calendar, MapPin, AlertCircle, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { getEnhancedEventById, getRegistrationFormById } from "@/types/mock-enhanced-event-data"
-import { ZubinEvent, EventRegistration } from "@/types/event-types"
+import { ZubinEvent } from "@/types/event-types"
 import { RegistrationForm } from "@/types/form-types"
+import eventService from "@/services/eventService"
+import { formService } from "@/services/formService"
+
+// Simple interface for event registration
+interface EventRegistration {
+  _id: string;
+  eventId: string;
+  userId: string;
+  attendee: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    email: string;
+  };
+  sessions: string[];
+  formResponses: Array<{
+    sectionId: string;
+    fieldId: string;
+    response: any;
+  }>;
+  status: string;
+  registeredAt: Date;
+}
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Label } from "@/components/ui/label"
@@ -40,7 +62,7 @@ export default function EnhancedEventDetailPage() {
         }
 
         // Get event data from location state or fetch it
-        const eventData = location.state?.event || await getEnhancedEventById(id)
+        const eventData = location.state?.event || await eventService.getEvent(id)
         if (!eventData) {
           navigate("/events/not-found")
           return
@@ -49,9 +71,12 @@ export default function EnhancedEventDetailPage() {
         setEvent(eventData)
 
         // Fetch registration form
-        const formData = await getRegistrationFormById(eventData.registrationFormId)
-        if (formData) {
+        try {
+          const formData = await formService.getForm(eventData.registrationFormId)
           setRegistrationForm(formData)
+        } catch (error) {
+          console.error("Error fetching registration form:", error)
+          // Continue without registration form
         }
       } catch (error) {
         console.error("Error fetching event:", error)
@@ -125,17 +150,8 @@ export default function EnhancedEventDetailPage() {
     setIsSubmitting(true)
 
     try {
-      // Create new registration
-      const newRegistration: EventRegistration = {
-        _id: `reg-${Date.now()}`,
-        eventId: event._id,
-        userId: user._id,
-        attendee: {
-          firstName: formValues.firstName || user.firstName,
-          lastName: formValues.lastName || user.lastName,
-          phone: formValues.phone || user.phoneNumber,
-          email: formValues.email || user.email
-        },
+      // Call backend to save registration
+      await eventService.registerForEventV2(event._id, {
         sessions: selectedSessions,
         formResponses: Object.entries(formValues).map(([fieldId, response]) => ({
           sectionId: registrationForm.sections.find(section => 
@@ -144,17 +160,17 @@ export default function EnhancedEventDetailPage() {
           fieldId,
           response
         })),
-        status: "confirmed",
-        registeredAt: new Date()
-      }
-
-      // TODO: Save registration to backend
-      console.log("New registration:", newRegistration)
-      
+        attendee: {
+          firstName: formValues.firstName || user.firstName,
+          lastName: formValues.lastName || user.lastName,
+          phone: formValues.phone || user.mobile || "",
+          email: formValues.email || user.email
+        }
+      })
       setRegistrationComplete(true)
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting form:", error)
-      console.log("There was an unexpected error. Please try again later.")
+      alert(error.response?.data?.message || "There was an unexpected error. Please try again later.")
     } finally {
       setIsSubmitting(false)
     }
@@ -364,9 +380,11 @@ export default function EnhancedEventDetailPage() {
                             <Button onClick={() => navigate("/enhanced-events")} variant="outline">
                               Browse Other Events
                             </Button>
+                            {/*
                             <Button onClick={resetForm} className="bg-yellow-400 hover:bg-yellow-500 text-black">
                               Register Another Person
                             </Button>
+                            */}
                           </div>
                         </div>
                       ) : (
@@ -563,6 +581,7 @@ export default function EnhancedEventDetailPage() {
             </CardContent>
           </Card>
 
+          {/* 
           <Card>
             <CardContent className="p-6">
               <h2 className="text-xl font-semibold mb-4">Share This Event</h2>
@@ -574,6 +593,7 @@ export default function EnhancedEventDetailPage() {
               </div>
             </CardContent>
           </Card>
+          */}
 
           <Card>
             <CardContent className="p-6">
