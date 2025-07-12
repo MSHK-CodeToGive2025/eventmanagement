@@ -21,6 +21,8 @@ interface FormData {
 type SortColumn = 'name' | 'email' | 'role' | null;
 type SortDirection = 'asc' | 'desc';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const UserManagement: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -42,7 +44,7 @@ const UserManagement: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get<User[]>('/api/users', {
+      const response = await axios.get<User[]>(`${API_URL}/users`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
@@ -60,14 +62,14 @@ const UserManagement: React.FC = () => {
     e.preventDefault();
     try {
       if (selectedUser) {
-        await axios.put(`/api/users/${selectedUser._id}`, formData, {
+        await axios.put(`${API_URL}/users/${selectedUser._id}`, formData, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
         });
         toast.success('User updated successfully');
       } else {
-        await axios.post('/api/users', formData, {
+        await axios.post(`${API_URL}/users`, formData, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
@@ -85,7 +87,7 @@ const UserManagement: React.FC = () => {
   const handleDelete = async (userId: string) => {
     if (window.confirm('Are you sure you want to delete this user?')) {
       try {
-        await axios.delete(`/api/users/${userId}`, {
+        await axios.delete(`${API_URL}/users/${userId}`, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }

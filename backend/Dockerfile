@@ -1,5 +1,9 @@
-# Use Node.js LTS version
-FROM node:20-alpine
+# Build arguments for platform
+ARG TARGETPLATFORM
+ARG BUILDPLATFORM
+
+# Use Node.js LTS version for AMD64 platform
+FROM --platform=$TARGETPLATFORM node:20-alpine
 
 # Set working directory
 WORKDIR /app
