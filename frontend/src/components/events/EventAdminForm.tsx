@@ -86,7 +86,7 @@ const EventAdminForm: React.FC = () => {
 
     try {
       if (id) {
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}/events/${id}/send-whatsapp`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/events/${id}/send-whatsapp`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

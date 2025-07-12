@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { User, UserRole } from "@/types/user-types"
 import { type CreateUserData, type UpdateUserData, type UserFilterCriteria, type UserSortCriteria, type UserPaginationParams } from "@/types/user-types"
 
-const API_URL = '/api';
+const API_URL = import.meta.env.VITE_API_URL;
 
 /**
  * Interface for user form data when creating/updating users
@@ -153,11 +153,28 @@ export class UserService {
   }
 
   async getAllUsers(): Promise<User[]> {
-    const backendUsers = await this.makeRequest<any[]>({
-      method: 'GET',
-      url: `${API_URL}/users`
-    });
-    return backendUsers.map(user => this.transformBackendUser(user));
+    try {
+      const backendUsers = await this.makeRequest<any[]>({
+        method: 'GET',
+        url: `${API_URL}/users`
+      });
+      
+      // Debug logging
+      console.log('getAllUsers response:', backendUsers);
+      console.log('Response type:', typeof backendUsers);
+      console.log('Is array:', Array.isArray(backendUsers));
+      
+      // Ensure we have an array
+      if (!Array.isArray(backendUsers)) {
+        console.error('getAllUsers: Response is not an array:', backendUsers);
+        return [];
+      }
+      
+      return backendUsers.map(user => this.transformBackendUser(user));
+    } catch (error) {
+      console.error('getAllUsers error:', error);
+      return [];
+    }
   }
 
   async searchUsers(

@@ -11,6 +11,8 @@ import RouteGuard from "@/components/route-guard"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import axios from "axios"
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 interface ProfileFormData {
   firstName: string
   lastName: string
@@ -77,7 +79,7 @@ export default function UserProfile() {
     const fetchUsers = async () => {
       if (isAdmin) {
         try {
-          const response = await axios.get('/api/users')
+          const response = await axios.get(`${API_URL}/users`)
           setAvailableUsers(response.data)
         } catch (error) {
           console.error('Failed to fetch users:', error)
@@ -127,7 +129,7 @@ export default function UserProfile() {
     setProfileSuccess("")
 
     try {
-      await axios.put(`/api/users/${user?._id}`, {
+      await axios.put(`${API_URL}/users/${user?._id}`, {
         firstName: profileData.firstName,
         lastName: profileData.lastName,
         email: profileData.email,
@@ -179,14 +181,14 @@ export default function UserProfile() {
       // If user is changing their own password, verify current password
       if (!isChangingOtherUser) {
         // First verify current password
-        await axios.post("/api/auth/login", {
+        await axios.post(`${API_URL}/auth/login`, {
           username: user?.username,
           password: passwordData.currentPassword
         })
       }
 
       // Then update password
-      await axios.patch(`/api/users/${targetUserId}/password`, {
+      await axios.patch(`${API_URL}/users/${targetUserId}/password`, {
         newPassword: passwordData.newPassword,
         ...(isChangingOtherUser ? {} : { currentPassword: passwordData.currentPassword })
       })

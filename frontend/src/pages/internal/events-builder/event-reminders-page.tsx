@@ -10,6 +10,8 @@ import RouteGuard from "@/components/route-guard"
 import { useToast } from "@/hooks/use-toast"
 import axios from "axios"
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 // Mock event data (in a real app, this would come from an API)
 const mockEvents = [
   {
@@ -111,7 +113,7 @@ const generateMockRegisteredUsers = (eventId: string, count: number) => {
  */
 const sendWhatsAppMessage = async (phoneNumber: string, message: string) => {
   try {
-    const response = await axios.post('/api/events/send-whatsapp-reminder', {
+    const response = await axios.post(`${API_URL}/events/send-whatsapp-reminder`, {
       to: phoneNumber,
       message: message
     });
