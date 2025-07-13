@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://54.46.5.179:3001/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Debug logging
 console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
