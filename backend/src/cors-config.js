@@ -7,16 +7,13 @@ const getCorsOrigins = () => {
   if (environment === 'production') {
     // Production origins - add your actual frontend domains here
     const productionOrigins = [
-      // AWS ALB domains (you'll need to replace these with your actual domains)
-      'https://eventmanagement-alb-2074860735.ap-east-1.elb.amazonaws.com',
-      'https://frontend-alb-632577121.ap-east-1.elb.amazonaws.com',
-      'https://backend-alb-1469776694.ap-east-1.elb.amazonaws.com',
+      // New frontend ALB (user-facing)
+      'http://zubin-events-alb-1307450074.ap-east-1.elb.amazonaws.com',
       // Custom domain (if you have one)
       process.env.CORS_ORIGIN,
       // Additional production domains
       ...(process.env.ADDITIONAL_CORS_ORIGINS ? process.env.ADDITIONAL_CORS_ORIGINS.split(',') : [])
     ].filter(Boolean); // Remove empty values
-    
     return productionOrigins;
   } else {
     // Development origins
