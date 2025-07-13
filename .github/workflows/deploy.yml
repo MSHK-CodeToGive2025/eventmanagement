@@ -63,7 +63,7 @@ jobs:
 
       - name: Build, tag, and push frontend image to ECR
         run: |
-          docker build -t $ECR_FRONTEND ./frontend
+          docker build --build-arg VITE_API_URL=http://zubin-emb-alb-1568046412.ap-east-1.elb.amazonaws.com/api -t $ECR_FRONTEND ./frontend
           docker tag $ECR_FRONTEND:latest $ECR_FRONTEND:latest
           docker push $ECR_FRONTEND:latest
 
