@@ -99,69 +99,101 @@ export const authHeader = (): { Authorization?: string } => {
 
 const eventService = {
   // Get all events
+
   async getEvents(): Promise<Event[]> {
-    const response = await axios.get(`${API_URL}/events`, {
+    const url = `${API_URL}/events`;
+    console.log('[eventService] GET', url);
+    const response = await axios.get(url, {
       headers: authHeader(),
     });
+    console.log('[eventService] Response:', response.data);
     return response.data;
   },
 
   // Get published, non-private events (for public display)
+
   async getPublicEvents(): Promise<Event[]> {
-    const response = await axios.get(`${API_URL}/events/public`);
+    const url = `${API_URL}/events/public`;
+    console.log('[eventService] GET', url);
+    const response = await axios.get(url);
+    console.log('[eventService] Response:', response.data);
     return response.data;
   },
 
   // Get single event
+
   async getEvent(id: string): Promise<Event> {
-    const response = await axios.get(`${API_URL}/events/${id}`, {
+    const url = `${API_URL}/events/${id}`;
+    console.log('[eventService] GET', url);
+    const response = await axios.get(url, {
       headers: authHeader(),
     });
+    console.log('[eventService] Response:', response.data);
     return response.data;
   },
 
   // Create event
+
   async createEvent(eventData: EventFormData | FormData): Promise<Event> {
-    const response = await axios.post(`${API_URL}/events`, eventData, {
+    const url = `${API_URL}/events`;
+    console.log('[eventService] POST', url, 'params:', eventData);
+    const response = await axios.post(url, eventData, {
       headers: {
         ...authHeader(),
         ...(eventData instanceof FormData ? {} : { 'Content-Type': 'application/json' })
       },
     });
+    console.log('[eventService] Response:', response.data);
     return response.data;
   },
 
   // Update event
+
   async updateEvent(id: string, eventData: EventFormData | FormData): Promise<Event> {
-    const response = await axios.put(`${API_URL}/events/${id}`, eventData, {
+    const url = `${API_URL}/events/${id}`;
+    console.log('[eventService] PUT', url, 'params:', eventData);
+    const response = await axios.put(url, eventData, {
       headers: {
         ...authHeader(),
         ...(eventData instanceof FormData ? {} : { 'Content-Type': 'application/json' })
       },
     });
+    console.log('[eventService] Response:', response.data);
     return response.data;
   },
 
   // Delete event
+
   async deleteEvent(id: string): Promise<void> {
-    await axios.delete(`${API_URL}/events/${id}`, {
+    const url = `${API_URL}/events/${id}`;
+    console.log('[eventService] DELETE', url);
+    const response = await axios.delete(url, {
       headers: authHeader(),
     });
+    console.log('[eventService] Response:', response.data);
   },
 
   // Register for event
+
   async registerForEvent(id: string): Promise<Event> {
-    const response = await axios.post(`${API_URL}/events/${id}/register`, {}, {
+    const url = `${API_URL}/events/${id}/register`;
+    console.log('[eventService] POST', url);
+    const response = await axios.post(url, {}, {
       headers: authHeader(),
     });
+    console.log('[eventService] Response:', response.data);
     return response.data;
   },
 
   // Unregister from event
+
   async unregisterFromEvent(id: string): Promise<Event> {
-    const response = await axios.post(`${API_URL}/events/${id}/unregister`, {}, {
+    const url = `${API_URL}/events/${id}/unregister`;
+    console.log('[eventService] POST', url);
+    const response = await axios.post(url, {}, {
       headers: authHeader(),
     });
+    console.log('[eventService] Response:', response.data);
     return response.data;
   },
 
@@ -176,11 +208,14 @@ const eventService = {
       email?: string;
     };
   }): Promise<any> {
+    const url = `${API_URL}/event-registrations/event/${eventId}`;
+    console.log('[eventService] POST', url, 'params:', data);
     const response = await axios.post(
-      `${API_URL}/event-registrations/event/${eventId}`,
+      url,
       data,
       { headers: authHeader() }
     );
+    console.log('[eventService] Response:', response.data);
     return response.data;
   }
 };

@@ -119,11 +119,6 @@ export default function SignIn() {
               </div>
             </form>
 
-            <div className="mt-4 text-center text-sm">
-              <p>Demo accounts:</p>
-              <p className="text-gray-500">Admin: admin / admin123</p>
-              <p className="text-gray-500">Super Admin: superadmin / super123</p>
-            </div>
           </CardContent>
           <CardFooter className="flex justify-center">
             <div className="text-sm text-center">

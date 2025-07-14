@@ -2,7 +2,11 @@ import axios from 'axios';
 import type { User, UserRole } from "@/types/user-types"
 import { type CreateUserData, type UpdateUserData, type UserFilterCriteria, type UserSortCriteria, type UserPaginationParams } from "@/types/user-types"
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+
+// Debug logging
+console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
+console.log('Final API_URL:', API_URL);
 
 /**
  * Interface for user form data when creating/updating users
