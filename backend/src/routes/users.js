@@ -50,9 +50,18 @@ router.post('/', auth, async (req, res) => {
       return res.status(400).json({ message: 'Missing required fields' });
     }
 
+    // Check if username already exists
     const existingUser = await User.findOne({ username });
     if (existingUser) {
-      return res.status(400).json({ message: 'User already exists' });
+      return res.status(400).json({ message: 'Username already exists' });
+    }
+
+    // Check if email already exists (if email is provided)
+    if (email) {
+      const existingEmailUser = await User.findOne({ email });
+      if (existingEmailUser) {
+        return res.status(400).json({ message: 'Email address already exists' });
+      }
     }
 
     const newUser = new User({
@@ -70,6 +79,20 @@ router.post('/', auth, async (req, res) => {
     const userWithoutPassword = await User.findById(newUser._id).select('-password');
     res.status(201).json(userWithoutPassword);
   } catch (error) {
+    console.error('[USERS] Error creating user:', error);
+    
+    // Handle MongoDB duplicate key errors
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyPattern)[0];
+      if (field === 'username') {
+        return res.status(400).json({ message: 'Username already exists' });
+      } else if (field === 'email') {
+        return res.status(400).json({ message: 'Email address already exists' });
+      } else {
+        return res.status(400).json({ message: `${field} already exists` });
+      }
+    }
+    
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });

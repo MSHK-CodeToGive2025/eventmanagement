@@ -28,6 +28,7 @@ export default function UsersManagementPage() {
   const {
     users,
     loading,
+    error,
     selectedUser,
     setSelectedUser,
     fetchUsers,
@@ -65,15 +66,17 @@ export default function UsersManagementPage() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
   const handleAddUser = async (userData: Partial<User>): Promise<void> => {
+    console.log('[USERS MANAGEMENT PAGE] handleAddUser called with:', userData);
     try {
       const success = await addUser(userData)
+      console.log('[USERS MANAGEMENT PAGE] addUser result:', success);
       if (success) {
         setCurrentView(UserView.LIST)
         // Refresh the users list
         await fetchUsers()
       }
     } catch (error) {
-      console.error("Error adding user:", error)
+      console.error("[USERS MANAGEMENT PAGE] Error adding user:", error)
     }
   }
 
@@ -152,9 +155,9 @@ export default function UsersManagementPage() {
   const renderContent = () => {
     switch (currentView) {
       case UserView.CREATE:
-        return isAdmin ? <UserForm onSubmit={handleAddUser} isLoading={loading} hideTitle /> : <div>Access denied. Only administrators can create users.</div>
+        return isAdmin ? <UserForm onSubmit={handleAddUser} onCancel={() => setCurrentView(UserView.LIST)} isSubmitting={loading} error={error || undefined} hideTitle /> : <div>Access denied. Only administrators can create users.</div>
       case UserView.EDIT:
-        return isAdmin ? <UserForm user={selectedUser || undefined} onSubmit={handleEditUser} isLoading={loading} hideTitle /> : <div>Access denied. Only administrators can edit users.</div>
+        return isAdmin ? <UserForm user={selectedUser || undefined} onSubmit={handleEditUser} onCancel={() => setCurrentView(UserView.LIST)} isSubmitting={loading} error={error || undefined} hideTitle /> : <div>Access denied. Only administrators can create users.</div>
       case UserView.CHANGE_PASSWORD:
         return selectedUser ? (
           <PasswordChangeForm
