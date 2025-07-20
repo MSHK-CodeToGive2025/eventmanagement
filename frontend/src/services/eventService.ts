@@ -123,6 +123,16 @@ const eventService = {
     return response.data;
   },
 
+  // Get published, non-private, non-expired events (for public display)
+
+  async getPublicNonExpiredEvents(): Promise<Event[]> {
+    const url = `${API_URL}/events/public-nonexpired`;
+    console.log('[eventService] GET', url);
+    const response = await axios.get(url);
+    console.log('[eventService] Response:', response.data);
+    return response.data;
+  },
+
   // Get single event
 
   async getEvent(id: string): Promise<Event> {

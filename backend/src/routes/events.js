@@ -75,6 +75,28 @@ router.get('/public', async (req, res) => {
   }
 });
 
+// Get published, non-private, non-expired events (for public display)
+router.get('/public-nonexpired', async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Start of today
+    
+    const events = await Event.find({
+      status: 'Published',
+      isPrivate: false,
+      endDate: { $gte: today } // endDate is greater than or equal to today
+    })
+      .populate('createdBy', 'firstName lastName email')
+      .sort({ startDate: 1 });
+    
+    console.log(`[EVENTS] Found ${events.length} published, non-private, non-expired events`);
+    res.json(events);
+  } catch (error) {
+    console.error('[EVENTS] Error fetching public non-expired events:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get single event
 router.get('/:id', async (req, res) => {
   try {

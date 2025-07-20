@@ -55,7 +55,7 @@ export default function EnhancedEventsPage() {
 
   /**
    * Fetch events data on component mount
-   * Fetch published, non-private events from backend API
+   * Fetch published, non-private, non-expired events from backend API
    */
   useEffect(() => {
     const fetchEvents = async () => {
@@ -63,8 +63,8 @@ export default function EnhancedEventsPage() {
         setLoading(true)
         setError(null)
         
-        // Fetch published, non-private events from backend
-        const fetchedEvents = await eventService.getPublicEvents()
+        // Fetch published, non-private, non-expired events from backend
+        const fetchedEvents = await eventService.getPublicNonExpiredEvents()
         
         // Transform backend events to match ZubinEvent interface
         const transformedEvents: ZubinEvent[] = fetchedEvents.map(event => ({
@@ -100,7 +100,7 @@ export default function EnhancedEventsPage() {
         }))
         
         setEvents(transformedEvents)
-        console.log(`[EVENTS] Loaded ${transformedEvents.length} published events`)
+        console.log(`[EVENTS] Loaded ${transformedEvents.length} published, non-expired events`)
       } catch (error) {
         console.error("Error fetching events:", error)
         setError("Failed to fetch events. Please try again later.")
