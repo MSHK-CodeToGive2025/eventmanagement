@@ -58,7 +58,11 @@ const eventFormSchema = z.object({
   endDate: z.date({
     required_error: "End date is required.",
   }),
-  coverImageUrl: z.string().optional(),
+  coverImage: z.object({
+    data: z.string(),
+    contentType: z.string(),
+    size: z.number()
+  }).optional(),
   isPrivate: z.boolean(),
   status: z.enum(["Draft", "Published", "Cancelled", "Completed"]),
   registrationFormId: z.string().min(1, {

@@ -259,10 +259,10 @@ export default function EnhancedEventDetailPage() {
         <div className="lg:col-span-2">
           <Card className="mb-8">
             <CardContent className="p-0">
-              {event.coverImageUrl && (
+              {event.coverImage && (
                 <div className="relative w-full h-64 sm:h-80">
                   <img
-                    src={event.coverImageUrl}
+                    src={eventService.getEventImageUrl(event._id, event)}
                     alt={event.title}
                     className="object-cover w-full h-full rounded-t-lg"
                   />

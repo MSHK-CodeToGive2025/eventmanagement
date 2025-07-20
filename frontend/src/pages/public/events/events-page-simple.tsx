@@ -79,7 +79,7 @@ export default function EventsPageSimple() {
           <div key={event._id} className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
             <div className="h-40 mb-4 overflow-hidden rounded-md bg-gray-100">
               <img
-                src={event.coverImageUrl || "/placeholder.svg"}
+                src={eventService.getEventImageUrl(event._id, event) || "/placeholder.svg"}
                 alt={event.title}
                 className="w-full h-full object-cover"
                 onError={(e) => {

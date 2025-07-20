@@ -82,7 +82,7 @@ export default function EnhancedEventsPage() {
           },
           startDate: new Date(event.startDate),
           endDate: new Date(event.endDate),
-          coverImageUrl: event.coverImageUrl,
+          coverImage: event.coverImage,
           isPrivate: event.isPrivate,
           status: event.status,
           registrationFormId: event.registrationFormId,
@@ -811,7 +811,7 @@ export default function EnhancedEventsPage() {
               {showImages && (
                 <div className="relative h-48">
                   <img
-                    src={event.coverImageUrl || "/placeholder.svg?height=200&width=400&query=event"}
+                    src={eventService.getEventImageUrl(event._id, event) || "/placeholder.svg?height=200&width=400&query=event"}
                     alt={event.title}
                     className="object-cover w-full h-full"
                   />

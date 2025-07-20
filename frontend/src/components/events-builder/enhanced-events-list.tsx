@@ -110,7 +110,7 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
         location: event.location,
         startDate: new Date(event.startDate),
         endDate: new Date(event.endDate),
-        coverImageUrl: event.coverImageUrl,
+                    coverImage: event.coverImage,
         isPrivate: event.isPrivate,
         status: event.status,
         registrationFormId: event.registrationFormId,
