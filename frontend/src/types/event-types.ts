@@ -31,7 +31,11 @@ export interface ZubinEvent {
   location: Location; // Location of the event
   startDate: Date; // Start date of the event
   endDate: Date; // End date of the event
-  coverImageUrl?: string; // Cover image URL of the event
+  coverImage?: {
+    data: string; // base64 string representation
+    contentType: string;
+    size: number;
+  }; // Cover image data of the event
   isPrivate: boolean; // Whether the event is private
   status: 'Draft' | 'Published' | 'Cancelled' | 'Completed'; // Status of the event
   registrationFormId: string; // Reference to the RegistrationForm _id

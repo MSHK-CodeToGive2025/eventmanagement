@@ -97,9 +97,20 @@ const eventSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
-  coverImageUrl: {
-    type: String,
-    required: false
+  coverImage: {
+    data: {
+      type: Buffer,
+      required: false
+    },
+    contentType: {
+      type: String,
+      required: false
+    },
+    size: {
+      type: Number,
+      required: false,
+      max: 500 * 1024 // 500KB limit
+    }
   },
   isPrivate: {
     type: Boolean,

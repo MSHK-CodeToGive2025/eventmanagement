@@ -21,7 +21,11 @@ export interface Event {
   };
   startDate: string;
   endDate: string;
-  coverImageUrl?: string;
+  coverImage?: {
+    data: string; // base64 string representation
+    contentType: string;
+    size: number;
+  };
   isPrivate: boolean;
   status: 'Draft' | 'Published' | 'Cancelled' | 'Completed';
   registrationFormId: string;
@@ -71,7 +75,6 @@ export interface EventFormData {
   };
   startDate: string;
   endDate: string;
-  coverImageUrl?: string;
   isPrivate: boolean;
   status: 'Draft' | 'Published' | 'Cancelled' | 'Completed';
   registrationFormId: string;
@@ -130,6 +133,16 @@ const eventService = {
     });
     console.log('[eventService] Response:', response.data);
     return response.data;
+  },
+
+  // Helper method to get the best available image URL for an event
+  getEventImageUrl(eventId: string, event?: Event | any): string | undefined {
+    // Check if event has coverImage
+    if (event?.coverImage?.data) {
+      return `${API_URL}/events/${eventId}/cover-image`;
+    }
+    
+    return undefined;
   },
 
   // Create event

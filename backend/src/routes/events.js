@@ -18,7 +18,22 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
+    fileSize: 500 * 1024 // 500KB limit to match coverImage requirements
+  },
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Not an image! Please upload an image.'), false);
+    }
+  }
+});
+
+// Configure multer specifically for cover images (500KB limit)
+const coverImageUpload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 500 * 1024 // 500KB limit
   },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith('image/')) {
@@ -86,9 +101,19 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
 
     const eventData = { ...req.body, createdBy: req.user.userId };
     
-    // Add image data if an image was uploaded
+    // Handle image upload
     if (req.file) {
-      eventData.coverImageUrl = req.file.buffer.toString('base64');
+      // Check file size (500KB limit)
+      if (req.file.size > 500 * 1024) {
+        return res.status(400).json({ message: 'Image size must be less than 500KB' });
+      }
+      
+      // Store in coverImage field
+      eventData.coverImage = {
+        data: req.file.buffer,
+        contentType: req.file.mimetype,
+        size: req.file.size
+      };
     }
 
     const event = new Event(eventData);
@@ -117,9 +142,19 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
 
     const updateData = { ...req.body, updatedBy: req.user.userId };
     
-    // Add image data if an image was uploaded
+    // Handle image upload
     if (req.file) {
-      updateData.coverImageUrl = req.file.buffer.toString('base64');
+      // Check file size (500KB limit)
+      if (req.file.size > 500 * 1024) {
+        return res.status(400).json({ message: 'Image size must be less than 500KB' });
+      }
+      
+      // Store in coverImage field
+      updateData.coverImage = {
+        data: req.file.buffer,
+        contentType: req.file.mimetype,
+        size: req.file.size
+      };
     }
 
     const updatedEvent = await Event.findByIdAndUpdate(
@@ -256,13 +291,159 @@ router.post('/:id/unregister', auth, async (req, res) => {
 router.get('/:id/image', async (req, res) => {
   try {
     const event = await Event.findById(req.params.id);
-    if (!event || !event.coverImageUrl) {
+    if (!event || !event.coverImage) {
       return res.status(404).json({ message: 'Image not found' });
     }
 
-    res.set('Content-Type', 'image/jpeg');
-    res.send(Buffer.from(event.coverImageUrl, 'base64'));
+    res.set('Content-Type', event.coverImage.contentType || 'image/jpeg');
+    res.set('Content-Length', event.coverImage.size);
+    res.send(event.coverImage.data);
   } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get event cover image (new endpoint)
+router.get('/:id/cover-image', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event || !event.coverImage || !event.coverImage.data) {
+      return res.status(404).json({ message: 'Cover image not found' });
+    }
+
+    res.set('Content-Type', event.coverImage.contentType || 'image/jpeg');
+    res.set('Content-Length', event.coverImage.size);
+    res.send(event.coverImage.data);
+  } catch (error) {
+    console.error('[EVENTS] Error fetching cover image:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Upload cover image for event (requires auth)
+router.post('/:id/cover-image', auth, coverImageUpload.single('coverImage'), async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Only admin or event creator can upload images
+    if (!user || (user.role !== 'admin' && event.createdBy.toString() !== req.user.userId)) {
+      return res.status(403).json({ message: 'Not authorized to upload images for this event' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file provided' });
+    }
+
+    // Check file size
+    if (req.file.size > 500 * 1024) {
+      return res.status(400).json({ message: 'Image size must be less than 500KB' });
+    }
+
+    // Update event with new cover image
+    event.coverImage = {
+      data: req.file.buffer,
+      contentType: req.file.mimetype,
+      size: req.file.size
+    };
+    event.updatedBy = req.user.userId;
+    event.updatedAt = new Date();
+
+    await event.save();
+
+    res.json({ 
+      message: 'Cover image uploaded successfully',
+      imageSize: req.file.size,
+      contentType: req.file.mimetype
+    });
+  } catch (error) {
+    console.error('[EVENTS] Error uploading cover image:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Update cover image for event (requires auth)
+router.put('/:id/cover-image', auth, coverImageUpload.single('coverImage'), async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Only admin or event creator can update images
+    if (!user || (user.role !== 'admin' && event.createdBy.toString() !== req.user.userId)) {
+      return res.status(403).json({ message: 'Not authorized to update images for this event' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image file provided' });
+    }
+
+    // Check file size
+    if (req.file.size > 500 * 1024) {
+      return res.status(400).json({ message: 'Image size must be less than 500KB' });
+    }
+
+    // Update event with new cover image
+    event.coverImage = {
+      data: req.file.buffer,
+      contentType: req.file.mimetype,
+      size: req.file.size
+    };
+    event.updatedBy = req.user.userId;
+    event.updatedAt = new Date();
+
+    await event.save();
+
+    res.json({ 
+      message: 'Cover image updated successfully',
+      imageSize: req.file.size,
+      contentType: req.file.mimetype
+    });
+  } catch (error) {
+    console.error('[EVENTS] Error updating cover image:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Delete cover image from event (requires auth)
+router.delete('/:id/cover-image', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    const event = await Event.findById(req.params.id);
+
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Only admin or event creator can delete images
+    if (!user || (user.role !== 'admin' && event.createdBy.toString() !== req.user.userId)) {
+      return res.status(403).json({ message: 'Not authorized to delete images for this event' });
+    }
+
+    if (!event.coverImage || !event.coverImage.data) {
+      return res.status(404).json({ message: 'No cover image found for this event' });
+    }
+
+    // Remove cover image using unset
+    event.updatedBy = req.user.userId;
+    event.updatedAt = new Date();
+
+    await Event.findByIdAndUpdate(req.params.id, {
+      $unset: { coverImage: 1 },
+      updatedBy: req.user.userId,
+      updatedAt: new Date()
+    });
+
+    res.json({ message: 'Cover image deleted successfully' });
+  } catch (error) {
+    console.error('[EVENTS] Error deleting cover image:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
