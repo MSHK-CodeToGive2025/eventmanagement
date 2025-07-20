@@ -15,7 +15,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import EventSessions from "./event-sessions"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
-import eventService, { EventFormData } from "@/services/eventService"
+import eventService from "@/services/eventService"
 import { useAuth } from "@/contexts/auth-context"
 import {
   ZubinEvent,
@@ -58,11 +58,6 @@ const eventFormSchema = z.object({
   endDate: z.date({
     required_error: "End date is required.",
   }),
-  coverImage: z.object({
-    data: z.string(),
-    contentType: z.string(),
-    size: z.number()
-  }).optional(),
   isPrivate: z.boolean(),
   status: z.enum(["Draft", "Published", "Cancelled", "Completed"]),
   registrationFormId: z.string().min(1, {
@@ -101,6 +96,7 @@ interface NewEventBuilderProps {
 export default function NewEventBuilder({ onClose, onSave, eventId, defaultValues }: NewEventBuilderProps) {
   const [activeTab, setActiveTab] = useState("basic")
   const [previewImage, setPreviewImage] = useState<string | null>(null)
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [registrationForms, setRegistrationForms] = useState<RegistrationForm[]>([])
   const [loadingForms, setLoadingForms] = useState(true)
@@ -133,7 +129,6 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
     fetchForms()
   }, [toast])
 
-
   // Initialize the form
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
@@ -150,7 +145,6 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       },
       startDate: today,
       endDate: today,
-      coverImageUrl: "",
       isPrivate: false,
       status: "Draft",
       registrationFormId: "",
@@ -177,7 +171,6 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
             location: eventData.location,
             startDate: new Date(eventData.startDate),
             endDate: new Date(eventData.endDate),
-            coverImageUrl: eventData.coverImageUrl || "",
             isPrivate: eventData.isPrivate,
             status: eventData.status,
             registrationFormId: eventData.registrationFormId,
@@ -205,8 +198,11 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
           }, 100)
           
           // Set preview image if exists
-          if (eventData.coverImageUrl) {
-            setPreviewImage(eventData.coverImageUrl)
+          if (eventData.coverImage?.data) {
+            const imageUrl = eventService.getEventImageUrl(eventId, eventData)
+            if (imageUrl) {
+              setPreviewImage(imageUrl)
+            }
           }
         } catch (error) {
           console.error("Error fetching event data:", error)
@@ -251,37 +247,67 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         return
       }
 
-      // Transform form data to match backend expectations
-      const eventData: EventFormData = {
-        title: data.title,
-        description: data.description,
-        category: data.category,
-        targetGroup: data.targetGroup,
-        location: data.location,
-        startDate: data.startDate.toISOString(),
-        endDate: data.endDate.toISOString(),
-        coverImageUrl: data.coverImageUrl,
-        isPrivate: data.isPrivate,
-        status: data.status,
-        registrationFormId: data.registrationFormId,
-        sessions: data.sessions.map(session => ({
-          title: session.title,
-          description: session.description,
-          date: session.date.toISOString(),
-          startTime: session.startTime,
-          endTime: session.endTime,
-          location: session.location,
-          capacity: session.capacity
-        })),
-        capacity: data.capacity,
-        tags: data.tags
+      // Create FormData for multipart/form-data submission
+      const formData = new FormData()
+      
+      // Add all event data
+      formData.append('title', data.title)
+      formData.append('description', data.description)
+      formData.append('category', data.category)
+      formData.append('targetGroup', data.targetGroup)
+      formData.append('location[venue]', data.location.venue)
+      formData.append('location[address]', data.location.address)
+      formData.append('location[district]', data.location.district)
+      formData.append('location[onlineEvent]', data.location.onlineEvent.toString())
+      if (data.location.meetingLink) {
+        formData.append('location[meetingLink]', data.location.meetingLink)
+      }
+      formData.append('startDate', data.startDate.toISOString())
+      formData.append('endDate', data.endDate.toISOString())
+      formData.append('isPrivate', data.isPrivate.toString())
+      formData.append('status', data.status)
+      formData.append('registrationFormId', data.registrationFormId)
+      
+      // Add sessions
+      data.sessions.forEach((session, index) => {
+        formData.append(`sessions[${index}][title]`, session.title)
+        if (session.description) {
+          formData.append(`sessions[${index}][description]`, session.description)
+        }
+        formData.append(`sessions[${index}][date]`, session.date.toISOString())
+        formData.append(`sessions[${index}][startTime]`, session.startTime)
+        formData.append(`sessions[${index}][endTime]`, session.endTime)
+        if (session.location?.venue) {
+          formData.append(`sessions[${index}][location][venue]`, session.location.venue)
+        }
+        if (session.location?.meetingLink) {
+          formData.append(`sessions[${index}][location][meetingLink]`, session.location.meetingLink)
+        }
+        if (session.capacity) {
+          formData.append(`sessions[${index}][capacity]`, session.capacity.toString())
+        }
+      })
+      
+      if (data.capacity) {
+        formData.append('capacity', data.capacity.toString())
+      }
+      
+      if (data.tags && data.tags.length > 0) {
+        data.tags.forEach(tag => {
+          formData.append('tags[]', tag)
+        })
+      }
+
+      // Add image file if selected
+      if (selectedImageFile) {
+        formData.append('image', selectedImageFile)
       }
 
       let savedEvent: any
 
       if (eventId) {
         // Update existing event
-        savedEvent = await eventService.updateEvent(eventId, eventData)
+        savedEvent = await eventService.updateEvent(eventId, formData)
         toast({
           title: "Event Updated Successfully",
           description: `"${savedEvent.title}" has been updated successfully.`,
@@ -289,7 +315,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         })
       } else {
         // Create new event
-        savedEvent = await eventService.createEvent(eventData)
+        savedEvent = await eventService.createEvent(formData)
         toast({
           title: "Event Created Successfully",
           description: `"${savedEvent.title}" has been created successfully.`,
@@ -328,18 +354,41 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      // Check file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
+      // Check file size (500KB limit to match backend)
+      if (file.size > 500 * 1024) {
         toast({
-          title: "File Size Warning",
-          description: "The uploaded image is larger than 5MB. This may cause slower loading times for users.",
-          variant: "default"
+          title: "File Size Error",
+          description: "Image size must be less than 500KB. Please choose a smaller image.",
+          variant: "destructive"
         })
+        return
       }
 
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid File Type",
+          description: "Please select a valid image file.",
+          variant: "destructive"
+        })
+        return
+      }
+
+      // Create preview URL
       const url = URL.createObjectURL(file)
       setPreviewImage(url)
-      form.setValue("coverImageUrl", url)
+      setSelectedImageFile(file)
+    }
+  }
+
+  // Clear image
+  const clearImage = () => {
+    setPreviewImage(null)
+    setSelectedImageFile(null)
+    // Clear the file input
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    if (fileInput) {
+      fileInput.value = ''
     }
   }
 
@@ -652,39 +701,38 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
               </TabsContent>
 
               <TabsContent value="details" className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="coverImageUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-base font-medium">Event Cover Image</FormLabel>
-                      <FormControl>
-                        <div className="space-y-4">
-                          <Input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => {
-                              handleImageUpload(e)
-                              field.onChange(field.value)
-                            }}
-                            className="cursor-pointer h-12"
+                <FormItem>
+                  <FormLabel className="text-base font-medium">Event Cover Image</FormLabel>
+                  <FormControl>
+                    <div className="space-y-4">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="cursor-pointer h-12"
+                      />
+                      {previewImage && (
+                        <div className="relative aspect-video rounded-md overflow-hidden border">
+                          <img
+                            src={previewImage}
+                            alt="Event preview"
+                            className="object-cover w-full h-full"
                           />
-                          {(previewImage || field.value) && (
-                            <div className="relative aspect-video rounded-md overflow-hidden border">
-                              <img
-                                src={previewImage || field.value || "/placeholder.svg"}
-                                alt="Event preview"
-                                className="object-cover w-full h-full"
-                              />
-                            </div>
-                          )}
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            className="absolute top-2 right-2"
+                            onClick={clearImage}
+                          >
+                            Remove
+                          </Button>
                         </div>
-                      </FormControl>
-                      <FormDescription>Upload an image for the event (optional).</FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                      )}
+                    </div>
+                  </FormControl>
+                  <FormDescription>Upload an image for the event (optional). Maximum size: 500KB.</FormDescription>
+                </FormItem>
 
                 <FormField
                   control={form.control}
