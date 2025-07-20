@@ -73,8 +73,7 @@ export function Navigation() {
     return (
       isActive("/manage/events-builder") ||
       isActive("/manage/forms") ||
-      isActive("/manage/users") ||
-      isActive("/manage/analytics")
+      isActive("/manage/users")
     )
   }
 
@@ -185,20 +184,6 @@ export function Navigation() {
                       >
                         <Users className="h-4 w-4 mr-2" />
                         Users
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link
-                        to="/manage/analytics"
-                        className={cn(
-                          "w-full cursor-pointer flex items-center p-2 rounded-md transition-colors",
-                          isActive("/manage/analytics")
-                            ? "bg-yellow-50 text-yellow-700 font-medium"
-                            : "text-gray-700 hover:bg-yellow-50 hover:text-yellow-600",
-                        )}
-                      >
-                        <BarChart3 className="h-4 w-4 mr-2" />
-                        Analytics
                       </Link>
                     </DropdownMenuItem>
                   </DropdownMenuContent>
