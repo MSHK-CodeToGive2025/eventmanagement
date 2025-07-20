@@ -16,6 +16,7 @@ const app = express();
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // Handle preflight requests
 app.options('*', cors(corsOptions));
@@ -39,6 +40,7 @@ app.get('/', (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
+  console.log('🏥 [MAIN] Health check endpoint hit!');
   res.json({ 
     status: 'OK',
     timestamp: new Date().toISOString(),

@@ -100,6 +100,8 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [registrationForms, setRegistrationForms] = useState<RegistrationForm[]>([])
   const [loadingForms, setLoadingForms] = useState(true)
+  const [shouldRemoveImage, setShouldRemoveImage] = useState(false)
+  const [selectedFileInfo, setSelectedFileInfo] = useState<{ name: string; size: string } | null>(null)
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -204,6 +206,10 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
               setPreviewImage(imageUrl)
             }
           }
+          
+          // Reset image removal flag when loading existing event
+          setShouldRemoveImage(false)
+          setSelectedFileInfo(null) // Reset file info when loading existing event
         } catch (error) {
           console.error("Error fetching event data:", error)
           toast({
@@ -302,17 +308,32 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       if (selectedImageFile) {
         formData.append('image', selectedImageFile)
       }
+      
+      // Add flag to remove image if user clicked remove
+      if (shouldRemoveImage) {
+        formData.append('removeImage', 'true')
+      }
 
       let savedEvent: any
 
       if (eventId) {
         // Update existing event
         savedEvent = await eventService.updateEvent(eventId, formData)
-        toast({
-          title: "Event Updated Successfully",
-          description: `"${savedEvent.title}" has been updated successfully.`,
-          variant: "default"
-        })
+        
+        // Show appropriate success message
+        if (shouldRemoveImage) {
+          toast({
+            title: "Event Updated Successfully",
+            description: `"${savedEvent.title}" has been updated and the image has been removed.`,
+            variant: "default"
+          })
+        } else {
+          toast({
+            title: "Event Updated Successfully",
+            description: `"${savedEvent.title}" has been updated successfully.`,
+            variant: "default"
+          })
+        }
       } else {
         // Create new event
         savedEvent = await eventService.createEvent(formData)
@@ -323,6 +344,9 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         })
       }
 
+      // Reset image removal flag after successful save
+      setShouldRemoveImage(false)
+      
       // Call the onSave callback with the saved event
       onSave(savedEvent)
     } catch (error: any) {
@@ -350,17 +374,32 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
     }
   }
 
+  // Helper function to format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
+  }
+
   // Handle image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       // Check file size (500KB limit to match backend)
       if (file.size > 500 * 1024) {
+        const fileSizeFormatted = formatFileSize(file.size)
+        const maxSizeFormatted = formatFileSize(500 * 1024)
+        
         toast({
-          title: "File Size Error",
-          description: "Image size must be less than 500KB. Please choose a smaller image.",
+          title: "File Too Large",
+          description: `Your image (${fileSizeFormatted}) exceeds the maximum size of ${maxSizeFormatted}. Please choose a smaller image or compress it before uploading.`,
           variant: "destructive"
         })
+        
+        // Clear the file input so user can try again
+        e.target.value = ''
         return
       }
 
@@ -368,16 +407,29 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       if (!file.type.startsWith('image/')) {
         toast({
           title: "Invalid File Type",
-          description: "Please select a valid image file.",
+          description: "Please select a valid image file (JPEG, PNG, GIF, etc.).",
           variant: "destructive"
         })
+        
+        // Clear the file input so user can try again
+        e.target.value = ''
         return
       }
+
+      // Show success message for valid file
+      const fileSizeFormatted = formatFileSize(file.size)
+      toast({
+        title: "Image Selected",
+        description: `Image uploaded successfully (${fileSizeFormatted}).`,
+        variant: "default"
+      })
 
       // Create preview URL
       const url = URL.createObjectURL(file)
       setPreviewImage(url)
       setSelectedImageFile(file)
+      setSelectedFileInfo({ name: file.name, size: fileSizeFormatted })
+      setShouldRemoveImage(false) // Reset removal flag when new image is selected
     }
   }
 
@@ -385,6 +437,8 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
   const clearImage = () => {
     setPreviewImage(null)
     setSelectedImageFile(null)
+    setSelectedFileInfo(null)
+    setShouldRemoveImage(true) // Signal that image should be removed from backend
     // Clear the file input
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     if (fileInput) {
@@ -711,6 +765,22 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                         onChange={handleImageUpload}
                         className="cursor-pointer h-12"
                       />
+                      
+                      {/* File info display */}
+                      {selectedFileInfo && (
+                        <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-green-600">✅</span>
+                              <span className="text-sm font-medium text-green-800">{selectedFileInfo.name}</span>
+                            </div>
+                            <span className="text-sm text-green-600 bg-green-100 px-2 py-1 rounded">
+                              {selectedFileInfo.size}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
                       {previewImage && (
                         <div className="relative aspect-video rounded-md overflow-hidden border">
                           <img
@@ -731,7 +801,17 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                       )}
                     </div>
                   </FormControl>
-                  <FormDescription>Upload an image for the event (optional). Maximum size: 500KB.</FormDescription>
+                  <div className="text-sm text-muted-foreground space-y-2">
+                    <p>Upload an image for the event (optional).</p>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium text-blue-600">📏 File Size Limit:</span>
+                      <span className="bg-blue-50 text-blue-700 px-2 py-1 rounded-md font-mono">500 KB</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium text-green-600">✅ Supported Formats:</span>
+                      <span className="text-gray-600">JPEG, PNG, GIF, WebP</span>
+                    </div>
+                  </div>
                 </FormItem>
 
                 <FormField

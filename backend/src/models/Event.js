@@ -84,8 +84,16 @@ const eventSchema = new mongoose.Schema({
     },
     meetingLink: {
       type: String,
-      required: function() {
-        return this.location.onlineEvent;
+      required: false,
+      validate: {
+        validator: function(value) {
+          // If this is an online event, meetingLink should be provided
+          if (this.location && this.location.onlineEvent === true) {
+            return value && value.trim().length > 0;
+          }
+          return true; // Not required for offline events
+        },
+        message: 'Meeting link is required for online events'
       }
     }
   },

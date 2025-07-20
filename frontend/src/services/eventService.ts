@@ -164,7 +164,6 @@ const eventService = {
 
   async updateEvent(id: string, eventData: EventFormData | FormData): Promise<Event> {
     const url = `${API_URL}/events/${id}`;
-    console.log('[eventService] PUT', url, 'params:', eventData);
     const response = await axios.put(url, eventData, {
       headers: {
         ...authHeader(),
