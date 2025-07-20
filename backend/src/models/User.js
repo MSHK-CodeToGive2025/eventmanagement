@@ -21,7 +21,9 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     trim: true,
-    lowercase: true
+    lowercase: true,
+    unique: true,
+    sparse: true // Allows multiple documents without email field
   },
   role: {
     type: String,

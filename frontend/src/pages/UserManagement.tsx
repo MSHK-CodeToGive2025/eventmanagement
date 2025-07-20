@@ -4,21 +4,25 @@ import { toast } from 'react-toastify';
 
 interface User {
   _id: string;
-  name: string;
+  username: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  phoneNumber: string;
+  mobile: string;
   role: 'participant' | 'staff' | 'admin';
 }
 
 interface FormData {
-  name: string;
+  username: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  phoneNumber: string;
+  mobile: string;
   role: 'participant' | 'staff' | 'admin';
   password: string;
 }
 
-type SortColumn = 'name' | 'email' | 'role' | null;
+type SortColumn = 'username' | 'email' | 'role' | null;
 type SortDirection = 'asc' | 'desc';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -31,12 +35,16 @@ const UserManagement: React.FC = () => {
   const [sortColumn, setSortColumn] = useState<SortColumn>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [formData, setFormData] = useState<FormData>({
-    name: '',
+    username: '',
+    firstName: '',
+    lastName: '',
     email: '',
-    phoneNumber: '',
+    mobile: '',
     role: 'participant',
     password: ''
   });
+  const [fieldErrors, setFieldErrors] = useState<{[key: string]: string}>({});
+  const [generalError, setGeneralError] = useState<string>('');
 
   useEffect(() => {
     fetchUsers();
@@ -60,6 +68,12 @@ const UserManagement: React.FC = () => {
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    console.log('[USER MANAGEMENT] Form submitted with data:', formData);
+    
+    // Clear previous errors
+    setFieldErrors({});
+    setGeneralError('');
+    
     try {
       if (selectedUser) {
         await axios.put(`${API_URL}/users/${selectedUser._id}`, formData, {
@@ -69,6 +83,7 @@ const UserManagement: React.FC = () => {
         });
         toast.success('User updated successfully');
       } else {
+        console.log('[USER MANAGEMENT] Creating new user...');
         await axios.post(`${API_URL}/users`, formData, {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`
@@ -79,8 +94,35 @@ const UserManagement: React.FC = () => {
       setShowModal(false);
       fetchUsers();
     } catch (error: any) {
-      console.error('Error saving user:', error);
-      toast.error(error.response?.data?.message || 'Operation failed');
+      console.error('[USER MANAGEMENT] Error saving user:', error);
+      console.error('[USER MANAGEMENT] Error response:', error.response);
+      
+      // Handle specific error messages from backend
+      const errorMessage = error.response?.data?.message;
+      console.log('[USER MANAGEMENT] Error message from backend:', errorMessage);
+      
+      if (errorMessage) {
+        // Set field-specific errors
+        if (errorMessage.includes('Username already exists')) {
+          console.log('[USER MANAGEMENT] Setting username error');
+          setFieldErrors({ username: 'Username already exists' });
+        } else if (errorMessage.includes('Email address already exists')) {
+          console.log('[USER MANAGEMENT] Setting email error');
+          setFieldErrors({ email: 'Email address already exists' });
+        } else {
+          console.log('[USER MANAGEMENT] Setting general error');
+          setFieldErrors({});
+          setGeneralError(errorMessage);
+        }
+      } else if (error.response?.status === 400) {
+        setGeneralError('Invalid data provided. Please check your input.');
+      } else if (error.response?.status === 403) {
+        setGeneralError('You are not authorized to perform this action.');
+      } else if (error.response?.status === 500) {
+        setGeneralError('Server error. Please try again later.');
+      } else {
+        setGeneralError('Operation failed. Please try again.');
+      }
     }
   };
 
@@ -104,9 +146,11 @@ const UserManagement: React.FC = () => {
   const handleEdit = (user: User) => {
     setSelectedUser(user);
     setFormData({
-      name: user.name,
+      username: user.username || '',
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
       email: user.email,
-      phoneNumber: user.phoneNumber,
+      mobile: user.mobile || '',
       role: user.role,
       password: ''
     });
@@ -119,6 +163,19 @@ const UserManagement: React.FC = () => {
       ...prev,
       [name]: value
     }));
+    
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+    
+    // Clear general error when user starts typing
+    if (generalError) {
+      setGeneralError('');
+    }
   };
 
   const handleSort = (column: SortColumn) => {
@@ -158,12 +215,16 @@ const UserManagement: React.FC = () => {
           onClick={() => {
             setSelectedUser(null);
             setFormData({
-              name: '',
+              username: '',
+              firstName: '',
+              lastName: '',
               email: '',
-              phoneNumber: '',
+              mobile: '',
               role: 'participant',
               password: ''
             });
+            setFieldErrors({});
+            setGeneralError('');
             setShowModal(true);
           }}
           className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
@@ -181,9 +242,9 @@ const UserManagement: React.FC = () => {
               <tr>
                 <th 
                   className="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('name')}
+                  onClick={() => handleSort('username')}
                 >
-                  Name {getSortIcon('name')}
+                  Username {getSortIcon('username')}
                 </th>
                 <th 
                   className="px-6 py-3 border-b-2 border-gray-200 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -208,9 +269,9 @@ const UserManagement: React.FC = () => {
             <tbody>
               {getSortedUsers().map((user) => (
                 <tr key={user._id}>
-                  <td className="px-6 py-4 border-b border-gray-200">{user.name}</td>
+                  <td className="px-6 py-4 border-b border-gray-200">{user.username}</td>
                   <td className="px-6 py-4 border-b border-gray-200">{user.email}</td>
-                  <td className="px-6 py-4 border-b border-gray-200">{user.phoneNumber}</td>
+                  <td className="px-6 py-4 border-b border-gray-200">{user.mobile}</td>
                   <td className="px-6 py-4 border-b border-gray-200">{user.role}</td>
                   <td className="px-6 py-4 border-b border-gray-200">
                     <button
@@ -239,15 +300,49 @@ const UserManagement: React.FC = () => {
             <h2 className="text-xl font-bold mb-4">
               {selectedUser ? 'Edit User' : 'Add New User'}
             </h2>
+            {generalError && (
+              <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+                {generalError}
+              </div>
+            )}
             <form onSubmit={handleSubmit}>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
-                  Name
+                  Username
                 </label>
                 <input
                   type="text"
-                  name="name"
-                  value={formData.name}
+                  name="username"
+                  value={formData.username}
+                  onChange={handleInputChange}
+                  className={`w-full px-3 py-2 border rounded ${fieldErrors.username ? 'border-red-500' : ''}`}
+                  required
+                />
+                {fieldErrors.username && (
+                  <p className="text-red-500 text-sm mt-1">{fieldErrors.username}</p>
+                )}
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2">
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border rounded"
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="block text-gray-700 text-sm font-bold mb-2">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded"
                   required
@@ -262,20 +357,24 @@ const UserManagement: React.FC = () => {
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border rounded"
+                  className={`w-full px-3 py-2 border rounded ${fieldErrors.email ? 'border-red-500' : ''}`}
                   required
                 />
+                {fieldErrors.email && (
+                  <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>
+                )}
               </div>
               <div className="mb-4">
                 <label className="block text-gray-700 text-sm font-bold mb-2">
-                  Phone Number
+                  Mobile Number
                 </label>
                 <input
                   type="tel"
-                  name="phoneNumber"
-                  value={formData.phoneNumber}
+                  name="mobile"
+                  value={formData.mobile}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded"
+                  required
                 />
               </div>
               <div className="mb-4">
@@ -312,7 +411,11 @@ const UserManagement: React.FC = () => {
               <div className="flex justify-end">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => {
+                    setShowModal(false);
+                    setFieldErrors({});
+                    setGeneralError('');
+                  }}
                   className="bg-gray-500 text-white px-4 py-2 rounded mr-2 hover:bg-gray-600"
                 >
                   Cancel
