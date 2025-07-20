@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Calendar, Users, Heart, Play, Pause } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { ArrowRight, Calendar, Users, Heart, Play, Pause, MapPin } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import eventService, { Event } from "@/services/eventService"
 
@@ -81,7 +82,7 @@ export default function LandingPage() {
     const fetchEvents = async () => {
       try {
         setLoading(true)
-        const publicEvents = await eventService.getPublicEvents()
+        const publicEvents = await eventService.getPublicNonExpiredEvents()
         setEvents(publicEvents)
       } catch (err) {
         console.error('Error fetching events:', err)
@@ -315,7 +316,7 @@ export default function LandingPage() {
                 Join our events and be part of our mission to improve the lives of ethnic minorities in Hong Kong.
               </p>
               <div className="flex flex-wrap gap-4">
-                <Link to="/events">
+                <Link to="/enhanced-events">
                   <Button className="bg-yellow-400 hover:bg-yellow-500 text-black">
                     Explore Events <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -818,12 +819,13 @@ export default function LandingPage() {
                 .filter((event: Event) => new Date(event.startDate) > new Date() && event.status === "Published")
                 .slice(0, 3)
                 .map((event: Event) => (
-                  <div key={event._id} className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
-                    <div className="h-40 mb-4 overflow-hidden rounded-md bg-gray-100">
+                  <Card key={event._id} className="overflow-hidden hover:shadow-md transition-shadow">
+                    {/* Event Image */}
+                    <div className="relative h-48">
                       <img
-                        src={eventService.getEventImageUrl(event._id, event) || "/placeholder.svg?key=event-default"}
+                        src={eventService.getEventImageUrl(event._id, event) || "/placeholder.svg?height=200&width=400&query=event"}
                         alt={event.title}
-                        className="w-full h-full object-cover"
+                        className="object-cover w-full h-full"
                         onError={(e) => {
                           // Safe error handling with proper type checking
                           if (e && e.currentTarget) {
@@ -832,32 +834,49 @@ export default function LandingPage() {
                         }}
                       />
                     </div>
-                    <div className="flex items-center mb-2">
-                      <span className="text-sm font-medium bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                        {event.category}
-                      </span>
-                      <span className="text-sm text-gray-500 ml-2">
-                        {new Date(event.startDate).toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        })}
-                      </span>
-                    </div>
-                    <h3 className="text-xl font-bold mb-2 line-clamp-2">{event.title}</h3>
-                    <p className="text-gray-600 mb-4 line-clamp-2">{event.description}</p>
-                    <Link
-                      to={`/events/${event._id}`}
-                      className="text-yellow-500 hover:text-yellow-600 font-medium inline-flex items-center"
-                    >
-                      View Details <ArrowRight className="ml-1 h-4 w-4" />
-                    </Link>
-                  </div>
+                    {/* Event Details */}
+                    <CardContent className="p-4">
+                      <h2 className="text-xl font-semibold mb-2 line-clamp-1">{event.title}</h2>
+                      <div className="space-y-2 mb-4">
+                        {/* Event Date Range */}
+                        <div className="flex items-center text-sm text-gray-600">
+                          <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+                          <span>
+                            {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {/* Event Location */}
+                        <div className="flex items-center text-sm text-gray-600">
+                          <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
+                          <span className="line-clamp-1">{event.location.venue}</span>
+                        </div>
+                      </div>
+                      {/* Event Tags */}
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">
+                          {event.category}
+                        </span>
+                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                          {event.targetGroup}
+                        </span>
+                      </div>
+                      {/* Event Footer */}
+                      <div className="flex justify-end">
+                        <Button
+                          onClick={() => window.location.href = `/enhanced-events/${event._id}`}
+                          className="bg-yellow-400 hover:bg-yellow-500 text-black"
+                          size="sm"
+                        >
+                          View Details
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 ))
             )}
           </div>
           <div className="text-center mt-8">
-            <Link to="/events">
+            <Link to="/enhanced-events">
               <Button className="bg-yellow-400 hover:bg-yellow-500 text-black">
                 View All Events <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -887,7 +906,7 @@ export default function LandingPage() {
                 Browse through our upcoming events, workshops, and community gatherings.
               </p>
               <Link
-                to="/events"
+                to="/enhanced-events"
                 className="text-yellow-500 hover:text-yellow-600 font-medium inline-flex items-center"
               >
                 View Events <ArrowRight className="ml-1 h-4 w-4" />
@@ -942,7 +961,7 @@ export default function LandingPage() {
             <Link to="/sign-up">
               <Button className="bg-black hover:bg-black/80 text-white">Sign Up Now</Button>
             </Link>
-            <Link to="/events">
+            <Link to="/enhanced-events">
               <Button variant="outline" className="bg-white hover:bg-white/90 text-black border-black">
                 Browse Events
               </Button>

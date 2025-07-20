@@ -18,7 +18,6 @@ import { cn } from "@/lib/utils"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { UserMenu } from "@/components/user-profile/user-menu"
 import { NotificationBell } from "@/components/notifications/notification-bell"
-import { LanguageSelector } from "@/components/language-selector"
 import { useAuth } from "@/contexts/auth-context"
 
 export function Navigation() {
