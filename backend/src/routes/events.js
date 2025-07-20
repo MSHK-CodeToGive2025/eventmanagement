@@ -49,6 +49,7 @@ router.get('/', async (req, res) => {
   try {
     const events = await Event.find()
       .populate('createdBy', 'firstName lastName email')
+      .populate('updatedBy', 'firstName lastName email')
       .sort({ startDate: 1 });
     res.json(events);
   } catch (error) {
@@ -135,15 +136,30 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    // Only admin or event creator can update
-    if (!user || (user.role !== 'admin' && event.createdBy.toString() !== req.user.userId)) {
+    // Admin, staff, or event creator can update
+    if (!user || (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId)) {
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
 
     const updateData = { ...req.body, updatedBy: req.user.userId };
     
-    // Handle image upload
-    if (req.file) {
+    // Handle image removal
+    if (req.body.removeImage === 'true') {
+      console.log('[EVENTS] Removing image from event:', req.params.id);
+      // Use $unset to completely remove the coverImage field
+      const updatedEvent = await Event.findByIdAndUpdate(
+        req.params.id,
+        { $unset: { coverImage: 1 }, ...updateData },
+        { new: true, runValidators: true }
+      ).populate('createdBy', 'firstName lastName email')
+       .populate('updatedBy', 'firstName lastName email');
+      
+      console.log('[EVENTS] Image removed successfully, updated event:', updatedEvent._id);
+      res.json(updatedEvent);
+      return;
+    }
+    // Handle image upload (only if not removing)
+    else if (req.file) {
       // Check file size (500KB limit)
       if (req.file.size > 500 * 1024) {
         return res.status(400).json({ message: 'Image size must be less than 500KB' });
@@ -161,10 +177,12 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
       req.params.id,
       updateData,
       { new: true, runValidators: true }
-    );
+    ).populate('createdBy', 'firstName lastName email')
+     .populate('updatedBy', 'firstName lastName email');
 
     res.json(updatedEvent);
   } catch (error) {
+    console.error('[EVENTS] Error updating event:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
@@ -179,8 +197,8 @@ router.delete('/:id', auth, async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    // Only admin or event creator can delete
-    if (!user || (user.role !== 'admin' && event.createdBy.toString() !== req.user.userId)) {
+    // Admin, staff, or event creator can delete
+    if (!user || (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId)) {
       return res.status(403).json({ message: 'Not authorized to delete this event' });
     }
 
@@ -330,8 +348,8 @@ router.post('/:id/cover-image', auth, coverImageUpload.single('coverImage'), asy
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    // Only admin or event creator can upload images
-    if (!user || (user.role !== 'admin' && event.createdBy.toString() !== req.user.userId)) {
+    // Admin, staff, or event creator can upload images
+    if (!user || (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId)) {
       return res.status(403).json({ message: 'Not authorized to upload images for this event' });
     }
 
@@ -376,8 +394,8 @@ router.put('/:id/cover-image', auth, coverImageUpload.single('coverImage'), asyn
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    // Only admin or event creator can update images
-    if (!user || (user.role !== 'admin' && event.createdBy.toString() !== req.user.userId)) {
+    // Admin, staff, or event creator can update images
+    if (!user || (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId)) {
       return res.status(403).json({ message: 'Not authorized to update images for this event' });
     }
 
@@ -422,8 +440,8 @@ router.delete('/:id/cover-image', auth, async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    // Only admin or event creator can delete images
-    if (!user || (user.role !== 'admin' && event.createdBy.toString() !== req.user.userId)) {
+    // Admin, staff, or event creator can delete images
+    if (!user || (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId)) {
       return res.status(403).json({ message: 'Not authorized to delete images for this event' });
     }
 
