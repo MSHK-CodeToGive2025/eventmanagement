@@ -15,7 +15,7 @@ import FormEditPage from './pages/internal/forms-builder/form-edit-page';
 import EventsBuilderPage from './pages/internal/events-builder/events-builder-page';
 import EnhancedEventsPage from './pages/public/enhanced-events/enhanced-events-page';
 import EnhancedEventDetailPage from './pages/public/enhanced-events/enhanced-event-detail-page';
-import { AnalyticsDashboard } from './pages/internal/analytics/analytics-dashboard';
+
 import SignUp from './pages/public/sign-up';
 import EventRemindersPage from './pages/internal/events-builder/event-reminders-page';
 import ManageRegistrations from './pages/internal/events-builder/manage-registrations';
@@ -48,7 +48,6 @@ const App: React.FC = () => {
               <Route path="/manage/forms/:id" element={<FormDetailPage />} />
               <Route path="/manage/forms/:id/edit" element={<FormEditPage />} />
               <Route path="/manage/users" element={<UserManagementPage />} />
-              <Route path="/manage/analytics" element={<AnalyticsDashboard />} />
               <Route path="/profile" element={<UserProfile />} />
               <Route path="/profile/registrations" element={<MyRegistrations />} />
               <Route path="/" element={<LandingPage />} />
