@@ -747,11 +747,11 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                         </FormControl>
                         <SelectContent>
                           {loadingForms ? (
-                            <SelectItem value="" disabled>
+                            <SelectItem value="loading" disabled>
                               Loading forms...
                             </SelectItem>
                           ) : registrationForms.length === 0 ? (
-                            <SelectItem value="" disabled>
+                            <SelectItem value="no-forms" disabled>
                               No forms available
                             </SelectItem>
                           ) : (
