@@ -105,7 +105,7 @@ export default function FormDetailPage() {
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Category</label>
-                <p className="mt-1">Uncategorized</p>
+                <p className="mt-1">{form.category || "Uncategorized"}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">

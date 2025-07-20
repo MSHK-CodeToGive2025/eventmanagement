@@ -71,10 +71,10 @@ vi.mock('../field-preview', () => ({
 }))
 
 vi.mock('../form-success-modal', () => ({
-  FormSuccessModal: ({ isOpen, onClose, form }: any) => (
+  FormSuccessModal: ({ isOpen, onClose, form, isUpdate }: any) => (
     isOpen ? (
       <div data-testid="success-modal" role="dialog">
-        <h2>Form Created Successfully!</h2>
+        <h2>{isUpdate ? "Form Updated Successfully!" : "Form Created Successfully!"}</h2>
         <p>{form?.title}</p>
         <button onClick={onClose}>Close</button>
       </div>

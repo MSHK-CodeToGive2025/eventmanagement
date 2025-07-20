@@ -8,9 +8,11 @@ interface FormSuccessModalProps {
   isOpen: boolean
   onClose: () => void
   form: RegistrationForm | null
+  isUpdate?: boolean
 }
 
-export function FormSuccessModal({ isOpen, onClose, form }: FormSuccessModalProps) {
+export function FormSuccessModal({ isOpen, onClose, form, isUpdate = false }: FormSuccessModalProps) {
+  console.log("FormSuccessModal props:", { isOpen, form, isUpdate })
   if (!form) return null
 
   return (
@@ -19,7 +21,7 @@ export function FormSuccessModal({ isOpen, onClose, form }: FormSuccessModalProp
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <CheckCircle className="h-5 w-5 text-green-500" />
-            Form Created Successfully!
+            {isUpdate ? "Form Updated Successfully!" : "Form Created Successfully!"}
           </DialogTitle>
         </DialogHeader>
 

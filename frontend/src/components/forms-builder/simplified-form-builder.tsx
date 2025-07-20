@@ -23,7 +23,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Plus, GripVertical, Trash2, Copy, ChevronDown, ChevronRight, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { formService } from "@/services/formService"
@@ -34,19 +34,10 @@ import { RegistrationForm } from "@/types/form-types"
 const formBuilderSchema = z.object({
   title: z.string().min(2, "Form title must be at least 2 characters"),
   description: z.string().optional(),
-  category: z.string().min(1, "Category is required"),
 })
 type FormBuilderValues = z.infer<typeof formBuilderSchema>
 
-const categories = [
-  { value: "registration", label: "Registration" },
-  { value: "feedback", label: "Feedback" },
-  { value: "survey", label: "Survey" },
-  { value: "application", label: "Application" },
-  { value: "contact", label: "Contact" },
-  { value: "event", label: "Event" },
-  { value: "other", label: "Other" },
-]
+
 
 const fieldTypes = [
   { id: "text", label: "Text Input", icon: "📝" },
@@ -98,6 +89,9 @@ export default function SimplifiedFormBuilder({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [savedForm, setSavedForm] = useState<RegistrationForm | null>(null)
+  
+  // Debug state changes
+  console.log("Form builder state:", { showSuccessModal, savedForm, formId })
 
   // Form for form details
   const form = useForm<FormBuilderValues>({
@@ -105,7 +99,6 @@ export default function SimplifiedFormBuilder({
     defaultValues: defaultValues || {
       title: "",
       description: "",
-      category: "",
     },
   })
 
@@ -250,21 +243,37 @@ export default function SimplifiedFormBuilder({
       const formData = {
         title: data.title,
         description: data.description || "",
+        category: "registration",
         sections: sections,
         isActive: true
       }
-      const savedForm = await formService.createForm(formData)
+      
+      let savedForm: RegistrationForm
+      if (formId) {
+        // Update existing form
+        console.log("Updating form with ID:", formId, "Data:", formData)
+        savedForm = await formService.updateForm(formId, formData)
+        console.log("Form updated successfully:", savedForm)
+        toast({ title: "Success", description: "Form updated successfully" })
+      } else {
+        // Create new form
+        console.log("Creating new form with data:", formData)
+        savedForm = await formService.createForm(formData)
+        console.log("Form created successfully:", savedForm)
+        toast({ title: "Success", description: "Form created successfully" })
+      }
+      
+      console.log("Setting saved form and showing modal:", savedForm)
       setSavedForm(savedForm)
       setShowSuccessModal(true)
-      toast({ title: "Success", description: "Form saved successfully" })
-      onSave(savedForm)
+      // Don't call onSave - let the modal handle the flow
     } catch (error) {
       console.error("Error saving form:", error)
       toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to save form", variant: "destructive" })
     } finally {
       setIsSubmitting(false)
     }
-  }, [fields, transformToBackendFormat, onSave, toast])
+  }, [fields, transformToBackendFormat, onSave, toast, formId])
 
   const handleSuccessModalClose = () => {
     setShowSuccessModal(false)
@@ -357,7 +366,7 @@ export default function SimplifiedFormBuilder({
                     )
                   })}
                 </div>
-                <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => { setSelectedFieldId(field.id); setActiveTab("fields") }}><Plus className="h-4 w-4 mr-1" />Add Field</Button>
+                {/* <Button type="button" variant="outline" size="sm" className="w-full mt-2" onClick={() => { setSelectedFieldId(field.id); setActiveTab("fields") }}><Plus className="h-4 w-4 mr-1" />Add Field</Button> */}
               </div>
             )}
           </div>
@@ -373,7 +382,7 @@ export default function SimplifiedFormBuilder({
       <div className="bg-background rounded-lg shadow-sm p-6 w-full">
         <div className="space-y-6">
           <div>
-            <h2 className="text-2xl font-bold">Create New Form</h2>
+            <h2 className="text-2xl font-bold">{formId ? "Edit Form" : "Create New Form"}</h2>
             <p className="text-muted-foreground">Design your form by adding sections and fields.</p>
           </div>
           <Form {...form}>
@@ -388,20 +397,6 @@ export default function SimplifiedFormBuilder({
                         <FormItem>
                           <FormLabel>Form Title *</FormLabel>
                           <FormControl><Input placeholder="Enter form title" {...field} /></FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )} />
-                      <FormField control={form.control} name="category" render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Category *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
-                            <SelectContent>
-                              {categories.map((category) => (
-                                <SelectItem key={category.value} value={category.value}>{category.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                           <FormMessage />
                         </FormItem>
                       )} />
@@ -464,14 +459,14 @@ export default function SimplifiedFormBuilder({
               {/* Form Actions */}
               <div className="flex justify-between pt-4">
                 <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-                <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Save Form"}</Button>
+                <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving..." : (formId ? "Update Form" : "Save Form")}</Button>
               </div>
             </form>
           </Form>
         </div>
       </div>
       {/* Success Modal */}
-      <FormSuccessModal isOpen={showSuccessModal} onClose={handleSuccessModalClose} form={savedForm} />
+      <FormSuccessModal isOpen={showSuccessModal} onClose={handleSuccessModalClose} form={savedForm} isUpdate={!!formId} />
     </>
   )
 } 
