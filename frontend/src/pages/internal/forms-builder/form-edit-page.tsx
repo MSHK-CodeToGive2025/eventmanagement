@@ -35,18 +35,12 @@ export default function FormEditPage() {
   }, [id])
 
   const handleSave = async (updatedForm: RegistrationForm) => {
-    try {
-      await formService.updateForm(id!, {
-        title: updatedForm.title,
-        description: updatedForm.description,
-        sections: updatedForm.sections,
-        isActive: updatedForm.isActive
-      })
-      navigate("/manage/forms")
-    } catch (err) {
-      console.error("Error updating form:", err)
-      throw err
-    }
+    // The SimplifiedFormBuilder will handle the success flow internally
+    // including showing the success modal and calling onClose when done
+    console.log("Form updated successfully:", updatedForm)
+    
+    // Don't navigate immediately - let the form builder handle the success flow
+    // The form builder will show its success modal and call onClose when the user closes it
   }
 
   const handleClose = () => {
@@ -142,7 +136,6 @@ export default function FormEditPage() {
         defaultValues={{
           title: form.title,
           description: form.description || "",
-          category: "registration", // Default category since it's not in the type
         }}
         defaultFields={defaultFields}
       />

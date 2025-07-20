@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   Dialog,
@@ -13,15 +13,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { PaginationControls } from "@/components/ui/pagination-controls"
-import { PlusCircle, Edit, Trash2, Eye, Search, Filter, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react"
+import { PlusCircle, Edit, Trash2, Eye, Search, ArrowUpDown, ChevronDown, ChevronUp } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { formService } from "@/services/formService"
-import { RegistrationForm } from "@/types/form-types"
 import { useAuth } from "@/contexts/auth-context"
 
 // Define types
@@ -44,7 +42,7 @@ type Form = {
   sections?: any[]
 }
 
-type SortField = "title" | "category" | "createdAt" | "updatedAt" | "updatedBy"
+type SortField = "title" | "description" | "createdAt" | "updatedAt" | "updatedBy"
 type SortOrder = "asc" | "desc"
 
 export default function EnhancedFormsList() {
@@ -62,10 +60,8 @@ export default function EnhancedFormsList() {
   const [currentPage, setCurrentPage] = useState(1)
   const [itemsPerPage, setItemsPerPage] = useState(10)
 
-  // Search and filter state
+  // Search state
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
-  const [showFilters, setShowFilters] = useState(false)
 
   // Sorting state
   const [sortField, setSortField] = useState<SortField>("updatedAt")
@@ -94,10 +90,7 @@ export default function EnhancedFormsList() {
     fetchForms()
   }, [])
 
-  // Get unique categories for filters
-  const categories = useMemo(() => {
-    return Array.from(new Set(forms.map((form) => form.category || "Uncategorized")))
-  }, [forms])
+
 
   // Filter and sort forms
   const filteredForms = useMemo(() => {
@@ -108,22 +101,18 @@ export default function EnhancedFormsList() {
           searchTerm === "" ||
           form.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
           (form.description && form.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-          (form.category && form.category.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (form.updatedBy && `${form.updatedBy.firstName} ${form.updatedBy.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())) ||
           (form.createdBy && `${form.createdBy.firstName} ${form.createdBy.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()))
 
-        // Category filter
-        const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(form.category || "Uncategorized")
-
-        return matchesSearch && matchesCategory
+        return matchesSearch
       })
       .sort((a, b) => {
         if (sortField === "title") {
           return sortOrder === "asc" ? a.title.localeCompare(b.title) : b.title.localeCompare(a.title)
-        } else if (sortField === "category") {
-          const categoryA = a.category || "Uncategorized"
-          const categoryB = b.category || "Uncategorized"
-          return sortOrder === "asc" ? categoryA.localeCompare(categoryB) : categoryB.localeCompare(categoryA)
+        } else if (sortField === "description") {
+          const descriptionA = a.description || ""
+          const descriptionB = b.description || ""
+          return sortOrder === "asc" ? descriptionA.localeCompare(descriptionB) : descriptionB.localeCompare(descriptionA)
         } else if (sortField === "createdAt") {
           return sortOrder === "asc"
             ? new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -141,7 +130,7 @@ export default function EnhancedFormsList() {
         }
         return 0
       })
-  }, [forms, searchTerm, selectedCategories, sortField, sortOrder])
+  }, [forms, searchTerm, sortField, sortOrder])
 
   // Pagination calculations
   const totalItems = filteredForms.length
@@ -153,19 +142,11 @@ export default function EnhancedFormsList() {
   // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, selectedCategories, itemsPerPage])
+  }, [searchTerm, itemsPerPage])
 
-  // Function to toggle category selection
-  const toggleCategory = (category: string) => {
-    setSelectedCategories((prev) =>
-      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category],
-    )
-  }
-
-  // Clear all filters
-  const clearFilters = () => {
+  // Clear search
+  const clearSearch = () => {
     setSearchTerm("")
-    setSelectedCategories([])
   }
 
   // Handle sort changes
@@ -272,15 +253,7 @@ export default function EnhancedFormsList() {
             />
           </div>
 
-          <Button variant="outline" className="gap-2" onClick={() => setShowFilters(!showFilters)}>
-            <Filter className="h-4 w-4" />
-            <span>Filters</span>
-            {selectedCategories.length > 0 && (
-              <Badge variant="secondary" className="ml-1 rounded-full px-1 py-0">
-                {selectedCategories.length}
-              </Badge>
-            )}
-          </Button>
+
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -294,8 +267,8 @@ export default function EnhancedFormsList() {
               <DropdownMenuItem onClick={() => handleSort("title")}>
                 Form Title {sortField === "title" && (sortOrder === "asc" ? "(A-Z)" : "(Z-A)")}
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleSort("category")}>
-                Category {sortField === "category" && (sortOrder === "asc" ? "(A-Z)" : "(Z-A)")}
+              <DropdownMenuItem onClick={() => handleSort("description")}>
+                Description {sortField === "description" && (sortOrder === "asc" ? "(A-Z)" : "(Z-A)")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleSort("createdAt")}>
                 Created Date {sortField === "createdAt" && (sortOrder === "asc" ? "(Oldest)" : "(Newest)")}
@@ -310,47 +283,9 @@ export default function EnhancedFormsList() {
           </DropdownMenu>
         </div>
 
-        {/* Filter Section - Toggleable */}
-        {showFilters && (
-          <div className="bg-gray-50 p-4 rounded-md border">
-            <div className="flex justify-between items-center mb-3">
-              <h3 className="font-medium">Filter Forms</h3>
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-            </div>
 
-            <div>
-              <h4 className="text-sm font-medium mb-2">Category</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-                {categories.map((category) => (
-                  <div key={category} className="flex items-center">
-                    <Checkbox
-                      id={`category-${category}`}
-                      checked={selectedCategories.includes(category)}
-                      onCheckedChange={() => toggleCategory(category)}
-                    />
-                    <Label htmlFor={`category-${category}`} className="ml-2 cursor-pointer">
-                      {category}
-                    </Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Active Filters - Always visible when filters are active */}
-        {selectedCategories.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-gray-500">Active filters:</span>
-            {selectedCategories.map((category) => (
-              <Badge key={`cat-${category}`} variant="secondary">
-                {category}
-              </Badge>
-            ))}
-          </div>
-        )}
+
       </div>
 
       {/* Table View */}
@@ -369,8 +304,8 @@ export default function EnhancedFormsList() {
                 <TableHead className="cursor-pointer" onClick={() => handleSort("title")}>
                   <div className="flex items-center">Form Title {getSortIcon("title")}</div>
                 </TableHead>
-                <TableHead className="cursor-pointer" onClick={() => handleSort("category")}>
-                  <div className="flex items-center">Category {getSortIcon("category")}</div>
+                <TableHead className="cursor-pointer" onClick={() => handleSort("description")}>
+                  <div className="flex items-center">Description {getSortIcon("description")}</div>
                 </TableHead>
                 <TableHead className="cursor-pointer" onClick={() => handleSort("createdAt")}>
                   <div className="flex items-center">Created Date {getSortIcon("createdAt")}</div>
@@ -404,7 +339,9 @@ export default function EnhancedFormsList() {
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="outline">{form.category || "Uncategorized"}</Badge>
+                    <div className="max-w-xs truncate">
+                      {form.description || "No description"}
+                    </div>
                   </TableCell>
                   <TableCell>{new Date(form.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell>
@@ -478,8 +415,8 @@ export default function EnhancedFormsList() {
       ) : (
         <div className="text-center py-12">
           <p className="text-gray-500">No forms found matching your criteria</p>
-          <Button variant="link" onClick={clearFilters}>
-            Clear all filters
+          <Button variant="link" onClick={clearSearch}>
+            Clear search
           </Button>
         </div>
       )}

@@ -2,6 +2,7 @@ export interface RegistrationForm {
   _id: string;
   title: string;
   description?: string;
+  category?: string;
   sections: FormSection[];
   isActive: boolean;
   createdBy: string; // User ID reference
