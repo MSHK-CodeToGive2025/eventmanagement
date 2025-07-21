@@ -374,7 +374,7 @@ export default function EnhancedEventDetailPage() {
                         <div className="bg-green-50 p-6 rounded-lg text-center">
                           <h3 className="text-lg font-semibold mb-3 text-green-700">Registration Complete!</h3>
                           <p className="text-gray-700 mb-4">
-                            Thank you for registering for this event. You will receive a confirmation email shortly.
+                            Thank you for registering for this event. 
                           </p>
                           <div className="flex justify-center gap-4">
                             <Button onClick={() => navigate("/enhanced-events")} variant="outline">
