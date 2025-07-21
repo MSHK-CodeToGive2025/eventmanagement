@@ -151,17 +151,51 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
 // Update event (requires auth)
 router.put('/:id', auth, upload.single('image'), async (req, res) => {
   try {
+    console.log('[EVENTS] Update request for event:', req.params.id);
+    console.log('[EVENTS] User from token:', req.user);
+    
     const user = await User.findById(req.user.userId);
+    console.log('[EVENTS] User found in database:', user ? { 
+      _id: user._id, 
+      username: user.username, 
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName
+    } : null);
+    
     const event = await Event.findById(req.params.id);
+    console.log('[EVENTS] Event found:', event ? { 
+      _id: event._id, 
+      title: event.title,
+      createdBy: event.createdBy,
+      status: event.status
+    } : null);
 
     if (!event) {
+      console.log('[EVENTS] Event not found');
       return res.status(404).json({ message: 'Event not found' });
     }
 
+    if (!user) {
+      console.log('[EVENTS] User not found in database');
+      return res.status(403).json({ message: 'User not found' });
+    }
+
+    console.log('[EVENTS] Authorization check:');
+    console.log('[EVENTS] - User role:', user.role);
+    console.log('[EVENTS] - Event createdBy:', event.createdBy.toString());
+    console.log('[EVENTS] - Current user ID:', req.user.userId);
+    console.log('[EVENTS] - Is admin:', user.role === 'admin');
+    console.log('[EVENTS] - Is staff:', user.role === 'staff');
+    console.log('[EVENTS] - Is creator:', event.createdBy.toString() === req.user.userId);
+
     // Admin, staff, or event creator can update
-    if (!user || (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId)) {
+    if (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId) {
+      console.log('[EVENTS] Authorization failed - user not authorized');
       return res.status(403).json({ message: 'Not authorized to update this event' });
     }
+
+    console.log('[EVENTS] Authorization successful - proceeding with update');
 
     const updateData = { ...req.body, updatedBy: req.user.userId };
     
