@@ -33,11 +33,11 @@
 ## Application Load Balancers (ALB)
 
 - **Backend ALB:**
-  - **Name:** backend-alb
-  - **DNS:** backend-alb-1469776694.ap-east-1.elb.amazonaws.com
-- **Frontend ALB:**
   - **Name:** zubin-emb-alb
   - **DNS:** zubin-emb-alb-1568046412.ap-east-1.elb.amazonaws.com
+- **Frontend ALB:**
+  - **Name:** zubin-emb-frontend-alb
+  - **DNS:** zubin-events-alb-1307450074.ap-east-1.elb.amazonaws.com
 
 ---
 
@@ -50,13 +50,9 @@
   - `GET /api/health/db`
   - Returns MongoDB connection status, ping result, and timestamp.
 
----
+## Frontend
 
-## References
-- ECS/ECR/ALB configuration exported in:
-  - `aws-ecs-services.json`
-  - `aws-ecr-repos.json`
-  - `aws-elb.json`
+http://zubin-events-alb-1307450074.ap-east-1.elb.amazonaws.com
 
 ---
 
