@@ -10,8 +10,19 @@ dotenv.config();
 
 const router = express.Router();
 
-// Initialize Twilio client with proper credentials
-const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+// Initialize Twilio client with proper credentials and error handling
+let twilioClient = null;
+try {
+  if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+    twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+    console.log('[EVENTS] Twilio client initialized successfully');
+  } else {
+    console.log('[EVENTS] Twilio credentials not found, SMS features will be disabled');
+  }
+} catch (error) {
+  console.error('[EVENTS] Failed to initialize Twilio client:', error.message);
+  console.log('[EVENTS] SMS features will be disabled');
+}
 
 // Configure multer for handling file uploads
 const storage = multer.memoryStorage();
@@ -530,6 +541,15 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
     // Log the attempt (without sensitive data)
     console.log(`Attempting to send WhatsApp message to: ${to}`);
     
+    if (!twilioClient) {
+      console.error('Twilio client not initialized, cannot send WhatsApp message');
+      return res.status(503).json({ 
+        success: false, 
+        error: 'SMS service not available',
+        message: 'WhatsApp messaging is currently unavailable'
+      });
+    }
+    
     const result = await twilioClient.messages.create({
       body: message,
       from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
@@ -596,6 +616,12 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
             ? participant.phoneNumber 
             : `+${participant.phoneNumber.replace(/\D/g, '')}`;
 
+          if (!twilioClient) {
+            console.error('Twilio client not initialized, cannot send WhatsApp message');
+            failedNumbers.push(participant.phoneNumber);
+            continue;
+          }
+          
           await twilioClient.messages.create({
             body: `Event Notification: ${event.title}\n\n${message}`,
             from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
