@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const BACKEND_URL = process.env.BACKEND_URL || 'http://backend-alb-1469776694.ap-east-1.elb.amazonaws.com/api';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://zubin-emb-alb-1568046412.ap-east-1.elb.amazonaws.com/api';
 
 console.log('🔍 AWS Backend Authentication Debug Script');
 console.log('==========================================');
@@ -39,7 +39,7 @@ async function testCORS() {
     console.log('\n3. Testing CORS configuration...');
     const corsResponse = await axios.options(`${BACKEND_URL}/events`, {
       headers: {
-        'Origin': 'http://zubin-emb-alb-1568046412.ap-east-1.elb.amazonaws.com',
+        'Origin': 'http://zubin-events-alb-1307450074.ap-east-1.elb.amazonaws.com',
         'Access-Control-Request-Method': 'GET',
         'Access-Control-Request-Headers': 'Authorization'
       }
@@ -128,8 +128,8 @@ async function main() {
   
   // Test authentication if you have credentials
   const testCredentials = {
-    username: process.env.TEST_USERNAME || 'admin',
-    password: process.env.TEST_PASSWORD || 'password'
+    username: process.env.TEST_USERNAME || 'superadmin',
+    password: process.env.TEST_PASSWORD || 'xxx'
   };
   
   const token = await testAuthentication(testCredentials);

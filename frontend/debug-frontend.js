@@ -5,7 +5,7 @@ console.log('🔍 Frontend AWS Debug Script');
 console.log('============================');
 
 // Configuration
-const API_URL = 'http://backend-alb-1469776694.ap-east-1.elb.amazonaws.com/api';
+const API_URL = 'http://zubin-emb-alb-1568046412.ap-east-1.elb.amazonaws.com/api';
 const FRONTEND_URL = window.location.origin;
 
 console.log('Frontend URL:', FRONTEND_URL);
