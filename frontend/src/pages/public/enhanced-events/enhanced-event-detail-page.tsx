@@ -10,27 +10,10 @@ import { ZubinEvent } from "@/types/event-types"
 import { RegistrationForm } from "@/types/form-types"
 import eventService from "@/services/eventService"
 import { formService } from "@/services/formService"
+import registrationService from "@/services/registrationService"
 
-// Simple interface for event registration
-interface EventRegistration {
-  _id: string;
-  eventId: string;
-  userId: string;
-  attendee: {
-    firstName: string;
-    lastName: string;
-    phone: string;
-    email: string;
-  };
-  sessions: string[];
-  formResponses: Array<{
-    sectionId: string;
-    fieldId: string;
-    response: any;
-  }>;
-  status: string;
-  registeredAt: Date;
-}
+// Import the EventRegistration type from the service
+import { EventRegistration } from "@/services/registrationService"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Label } from "@/components/ui/label"
@@ -53,6 +36,10 @@ export default function EnhancedEventDetailPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [registrationComplete, setRegistrationComplete] = useState(false)
+  
+  // Registration status state
+  const [userRegistration, setUserRegistration] = useState<EventRegistration | null>(null)
+  const [checkingRegistration, setCheckingRegistration] = useState(false)
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -78,6 +65,19 @@ export default function EnhancedEventDetailPage() {
           console.error("Error fetching registration form:", error)
           // Continue without registration form
         }
+
+        // Check if user is already registered for this event
+        if (isAuthenticated && user) {
+          setCheckingRegistration(true)
+          try {
+            const registration = await registrationService.checkUserRegistration(eventData._id)
+            setUserRegistration(registration)
+          } catch (error) {
+            console.error("Error checking user registration:", error)
+          } finally {
+            setCheckingRegistration(false)
+          }
+        }
       } catch (error) {
         console.error("Error fetching event:", error)
         console.log("Failed to load event details. Please try again later.")
@@ -88,6 +88,27 @@ export default function EnhancedEventDetailPage() {
 
     fetchEventData()
   }, [id, navigate, location.state])
+
+  // Recheck registration status when authentication state changes
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      if (isAuthenticated && user && event) {
+        setCheckingRegistration(true)
+        try {
+          const registration = await registrationService.checkUserRegistration(event._id)
+          setUserRegistration(registration)
+        } catch (error) {
+          console.error("Error checking user registration:", error)
+        } finally {
+          setCheckingRegistration(false)
+        }
+      } else {
+        setUserRegistration(null)
+      }
+    }
+
+    checkRegistrationStatus()
+  }, [isAuthenticated, user, event?._id])
 
   const handleSessionSelection = (sessionId: string) => {
     setSelectedSessions(prev => {
@@ -168,6 +189,10 @@ export default function EnhancedEventDetailPage() {
         }
       })
       setRegistrationComplete(true)
+      
+      // Update user registration status
+      const newRegistration = await registrationService.checkUserRegistration(event._id)
+      setUserRegistration(newRegistration)
     } catch (error: any) {
       console.error("Error submitting form:", error)
       alert(error.response?.data?.message || "There was an unexpected error. Please try again later.")
@@ -357,6 +382,28 @@ export default function EnhancedEventDetailPage() {
                               className="bg-yellow-400 hover:bg-yellow-500 text-black"
                             >
                               Sign Up
+                            </Button>
+                          </div>
+                        </div>
+                      ) : checkingRegistration ? (
+                        <div className="bg-gray-50 p-6 rounded-lg text-center">
+                          <h3 className="text-lg font-semibold mb-3">Checking Registration Status</h3>
+                          <div className="flex justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin" />
+                          </div>
+                        </div>
+                      ) : userRegistration ? (
+                        <div className="bg-green-50 p-6 rounded-lg text-center">
+                          <h3 className="text-lg font-semibold mb-3 text-green-700">Already Registered!</h3>
+                          <p className="text-gray-700 mb-4">
+                            You have already registered for this event. We look forward to seeing you!
+                          </p>
+                          <div className="flex justify-center gap-4">
+                            <Button onClick={() => navigate("/my-registrations")} variant="outline">
+                              View My Registrations
+                            </Button>
+                            <Button onClick={() => navigate("/enhanced-events")} className="bg-yellow-400 hover:bg-yellow-500 text-black">
+                              Browse Other Events
                             </Button>
                           </div>
                         </div>
@@ -571,29 +618,39 @@ export default function EnhancedEventDetailPage() {
               </div>
 
               <div className="mt-6">
-                <Button
-                  onClick={() => setActiveTab("registration")}
-                  className="w-full bg-yellow-400 hover:bg-yellow-500 text-black py-6 text-lg font-semibold"
-                >
-                  Register Now
-                </Button>
+                {!isAuthenticated ? (
+                  <Button
+                    onClick={() => setActiveTab("registration")}
+                    className="w-full bg-yellow-400 hover:bg-yellow-500 text-black py-6 text-lg font-semibold"
+                  >
+                    Register Now
+                  </Button>
+                ) : checkingRegistration ? (
+                  <Button
+                    disabled
+                    className="w-full bg-gray-300 text-gray-500 py-6 text-lg font-semibold cursor-not-allowed"
+                  >
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Checking Registration...
+                  </Button>
+                ) : userRegistration ? (
+                  <Button
+                    disabled
+                    className="w-full bg-green-100 text-green-700 py-6 text-lg font-semibold cursor-not-allowed border border-green-300"
+                  >
+                    ✓ Registered :)
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => setActiveTab("registration")}
+                    className="w-full bg-yellow-400 hover:bg-yellow-500 text-black py-6 text-lg font-semibold"
+                  >
+                    Register Now
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
-
-          {/* 
-          <Card>
-            <CardContent className="p-6">
-              <h2 className="text-xl font-semibold mb-4">Share This Event</h2>
-              <div>
-                <Button variant="outline" size="sm">
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Share
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          */}
 
           <Card>
             <CardContent className="p-6">

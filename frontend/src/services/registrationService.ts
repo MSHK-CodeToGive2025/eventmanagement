@@ -76,6 +76,23 @@ const registrationService = {
     });
     return response.data;
   },
+
+  // Check if user is registered for a specific event
+  async checkUserRegistration(eventId: string): Promise<EventRegistration | null> {
+    try {
+      const response = await axios.get(`${API_URL}/event-registrations/my-registrations`, {
+        headers: authHeader(),
+      });
+      const registrations = response.data;
+      const eventRegistration = registrations.find((reg: EventRegistration) => 
+        reg.eventId === eventId && reg.status === 'registered'
+      );
+      return eventRegistration || null;
+    } catch (error) {
+      console.error('Error checking user registration:', error);
+      return null;
+    }
+  },
 };
 
 export default registrationService; 
