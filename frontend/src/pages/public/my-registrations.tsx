@@ -8,6 +8,8 @@ import { format } from "date-fns"
 import { CalendarIcon, MapPin, Search, Eye, X, Loader2, ArrowLeft, ChevronDown, ChevronUp, Clock, FileText, User } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import registrationService, { EventRegistration } from "@/services/registrationService"
+import { formService } from "@/services/formService"
+import { RegistrationForm } from "@/types/form-types"
 import { useToast } from "@/hooks/use-toast"
 import RouteGuard from "@/components/route-guard"
 import { Separator } from "@/components/ui/separator"
@@ -17,6 +19,7 @@ export default function MyRegistrations() {
   const { toast } = useToast()
   
   const [registrations, setRegistrations] = useState<EventRegistration[]>([])
+  const [forms, setForms] = useState<Record<string, RegistrationForm>>({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
@@ -30,6 +33,27 @@ export default function MyRegistrations() {
         setError(null)
         const data = await registrationService.getMyRegistrations()
         setRegistrations(data)
+        
+        // Fetch forms for all registrations
+        const formIds = new Set<string>()
+        data.forEach(registration => {
+          const event = registration.eventId as any
+          if (event?.registrationFormId) {
+            formIds.add(event.registrationFormId)
+          }
+        })
+        
+        // Fetch all forms
+        const formsData: Record<string, RegistrationForm> = {}
+        for (const formId of formIds) {
+          try {
+            const form = await formService.getForm(formId)
+            formsData[formId] = form
+          } catch (err) {
+            console.error(`Error fetching form ${formId}:`, err)
+          }
+        }
+        setForms(formsData)
       } catch (err: any) {
         console.error('Error fetching registrations:', err)
         setError(err.message || 'Failed to load registrations')
@@ -138,6 +162,22 @@ export default function MyRegistrations() {
       return response.join(', ')
     }
     return response || 'Not provided'
+  }
+
+  const getFieldLabel = (fieldId: string, event: any): string => {
+    if (!event?.registrationFormId || !forms[event.registrationFormId]) {
+      return fieldId // Fallback to field ID if form not found
+    }
+    
+    const form = forms[event.registrationFormId]
+    for (const section of form.sections) {
+      for (const field of section.fields) {
+        if (field._id === fieldId) {
+          return field.label
+        }
+      }
+    }
+    return fieldId // Fallback to field ID if field not found
   }
 
   if (loading) {
@@ -391,7 +431,7 @@ export default function MyRegistrations() {
                                   <div className="flex justify-between items-start">
                                     <div className="flex-1">
                                       <p className="text-sm font-medium text-green-800 mb-1">
-                                        {response.fieldId}
+                                        {getFieldLabel(response.fieldId, event)}
                                       </p>
                                       <p className="text-sm text-green-700">
                                         {formatFormResponse(response.response)}
