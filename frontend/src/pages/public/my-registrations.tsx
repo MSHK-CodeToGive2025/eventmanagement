@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
 import { CalendarIcon, MapPin, Search, Eye, X, Loader2, ArrowLeft, ChevronDown, ChevronUp, Clock, FileText, User, Users } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
@@ -25,6 +26,7 @@ export default function MyRegistrations() {
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("all")
   const [expandedRegistrations, setExpandedRegistrations] = useState<Set<string>>(new Set())
+  const [registrationToCancel, setRegistrationToCancel] = useState<EventRegistration | null>(null)
 
   useEffect(() => {
     const fetchRegistrations = async () => {
@@ -97,6 +99,8 @@ export default function MyRegistrations() {
         title: "Success",
         description: "Registration cancelled successfully",
       })
+      
+      setRegistrationToCancel(null)
     } catch (err: any) {
       console.error('Error cancelling registration:', err)
       toast({
@@ -361,14 +365,38 @@ export default function MyRegistrations() {
                           View Event
                         </Button>
                         {registration.status !== "cancelled" && registration.status !== "rejected" && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            onClick={() => handleCancelRegistration(registration._id)}
-                          >
-                            <X className="h-4 w-4 mr-2" />
-                            Cancel
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => setRegistrationToCancel(registration)}
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Cancel
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Cancel Registration</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to cancel your registration for{" "}
+                                  <strong>{event.title}</strong>? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel onClick={() => setRegistrationToCancel(null)}>
+                                  Keep Registration
+                                </AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleCancelRegistration(registration._id)}
+                                  className="bg-red-600 hover:bg-red-700"
+                                >
+                                  Cancel Registration
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
                     </div>

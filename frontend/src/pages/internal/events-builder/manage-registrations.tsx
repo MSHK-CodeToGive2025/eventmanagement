@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
 import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2 } from "lucide-react"
 import { ZubinEvent, eventCategories, targetGroups } from "@/types/event-types"
@@ -26,6 +27,7 @@ export default function ManageRegistrations() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("all");
   const [selectedRegistration, setSelectedRegistration] = useState<EventRegistration | null>(null);
+  const [registrationToReject, setRegistrationToReject] = useState<EventRegistration | null>(null);
   
   // State for real data
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -96,6 +98,7 @@ export default function ManageRegistrations() {
       });
       
       setSelectedRegistration(null);
+      setRegistrationToReject(null);
     } catch (err: any) {
       console.error('Error rejecting registration:', err);
       toast({
@@ -325,14 +328,39 @@ export default function ManageRegistrations() {
                           </Button>
                           */}
                           {registration.status !== "cancelled" && registration.status !== "rejected" && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleRejectRegistration(registration._id)}
-                            >
-                              <X className="h-4 w-4 mr-2" />
-                              Reject
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => setRegistrationToReject(registration)}
+                                >
+                                  <X className="h-4 w-4 mr-2" />
+                                  Reject
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Reject Registration</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to reject the registration for{" "}
+                                    <strong>{registration.attendee.firstName} {registration.attendee.lastName}</strong>?
+                                    This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel onClick={() => setRegistrationToReject(null)}>
+                                    Cancel
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleRejectRegistration(registration._id)}
+                                    className="bg-red-600 hover:bg-red-700"
+                                  >
+                                    Reject Registration
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           )}
                         </div>
                       </TableCell>
