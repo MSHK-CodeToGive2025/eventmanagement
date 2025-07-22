@@ -24,7 +24,7 @@ export default function ManageRegistrations() {
   const event = location.state?.event as ZubinEvent;
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "confirmed" | "attended" | "cancelled" | "waitlisted">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("all");
   const [selectedRegistration, setSelectedRegistration] = useState<EventRegistration | null>(null);
   
   // State for real data
@@ -81,12 +81,12 @@ export default function ManageRegistrations() {
 
   const handleRejectRegistration = async (registrationId: string) => {
     try {
-      await registrationService.updateRegistrationStatus(registrationId, 'cancelled');
+      await registrationService.updateRegistrationStatus(registrationId, 'rejected');
       
       // Update local state
       setRegistrations(prev => prev.map(reg =>
         reg._id === registrationId
-          ? { ...reg, status: 'cancelled' as const }
+          ? { ...reg, status: 'rejected' as const }
           : reg
       ));
       
@@ -129,20 +129,16 @@ export default function ManageRegistrations() {
     }
   };
 
-  type RegistrationStatus = "pending" | "confirmed" | "attended" | "cancelled" | "waitlisted";
+  type RegistrationStatus = "registered" | "cancelled" | "rejected";
 
   const getStatusVariant = (status: RegistrationStatus) => {
     switch (status) {
-      case "confirmed":
+      case "registered":
         return "default";
-      case "pending":
-        return "outline";
       case "cancelled":
         return "destructive";
-      case "attended":
-        return "default";
-      case "waitlisted":
-        return "secondary";
+      case "rejected":
+        return "destructive";
       default:
         return "outline";
     }
@@ -150,16 +146,12 @@ export default function ManageRegistrations() {
 
   const getStatusClassName = (status: RegistrationStatus) => {
     switch (status) {
-      case "confirmed":
+      case "registered":
         return "bg-green-100 text-green-800";
-      case "pending":
-        return "bg-yellow-100 text-yellow-800";
       case "cancelled":
         return "bg-red-100 text-red-800";
-      case "attended":
-        return "bg-blue-100 text-blue-800";
-      case "waitlisted":
-        return "bg-purple-100 text-purple-800";
+      case "rejected":
+        return "bg-red-100 text-red-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
@@ -276,11 +268,9 @@ export default function ManageRegistrations() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
-                  <SelectItem value="attended">Attended</SelectItem>
+                  <SelectItem value="registered">Registered</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
-                  <SelectItem value="waitlisted">Waitlisted</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -332,11 +322,9 @@ export default function ManageRegistrations() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="confirmed">Confirmed</SelectItem>
-                            <SelectItem value="attended">Attended</SelectItem>
+                            <SelectItem value="registered">Registered</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
-                            <SelectItem value="waitlisted">Waitlisted</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -366,7 +354,7 @@ export default function ManageRegistrations() {
                             WhatsApp
                           </Button>
                           */}
-                          {registration.status !== "cancelled" && (
+                          {registration.status !== "cancelled" && registration.status !== "rejected" && (
                             <Button
                               variant="destructive"
                               size="sm"

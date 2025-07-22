@@ -85,7 +85,7 @@ router.post('/event/:eventId', auth, async (req, res) => {
       },
       sessions: sessions || [],
       formResponses: formResponses || [],
-      status: 'pending'
+      status: 'registered'
     });
 
     await registration.save();
@@ -114,14 +114,14 @@ router.put('/:id/status', auth, async (req, res) => {
     }
 
     const { status } = req.body;
-    const validStatuses = ['pending', 'confirmed', 'attended', 'cancelled', 'waitlisted'];
+    const validStatuses = ['registered', 'cancelled', 'rejected'];
 
     if (!validStatuses.includes(status)) {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
     const updateData = { status };
-    if (status === 'cancelled') {
+    if (status === 'cancelled' || status === 'rejected') {
       updateData.cancelledAt = new Date();
     }
 

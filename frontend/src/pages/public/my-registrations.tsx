@@ -19,7 +19,7 @@ export default function MyRegistrations() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "confirmed" | "attended" | "cancelled" | "waitlisted">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("all")
 
   useEffect(() => {
     const fetchRegistrations = async () => {
@@ -82,16 +82,12 @@ export default function MyRegistrations() {
 
   const getStatusVariant = (status: EventRegistration['status']) => {
     switch (status) {
-      case "confirmed":
+      case "registered":
         return "default"
-      case "pending":
-        return "outline"
       case "cancelled":
         return "destructive"
-      case "attended":
-        return "default"
-      case "waitlisted":
-        return "secondary"
+      case "rejected":
+        return "destructive"
       default:
         return "outline"
     }
@@ -99,16 +95,12 @@ export default function MyRegistrations() {
 
   const getStatusClassName = (status: EventRegistration['status']) => {
     switch (status) {
-      case "confirmed":
+      case "registered":
         return "bg-green-100 text-green-800"
-      case "pending":
-        return "bg-yellow-100 text-yellow-800"
       case "cancelled":
         return "bg-red-100 text-red-800"
-      case "attended":
-        return "bg-blue-100 text-blue-800"
-      case "waitlisted":
-        return "bg-purple-100 text-purple-800"
+      case "rejected":
+        return "bg-red-100 text-red-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
@@ -176,11 +168,9 @@ export default function MyRegistrations() {
                 className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500"
               >
                 <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="attended">Attended</option>
+                <option value="registered">Registered</option>
                 <option value="cancelled">Cancelled</option>
-                <option value="waitlisted">Waitlisted</option>
+                <option value="rejected">Rejected</option>
               </select>
             </div>
           </CardHeader>
@@ -268,7 +258,7 @@ export default function MyRegistrations() {
                           <Eye className="h-4 w-4 mr-2" />
                           View Event
                         </Button>
-                        {registration.status !== "cancelled" && registration.status !== "attended" && (
+                        {registration.status !== "cancelled" && registration.status !== "rejected" && (
                           <Button
                             variant="destructive"
                             size="sm"
