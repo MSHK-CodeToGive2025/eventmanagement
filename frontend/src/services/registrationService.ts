@@ -93,6 +93,20 @@ const registrationService = {
       return null;
     }
   },
+
+  // Get all user registrations for a specific event (including cancelled/rejected)
+  async getUserEventRegistrations(eventId: string): Promise<EventRegistration[]> {
+    try {
+      const response = await axios.get(`${API_URL}/event-registrations/my-registrations`, {
+        headers: authHeader(),
+      });
+      const registrations = response.data;
+      return registrations.filter((reg: EventRegistration) => reg.eventId === eventId);
+    } catch (error) {
+      console.error('Error getting user event registrations:', error);
+      return [];
+    }
+  },
 };
 
 export default registrationService; 

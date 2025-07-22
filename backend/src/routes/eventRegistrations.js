@@ -61,10 +61,11 @@ router.post('/event/:eventId', auth, async (req, res) => {
       return res.status(400).json({ message: 'Event is not available for registration' });
     }
 
-    // Check if user is already registered
+    // Check if user is already registered (only active registrations)
     const existingRegistration = await EventRegistration.findOne({
       eventId: req.params.eventId,
-      userId: req.user.userId
+      userId: req.user.userId,
+      status: 'registered'
     });
 
     if (existingRegistration) {
