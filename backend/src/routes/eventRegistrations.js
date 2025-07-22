@@ -46,18 +46,26 @@ router.get('/event/:eventId', auth, async (req, res) => {
 // Register for an event
 router.post('/event/:eventId', auth, async (req, res) => {
   try {
+    console.log('[REGISTRATION] Starting registration process for event:', req.params.eventId);
+    console.log('[REGISTRATION] User ID:', req.user.userId);
+    
     const user = await User.findById(req.user.userId);
     if (!user) {
+      console.log('[REGISTRATION] User not found');
       return res.status(403).json({ message: 'User not found' });
     }
 
     const event = await Event.findById(req.params.eventId);
     if (!event) {
+      console.log('[REGISTRATION] Event not found');
       return res.status(404).json({ message: 'Event not found' });
     }
 
+    console.log('[REGISTRATION] Event status:', event.status);
+
     // Check if event is published
     if (event.status !== 'Published') {
+      console.log('[REGISTRATION] Event not published');
       return res.status(400).json({ message: 'Event is not available for registration' });
     }
 
@@ -68,11 +76,21 @@ router.post('/event/:eventId', auth, async (req, res) => {
       status: 'registered'
     });
 
+    console.log('[REGISTRATION] Existing registration check:', existingRegistration ? 'Found' : 'Not found');
     if (existingRegistration) {
+      console.log('[REGISTRATION] User already registered, registration ID:', existingRegistration._id);
       return res.status(400).json({ message: 'Already registered for this event' });
     }
 
+    // Also check for any registrations (for debugging)
+    const allUserRegistrations = await EventRegistration.find({
+      eventId: req.params.eventId,
+      userId: req.user.userId
+    });
+    console.log('[REGISTRATION] All user registrations for this event:', allUserRegistrations.map(r => ({ id: r._id, status: r.status })));
+
     const { sessions, formResponses, attendee } = req.body;
+    console.log('[REGISTRATION] Request body:', { sessions, formResponses, attendee });
 
     // Create registration
     const registration = new EventRegistration({
@@ -89,7 +107,9 @@ router.post('/event/:eventId', auth, async (req, res) => {
       status: 'registered'
     });
 
+    console.log('[REGISTRATION] Creating new registration:', registration);
     await registration.save();
+    console.log('[REGISTRATION] Registration saved successfully, ID:', registration._id);
 
     // Update event registered count
     await Event.findByIdAndUpdate(req.params.eventId, {

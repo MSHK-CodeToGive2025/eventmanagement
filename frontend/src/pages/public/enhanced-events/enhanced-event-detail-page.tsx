@@ -97,10 +97,12 @@ export default function EnhancedEventDetailPage() {
     setCheckingRegistration(true)
     try {
       const registrations = await registrationService.getUserEventRegistrations(eventId)
+      console.log('[FRONTEND] User registrations for event:', registrations)
       setUserRegistrations(registrations)
       
       // Find active registration (status: registered)
       const active = registrations.find(reg => reg.status === 'registered')
+      console.log('[FRONTEND] Active registration found:', active)
       setActiveRegistration(active || null)
     } catch (error) {
       console.error("Error checking user registrations:", error)
