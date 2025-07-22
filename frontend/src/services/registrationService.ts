@@ -28,7 +28,7 @@ export interface EventRegistration {
     fieldId: string;
     response: any;
   }>;
-  status: 'pending' | 'confirmed' | 'attended' | 'cancelled' | 'waitlisted';
+  status: 'registered' | 'cancelled' | 'rejected';
   registeredAt: string;
   cancelledAt?: string;
   notes?: string;

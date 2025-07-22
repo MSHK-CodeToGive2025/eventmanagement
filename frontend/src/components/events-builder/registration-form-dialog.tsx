@@ -23,7 +23,7 @@ interface RegistrationFormDialogProps {
       fieldId: string;
       response: any;
     }[];
-    status: 'pending' | 'confirmed' | 'attended' | 'cancelled' | 'waitlisted';
+    status: 'registered' | 'cancelled' | 'rejected';
     registeredAt: string;
     cancelledAt?: string;
     notes?: string;
@@ -147,29 +147,21 @@ export default function RegistrationFormDialog({
           <div className="flex items-center gap-2">
             <Badge
               variant={
-                registration.status === "confirmed"
+                registration.status === "registered"
                   ? "default"
-                  : registration.status === "pending"
-                    ? "outline"
-                    : registration.status === "cancelled"
-                      ? "destructive"
-                      : "secondary"
+                  : "destructive"
               }
               className={
-                registration.status === "confirmed"
+                registration.status === "registered"
                   ? "bg-green-100 text-green-800"
-                  : registration.status === "pending"
-                    ? "bg-yellow-100 text-yellow-800"
-                    : registration.status === "cancelled"
-                      ? "bg-red-100 text-red-800"
-                      : "bg-purple-100 text-purple-800"
+                  : "bg-red-100 text-red-800"
               }
             >
               {registration.status.charAt(0).toUpperCase() + registration.status.slice(1)}
             </Badge>
           </div>
           <div className="flex gap-2">
-            {registration.status === "pending" && (
+            {registration.status === "registered" && (
               <Button
                 variant="destructive"
                 onClick={() => onReject(registration._id)}

@@ -47,8 +47,8 @@ const eventRegistrationSchema = new mongoose.Schema({
   }],
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'attended', 'cancelled', 'waitlisted'],
-    default: 'pending'
+    enum: ['registered', 'cancelled', 'rejected'],
+    default: 'registered'
   },
   registeredAt: {
     type: Date,
