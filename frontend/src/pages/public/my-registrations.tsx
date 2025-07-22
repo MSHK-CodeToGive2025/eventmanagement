@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { format } from "date-fns"
-import { CalendarIcon, MapPin, Search, Eye, X, Loader2, ArrowLeft, ChevronDown, ChevronUp, Clock, FileText, User } from "lucide-react"
+import { CalendarIcon, MapPin, Search, Eye, X, Loader2, ArrowLeft, ChevronDown, ChevronUp, Clock, FileText, User, Users } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import registrationService, { EventRegistration } from "@/services/registrationService"
 import { formService } from "@/services/formService"
@@ -43,22 +43,17 @@ export default function MyRegistrations() {
           }
         })
         
-        console.log('[DEBUG] Found form IDs:', Array.from(formIds))
-        
         // Fetch all forms
         const formsData: Record<string, RegistrationForm> = {}
         for (const formId of formIds) {
           try {
-            console.log('[DEBUG] Fetching form:', formId)
             const form = await formService.getForm(formId)
             formsData[formId] = form
-            console.log('[DEBUG] Successfully fetched form:', form.title)
           } catch (err) {
             console.error(`Error fetching form ${formId}:`, err)
           }
         }
         
-        console.log('[DEBUG] Final forms data:', Object.keys(formsData))
         setForms(formsData)
       } catch (err: any) {
         console.error('Error fetching registrations:', err)
@@ -154,10 +149,11 @@ export default function MyRegistrations() {
 
   const getRegisteredSessions = (registration: EventRegistration, event: any) => {
     if (!registration.sessions || registration.sessions.length === 0) return []
+    if (!event.sessions || event.sessions.length === 0) return []
     
-    return event.sessions?.filter((session: any) => 
+    return event.sessions.filter((session: any) => 
       registration.sessions.includes(session._id)
-    ) || []
+    )
   }
 
   const formatFormResponse = (response: any) => {
@@ -171,26 +167,18 @@ export default function MyRegistrations() {
   }
 
   const getFieldLabel = (fieldId: string, event: any): string => {
-    console.log('[DEBUG] getFieldLabel called with:', { fieldId, eventId: event?._id, registrationFormId: event?.registrationFormId })
-    console.log('[DEBUG] Available forms:', Object.keys(forms))
-    
     if (!event?.registrationFormId || !forms[event.registrationFormId]) {
-      console.log('[DEBUG] Form not found, returning fieldId:', fieldId)
       return fieldId // Fallback to field ID if form not found
     }
     
     const form = forms[event.registrationFormId]
-    console.log('[DEBUG] Found form:', form.title, 'with sections:', form.sections.length)
-    
     for (const section of form.sections) {
       for (const field of section.fields) {
         if (field._id === fieldId) {
-          console.log('[DEBUG] Found field:', field.label, 'for ID:', fieldId)
           return field.label
         }
       }
     }
-    console.log('[DEBUG] Field not found, returning fieldId:', fieldId)
     return fieldId // Fallback to field ID if field not found
   }
 
@@ -391,12 +379,12 @@ export default function MyRegistrations() {
                         <Separator />
                         
                         {/* Registered Sessions */}
-                        {registeredSessions.length > 0 && (
-                          <div>
-                            <div className="flex items-center mb-3">
-                              <Clock className="h-4 w-4 mr-2 text-blue-600" />
-                              <h4 className="font-semibold text-gray-900">Registered Sessions</h4>
-                            </div>
+                        <div>
+                          <div className="flex items-center mb-3">
+                            <Clock className="h-4 w-4 mr-2 text-blue-600" />
+                            <h4 className="font-semibold text-gray-900">Registered Sessions</h4>
+                          </div>
+                          {registeredSessions.length > 0 ? (
                             <div className="grid gap-3">
                               {registeredSessions.map((session: any) => (
                                 <Card key={session._id} className="bg-blue-50 border-blue-200">
@@ -422,15 +410,37 @@ export default function MyRegistrations() {
                                               <span>{session.location.venue}</span>
                                             </div>
                                           )}
+                                          {session.capacity && (
+                                            <div className="flex items-center">
+                                              <Users className="h-3 w-3 mr-1" />
+                                              <span>Capacity: {session.capacity}</span>
+                                            </div>
+                                          )}
                                         </div>
+                                        {session.location?.meetingLink && (
+                                          <div className="mt-2">
+                                            <a 
+                                              href={session.location.meetingLink} 
+                                              target="_blank" 
+                                              rel="noopener noreferrer"
+                                              className="text-sm text-blue-600 hover:text-blue-800 underline"
+                                            >
+                                              Join Online Meeting
+                                            </a>
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                   </CardContent>
                                 </Card>
                               ))}
                             </div>
-                          </div>
-                        )}
+                          ) : (
+                            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                              <p className="text-gray-600">No sessions registered for this event.</p>
+                            </div>
+                          )}
+                        </div>
 
                         {/* Registration Form Responses */}
                         {registration.formResponses && registration.formResponses.length > 0 && (
