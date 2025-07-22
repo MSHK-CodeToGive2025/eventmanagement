@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from "
 import { User, UserRole, type CreateUserData, type UpdateUserData } from "@/types/user-types"
 import { UserService } from "@/services/user-service"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "./auth-context"
 
 /**
  * Interface defining the shape of the User Management Context
@@ -50,6 +51,7 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const { toast } = useToast()
+  const { user } = useAuth()
   const userService = UserService.getInstance()
 
   /**
@@ -290,10 +292,13 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Load users on initial mount
+  // Load users on initial mount only for admin/staff users
   useEffect(() => {
-    fetchUsers()
-  }, [])
+    // Only fetch users if the current user is admin or staff
+    if (user && (user.role === 'admin' || user.role === 'staff')) {
+      fetchUsers()
+    }
+  }, [user])
 
   return (
     <UserManagementContext.Provider

@@ -76,6 +76,49 @@ const registrationService = {
     });
     return response.data;
   },
+
+  // Check if user is registered for a specific event
+  async checkUserRegistration(eventId: string): Promise<EventRegistration | null> {
+    try {
+      const response = await axios.get(`${API_URL}/event-registrations/my-registrations`, {
+        headers: authHeader(),
+      });
+      const registrations = response.data;
+      const eventRegistration = registrations.find((reg: EventRegistration) => {
+        const regEventId = typeof reg.eventId === 'object' && reg.eventId !== null ? (reg.eventId as any)._id : reg.eventId;
+        return regEventId === eventId && reg.status === 'registered';
+      });
+      return eventRegistration || null;
+    } catch (error) {
+      console.error('Error checking user registration:', error);
+      return null;
+    }
+  },
+
+  // Get all user registrations for a specific event (including cancelled/rejected)
+  async getUserEventRegistrations(eventId: string): Promise<EventRegistration[]> {
+    try {
+      const response = await axios.get(`${API_URL}/event-registrations/my-registrations`, {
+        headers: authHeader(),
+      });
+      const registrations = response.data;
+      console.log('[REGISTRATION SERVICE] All user registrations:', registrations);
+      console.log('[REGISTRATION SERVICE] Looking for eventId:', eventId);
+      
+      const filteredRegistrations = registrations.filter((reg: EventRegistration) => {
+        // Handle both populated eventId (object) and string eventId
+        const regEventId = typeof reg.eventId === 'object' && reg.eventId !== null ? (reg.eventId as any)._id : reg.eventId;
+        console.log('[REGISTRATION SERVICE] Comparing:', regEventId, 'with', eventId, 'result:', regEventId === eventId);
+        return regEventId === eventId;
+      });
+      
+      console.log('[REGISTRATION SERVICE] Filtered registrations for event:', filteredRegistrations);
+      return filteredRegistrations;
+    } catch (error) {
+      console.error('Error getting user event registrations:', error);
+      return [];
+    }
+  },
 };
 
 export default registrationService; 
