@@ -43,16 +43,22 @@ export default function MyRegistrations() {
           }
         })
         
+        console.log('[DEBUG] Found form IDs:', Array.from(formIds))
+        
         // Fetch all forms
         const formsData: Record<string, RegistrationForm> = {}
         for (const formId of formIds) {
           try {
+            console.log('[DEBUG] Fetching form:', formId)
             const form = await formService.getForm(formId)
             formsData[formId] = form
+            console.log('[DEBUG] Successfully fetched form:', form.title)
           } catch (err) {
             console.error(`Error fetching form ${formId}:`, err)
           }
         }
+        
+        console.log('[DEBUG] Final forms data:', Object.keys(formsData))
         setForms(formsData)
       } catch (err: any) {
         console.error('Error fetching registrations:', err)
@@ -165,18 +171,26 @@ export default function MyRegistrations() {
   }
 
   const getFieldLabel = (fieldId: string, event: any): string => {
+    console.log('[DEBUG] getFieldLabel called with:', { fieldId, eventId: event?._id, registrationFormId: event?.registrationFormId })
+    console.log('[DEBUG] Available forms:', Object.keys(forms))
+    
     if (!event?.registrationFormId || !forms[event.registrationFormId]) {
+      console.log('[DEBUG] Form not found, returning fieldId:', fieldId)
       return fieldId // Fallback to field ID if form not found
     }
     
     const form = forms[event.registrationFormId]
+    console.log('[DEBUG] Found form:', form.title, 'with sections:', form.sections.length)
+    
     for (const section of form.sections) {
       for (const field of section.fields) {
         if (field._id === fieldId) {
+          console.log('[DEBUG] Found field:', field.label, 'for ID:', fieldId)
           return field.label
         }
       }
     }
+    console.log('[DEBUG] Field not found, returning fieldId:', fieldId)
     return fieldId // Fallback to field ID if field not found
   }
 
