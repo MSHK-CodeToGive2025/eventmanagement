@@ -91,6 +91,26 @@ export default function EnhancedEventDetailPage() {
     fetchEventData()
   }, [id, navigate, location.state, isAuthenticated, user])
 
+  // Recheck registration status when window gains focus or location changes
+  useEffect(() => {
+    const handleFocus = () => {
+      if (event && isAuthenticated && user) {
+        console.log('[FRONTEND] Window focused, rechecking registration status')
+        checkUserRegistrations(event._id)
+      }
+    }
+
+    window.addEventListener('focus', handleFocus)
+    
+    // Also check when the component mounts or location changes
+    if (event && isAuthenticated && user) {
+      console.log('[FRONTEND] Location changed or component mounted, checking registration status')
+      checkUserRegistrations(event._id)
+    }
+
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [event?._id, isAuthenticated, user, location.key])
+
   const checkUserRegistrations = async (eventId: string) => {
     if (!isAuthenticated || !user) return
 
@@ -196,8 +216,14 @@ export default function EnhancedEventDetailPage() {
 
       setRegistrationComplete(true)
       
-      // Refresh registration status
+      // Refresh registration status immediately
       await checkUserRegistrations(event._id)
+      
+      // Also update the active registration state
+      const updatedRegistrations = await registrationService.getUserEventRegistrations(event._id)
+      const newActiveRegistration = updatedRegistrations.find(reg => reg.status === 'registered')
+      setActiveRegistration(newActiveRegistration || null)
+      setUserRegistrations(updatedRegistrations)
     } catch (error: any) {
       console.error("Error submitting form:", error)
       const errorMessage = error.response?.data?.message || "There was an unexpected error. Please try again later."
@@ -469,7 +495,7 @@ export default function EnhancedEventDetailPage() {
                             <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
                             <h3 className="text-lg font-semibold mb-3 text-green-700">Registration Complete!</h3>
                             <p className="text-gray-700 mb-6">
-                              Thank you for registering for this event. We'll send you a confirmation email shortly.
+                              Thank you for registering for this event. 
                             </p>
                             <div className="flex justify-center gap-4">
                               <Button onClick={() => navigate("/enhanced-events")} variant="outline">
@@ -714,7 +740,7 @@ export default function EnhancedEventDetailPage() {
                   <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
                   <p className="text-gray-600">Checking registration status...</p>
                 </div>
-              ) : isRegistered ? (
+              ) : isRegistered || registrationComplete ? (
                 <div className="text-center py-4">
                   <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
                   <p className="text-green-700 font-medium mb-2">✓ Registered</p>
