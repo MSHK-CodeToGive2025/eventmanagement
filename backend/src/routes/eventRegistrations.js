@@ -15,7 +15,7 @@ router.get('/', auth, async (req, res) => {
     }
 
     const registrations = await EventRegistration.find()
-      .populate('eventId', 'title startDate endDate')
+      .populate('eventId', 'title startDate endDate registrationFormId')
       .populate('userId', 'firstName lastName email mobile')
       .sort({ registeredAt: -1 });
 
@@ -34,6 +34,7 @@ router.get('/event/:eventId', auth, async (req, res) => {
     }
 
     const registrations = await EventRegistration.find({ eventId: req.params.eventId })
+      .populate('eventId', 'title startDate endDate registrationFormId')
       .populate('userId', 'firstName lastName email mobile')
       .sort({ registeredAt: -1 });
 
@@ -117,7 +118,7 @@ router.post('/event/:eventId', auth, async (req, res) => {
     });
 
     const populatedRegistration = await EventRegistration.findById(registration._id)
-      .populate('eventId', 'title startDate endDate')
+      .populate('eventId', 'title startDate endDate registrationFormId')
       .populate('userId', 'firstName lastName email mobile');
 
     res.status(201).json(populatedRegistration);
@@ -150,7 +151,7 @@ router.put('/:id/status', auth, async (req, res) => {
       req.params.id,
       updateData,
       { new: true }
-    ).populate('eventId', 'title startDate endDate')
+    ).populate('eventId', 'title startDate endDate registrationFormId')
      .populate('userId', 'firstName lastName email mobile');
 
     if (!registration) {
@@ -207,7 +208,7 @@ router.get('/my-registrations', auth, async (req, res) => {
     }
 
     const registrations = await EventRegistration.find({ userId: req.user.userId })
-      .populate('eventId', 'title startDate endDate location category targetGroup coverImageUrl')
+      .populate('eventId', 'title startDate endDate location category targetGroup coverImageUrl registrationFormId')
       .sort({ registeredAt: -1 });
 
     res.json(registrations);
