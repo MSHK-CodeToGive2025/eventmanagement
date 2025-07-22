@@ -106,28 +106,7 @@ export default function ManageRegistrations() {
     }
   };
 
-  const handleStatusChange = async (registrationId: string, newStatus: EventRegistration['status']) => {
-    try {
-      const updatedRegistration = await registrationService.updateRegistrationStatus(registrationId, newStatus);
-      
-      // Update local state
-      setRegistrations(prev => prev.map(reg =>
-        reg._id === registrationId ? updatedRegistration : reg
-      ));
-      
-      toast({
-        title: "Success",
-        description: `Registration status updated to ${newStatus}`,
-      });
-    } catch (err: any) {
-      console.error('Error updating registration status:', err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to update registration status",
-        variant: "destructive",
-      });
-    }
-  };
+
 
   type RegistrationStatus = "registered" | "cancelled" | "rejected";
 
@@ -312,21 +291,12 @@ export default function ManageRegistrations() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Select
-                          value={registration.status}
-                          onValueChange={(value: EventRegistration['status']) => 
-                            handleStatusChange(registration._id, value)
-                          }
+                        <Badge
+                          variant={getStatusVariant(registration.status)}
+                          className={getStatusClassName(registration.status)}
                         >
-                          <SelectTrigger className="w-[120px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="registered">Registered</SelectItem>
-                            <SelectItem value="cancelled">Cancelled</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
-                          </SelectContent>
-                        </Select>
+                          {registration.status.charAt(0).toUpperCase() + registration.status.slice(1)}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         {format(new Date(registration.registeredAt), "MMM d, yyyy")}
