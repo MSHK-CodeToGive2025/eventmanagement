@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { format } from "date-fns"
-import { CalendarIcon, MapPin, Search, Eye, X, Loader2, ArrowLeft } from "lucide-react"
+import { CalendarIcon, MapPin, Search, Eye, X, Loader2, ArrowLeft, ChevronDown, ChevronUp, Clock, FileText, User } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import registrationService, { EventRegistration } from "@/services/registrationService"
 import { useToast } from "@/hooks/use-toast"
 import RouteGuard from "@/components/route-guard"
+import { Separator } from "@/components/ui/separator"
 
 export default function MyRegistrations() {
   const navigate = useNavigate()
@@ -20,6 +21,7 @@ export default function MyRegistrations() {
   const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("all")
+  const [expandedRegistrations, setExpandedRegistrations] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     const fetchRegistrations = async () => {
@@ -104,6 +106,38 @@ export default function MyRegistrations() {
       default:
         return "bg-gray-100 text-gray-800"
     }
+  }
+
+  const toggleExpanded = (registrationId: string) => {
+    setExpandedRegistrations(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(registrationId)) {
+        newSet.delete(registrationId)
+      } else {
+        newSet.add(registrationId)
+      }
+      return newSet
+    })
+  }
+
+  const isExpanded = (registrationId: string) => expandedRegistrations.has(registrationId)
+
+  const getRegisteredSessions = (registration: EventRegistration, event: any) => {
+    if (!registration.sessions || registration.sessions.length === 0) return []
+    
+    return event.sessions?.filter((session: any) => 
+      registration.sessions.includes(session._id)
+    ) || []
+  }
+
+  const formatFormResponse = (response: any) => {
+    if (typeof response === 'boolean') {
+      return response ? 'Yes' : 'No'
+    }
+    if (Array.isArray(response)) {
+      return response.join(', ')
+    }
+    return response || 'Not provided'
   }
 
   if (loading) {
@@ -201,9 +235,13 @@ export default function MyRegistrations() {
               const event = registration.eventId as any // Backend populates this
               if (!event) return null
 
+              const registeredSessions = getRegisteredSessions(registration, event)
+              const isExpandedState = isExpanded(registration._id)
+
               return (
                 <Card key={registration._id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-6">
+                    {/* Main Registration Info */}
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       <div className="flex-1">
                         <div className="flex items-start justify-between mb-4">
@@ -231,6 +269,11 @@ export default function MyRegistrations() {
                               <Badge variant="outline" className="bg-gray-50">
                                 {event.targetGroup}
                               </Badge>
+                              {registeredSessions.length > 0 && (
+                                <Badge variant="outline" className="bg-blue-50">
+                                  {registeredSessions.length} session{registeredSessions.length > 1 ? 's' : ''}
+                                </Badge>
+                              )}
                             </div>
                           </div>
                           <Badge
@@ -253,6 +296,23 @@ export default function MyRegistrations() {
                         <Button
                           variant="outline"
                           size="sm"
+                          onClick={() => toggleExpanded(registration._id)}
+                        >
+                          {isExpandedState ? (
+                            <>
+                              <ChevronUp className="h-4 w-4 mr-2" />
+                              Hide Details
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-4 w-4 mr-2" />
+                              View Details
+                            </>
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => navigate(`/enhanced-events/${event._id}`)}
                         >
                           <Eye className="h-4 w-4 mr-2" />
@@ -270,6 +330,109 @@ export default function MyRegistrations() {
                         )}
                       </div>
                     </div>
+
+                    {/* Expanded Details */}
+                    {isExpandedState && (
+                      <div className="mt-6 space-y-6">
+                        <Separator />
+                        
+                        {/* Registered Sessions */}
+                        {registeredSessions.length > 0 && (
+                          <div>
+                            <div className="flex items-center mb-3">
+                              <Clock className="h-4 w-4 mr-2 text-blue-600" />
+                              <h4 className="font-semibold text-gray-900">Registered Sessions</h4>
+                            </div>
+                            <div className="grid gap-3">
+                              {registeredSessions.map((session: any) => (
+                                <Card key={session._id} className="bg-blue-50 border-blue-200">
+                                  <CardContent className="p-4">
+                                    <div className="flex justify-between items-start">
+                                      <div className="flex-1">
+                                        <h5 className="font-medium text-blue-900 mb-1">{session.title}</h5>
+                                        {session.description && (
+                                          <p className="text-sm text-blue-700 mb-2">{session.description}</p>
+                                        )}
+                                        <div className="flex flex-wrap gap-4 text-sm text-blue-600">
+                                          <div className="flex items-center">
+                                            <CalendarIcon className="h-3 w-3 mr-1" />
+                                            <span>{format(new Date(session.date), "MMM d, yyyy")}</span>
+                                          </div>
+                                          <div className="flex items-center">
+                                            <Clock className="h-3 w-3 mr-1" />
+                                            <span>{session.startTime} - {session.endTime}</span>
+                                          </div>
+                                          {session.location?.venue && (
+                                            <div className="flex items-center">
+                                              <MapPin className="h-3 w-3 mr-1" />
+                                              <span>{session.location.venue}</span>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Registration Form Responses */}
+                        {registration.formResponses && registration.formResponses.length > 0 && (
+                          <div>
+                            <div className="flex items-center mb-3">
+                              <FileText className="h-4 w-4 mr-2 text-green-600" />
+                              <h4 className="font-semibold text-gray-900">Registration Form Responses</h4>
+                            </div>
+                            <div className="grid gap-3">
+                              {registration.formResponses.map((response, index) => (
+                                <div key={index} className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <p className="text-sm font-medium text-green-800 mb-1">
+                                        {response.fieldId}
+                                      </p>
+                                      <p className="text-sm text-green-700">
+                                        {formatFormResponse(response.response)}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Attendee Information */}
+                        <div>
+                          <div className="flex items-center mb-3">
+                            <User className="h-4 w-4 mr-2 text-purple-600" />
+                            <h4 className="font-semibold text-gray-900">Attendee Information</h4>
+                          </div>
+                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div>
+                                <p className="text-sm font-medium text-purple-800 mb-1">Name</p>
+                                <p className="text-sm text-purple-700">
+                                  {registration.attendee.firstName} {registration.attendee.lastName}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-purple-800 mb-1">Phone</p>
+                                <p className="text-sm text-purple-700">{registration.attendee.phone}</p>
+                              </div>
+                              {registration.attendee.email && (
+                                <div>
+                                  <p className="text-sm font-medium text-purple-800 mb-1">Email</p>
+                                  <p className="text-sm text-purple-700">{registration.attendee.email}</p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )
