@@ -84,9 +84,10 @@ const registrationService = {
         headers: authHeader(),
       });
       const registrations = response.data;
-      const eventRegistration = registrations.find((reg: EventRegistration) => 
-        reg.eventId === eventId && reg.status === 'registered'
-      );
+      const eventRegistration = registrations.find((reg: EventRegistration) => {
+        const regEventId = typeof reg.eventId === 'object' && reg.eventId !== null ? (reg.eventId as any)._id : reg.eventId;
+        return regEventId === eventId && reg.status === 'registered';
+      });
       return eventRegistration || null;
     } catch (error) {
       console.error('Error checking user registration:', error);
@@ -101,7 +102,18 @@ const registrationService = {
         headers: authHeader(),
       });
       const registrations = response.data;
-      return registrations.filter((reg: EventRegistration) => reg.eventId === eventId);
+      console.log('[REGISTRATION SERVICE] All user registrations:', registrations);
+      console.log('[REGISTRATION SERVICE] Looking for eventId:', eventId);
+      
+      const filteredRegistrations = registrations.filter((reg: EventRegistration) => {
+        // Handle both populated eventId (object) and string eventId
+        const regEventId = typeof reg.eventId === 'object' && reg.eventId !== null ? (reg.eventId as any)._id : reg.eventId;
+        console.log('[REGISTRATION SERVICE] Comparing:', regEventId, 'with', eventId, 'result:', regEventId === eventId);
+        return regEventId === eventId;
+      });
+      
+      console.log('[REGISTRATION SERVICE] Filtered registrations for event:', filteredRegistrations);
+      return filteredRegistrations;
     } catch (error) {
       console.error('Error getting user event registrations:', error);
       return [];
