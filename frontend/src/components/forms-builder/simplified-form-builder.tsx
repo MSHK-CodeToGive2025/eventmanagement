@@ -22,7 +22,6 @@ import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
 import { formService } from "@/services/formService"
-import { FormSuccessModal } from "./form-success-modal"
 import { RegistrationForm } from "@/types/form-types"
 import { FormFieldRenderer } from "./form-field-renderer"
 
@@ -83,8 +82,6 @@ export default function SimplifiedFormBuilder({
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [nextId, setNextId] = useState(defaultSections.length + 1)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showSuccessModal, setShowSuccessModal] = useState(false)
-  const [savedForm, setSavedForm] = useState<RegistrationForm | null>(null)
   const [previewValues, setPreviewValues] = useState<Record<string, any>>({})
 
   // Form for form details
@@ -215,17 +212,15 @@ export default function SimplifiedFormBuilder({
         isActive: true
       }
       
-      let savedForm: RegistrationForm
       if (formId) {
-        savedForm = await formService.updateForm(formId, formData)
+        await formService.updateForm(formId, formData)
         toast({ title: "Success", description: "Form updated successfully" })
       } else {
-        savedForm = await formService.createForm(formData)
+        await formService.createForm(formData)
         toast({ title: "Success", description: "Form created successfully" })
       }
       
-      setSavedForm(savedForm)
-      setShowSuccessModal(true)
+      onClose()
     } catch (error) {
       console.error("Error saving form:", error)
       toast({ title: "Error", description: error instanceof Error ? error.message : "Failed to save form", variant: "destructive" })
@@ -234,11 +229,7 @@ export default function SimplifiedFormBuilder({
     }
   }, [sections, transformToBackendFormat, formId, toast])
 
-  const handleSuccessModalClose = () => {
-    setShowSuccessModal(false)
-    setSavedForm(null)
-    onClose()
-  }
+
 
   // --- Render Steps ---
   const renderStep1 = () => (
@@ -477,6 +468,7 @@ export default function SimplifiedFormBuilder({
                           field={field}
                           value={previewValues[field._id]}
                           onChange={handlePreviewFieldChange}
+                          disableValidation={true}
                         />
                       ))}
                     </div>
@@ -565,13 +557,6 @@ export default function SimplifiedFormBuilder({
         </div>
       </Form>
 
-      {/* Success Modal */}
-      <FormSuccessModal 
-        isOpen={showSuccessModal} 
-        onClose={handleSuccessModalClose} 
-        form={savedForm} 
-        isUpdate={!!formId} 
-      />
     </>
   )
 } 

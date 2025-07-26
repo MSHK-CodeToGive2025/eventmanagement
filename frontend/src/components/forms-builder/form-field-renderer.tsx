@@ -26,6 +26,7 @@ interface FormFieldRendererProps {
   onChange: (fieldId: string, value: any) => void
   error?: string
   disabled?: boolean
+  disableValidation?: boolean
 }
 
 export function FormFieldRenderer({
@@ -34,7 +35,7 @@ export function FormFieldRenderer({
   onChange,
   error,
   disabled = false,
-
+  disableValidation = false,
 }: FormFieldRendererProps) {
   const handleChange = (newValue: any) => {
     if (!disabled) {
@@ -52,7 +53,7 @@ export function FormFieldRenderer({
             placeholder={field.placeholder}
             value={value || ""}
             onChange={(e) => handleChange(e.target.value)}
-            required={field.required}
+            required={!disableValidation && field.required}
             disabled={disabled}
           />
         )
@@ -65,7 +66,7 @@ export function FormFieldRenderer({
             placeholder={field.placeholder}
             value={value || ""}
             onChange={(e) => handleChange(e.target.value)}
-            required={field.required}
+            required={!disableValidation && field.required}
             disabled={disabled}
           />
         )
@@ -78,7 +79,7 @@ export function FormFieldRenderer({
             placeholder={field.placeholder}
             value={value || ""}
             onChange={(e) => handleChange(e.target.value)}
-            required={field.required}
+            required={!disableValidation && field.required}
             disabled={disabled}
           />
         )
@@ -91,7 +92,7 @@ export function FormFieldRenderer({
             placeholder={field.placeholder}
             value={value || ""}
             onChange={(e) => handleChange(e.target.value)}
-            required={field.required}
+            required={!disableValidation && field.required}
             disabled={disabled}
             min={field.validation?.minValue}
             max={field.validation?.maxValue}
@@ -105,7 +106,7 @@ export function FormFieldRenderer({
             placeholder={field.placeholder}
             value={value || ""}
             onChange={(e) => handleChange(e.target.value)}
-            required={field.required}
+            required={!disableValidation && field.required}
             disabled={disabled}
             rows={4}
           />
@@ -183,7 +184,7 @@ export function FormFieldRenderer({
             placeholder={field.placeholder}
             value={value || ""}
             onChange={(e) => handleChange(e.target.value)}
-            required={field.required}
+            required={!disableValidation && field.required}
             disabled={disabled}
           />
         )
@@ -194,7 +195,7 @@ export function FormFieldRenderer({
     <div className="space-y-2">
       <Label htmlFor={field._id}>
         {field.label}
-        {field.required && <span className="text-red-500 ml-1">*</span>}
+        {!disableValidation && field.required && <span className="text-red-500 ml-1">*</span>}
       </Label>
       {field.helpText && (
         <p className="text-sm text-gray-500">{field.helpText}</p>
