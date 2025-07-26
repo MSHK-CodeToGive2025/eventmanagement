@@ -117,31 +117,30 @@ describe('SimplifiedFormBuilder', () => {
       render(<SimplifiedFormBuilder {...defaultProps} />)
       
       expect(screen.getByText('Create New Form')).toBeInTheDocument()
-      expect(screen.getByText('Design your form by adding and configuring fields.')).toBeInTheDocument()
+      expect(screen.getByText('Build your registration form step by step')).toBeInTheDocument()
     })
 
-    it('renders form details section', () => {
+    it('renders step 1 form details', () => {
       render(<SimplifiedFormBuilder {...defaultProps} />)
       
-      expect(screen.getByText('Form Details')).toBeInTheDocument()
+      expect(screen.getByText('Step 1: Form Details')).toBeInTheDocument()
       expect(screen.getByLabelText(/Form Title/)).toBeInTheDocument()
-      expect(screen.getByLabelText(/Category/)).toBeInTheDocument()
-      expect(screen.getByLabelText(/Form Description/)).toBeInTheDocument()
+      expect(screen.getByLabelText(/Description/)).toBeInTheDocument()
     })
 
-    it('renders form controls section', () => {
+    it('renders progress indicator', () => {
       render(<SimplifiedFormBuilder {...defaultProps} />)
       
-      expect(screen.getByText('Form Controls')).toBeInTheDocument()
-      expect(screen.getByText('Add Fields')).toBeInTheDocument()
-      expect(screen.getByText('Properties')).toBeInTheDocument()
+      expect(screen.getByText('1')).toBeInTheDocument()
+      expect(screen.getByText('2')).toBeInTheDocument()
+      expect(screen.getByText('3')).toBeInTheDocument()
     })
 
-    it('renders action buttons', () => {
+    it('renders navigation buttons', () => {
       render(<SimplifiedFormBuilder {...defaultProps} />)
       
       expect(screen.getByText('Cancel')).toBeInTheDocument()
-      expect(screen.getByText('Save Form')).toBeInTheDocument()
+      expect(screen.getByText('Next')).toBeInTheDocument()
     })
   })
 
@@ -150,27 +149,11 @@ describe('SimplifiedFormBuilder', () => {
       const user = userEvent.setup()
       render(<SimplifiedFormBuilder {...defaultProps} />)
       
-      const saveButton = screen.getByText('Save Form')
-      await user.click(saveButton)
+      const nextButton = screen.getByText('Next')
+      await user.click(nextButton)
       
       await waitFor(() => {
-        expect(screen.getByText(/Form title is required/)).toBeInTheDocument()
-      })
-    })
-
-    it('shows validation error for empty category', async () => {
-      const user = userEvent.setup()
-      render(<SimplifiedFormBuilder {...defaultProps} />)
-      
-      // Fill in title but leave category empty
-      const titleInput = screen.getByLabelText(/Form Title/)
-      await user.type(titleInput, 'Test Form')
-      
-      const saveButton = screen.getByText('Save Form')
-      await user.click(saveButton)
-      
-      await waitFor(() => {
-        expect(screen.getByText(/Category is required/)).toBeInTheDocument()
+        expect(screen.getByText(/Form title must be at least 2 characters/)).toBeInTheDocument()
       })
     })
 
@@ -181,15 +164,32 @@ describe('SimplifiedFormBuilder', () => {
       const titleInput = screen.getByLabelText(/Form Title/)
       await user.type(titleInput, 'A')
       
-      const categorySelect = screen.getByLabelText(/Category/)
-      await user.click(categorySelect)
-      await user.click(screen.getByText('Registration'))
-      
-      const saveButton = screen.getByText('Save Form')
-      await user.click(saveButton)
+      const nextButton = screen.getByText('Next')
+      await user.click(nextButton)
       
       await waitFor(() => {
-        expect(screen.getByText(/Form title is required and must be at least 2 characters/)).toBeInTheDocument()
+        expect(screen.getByText(/Form title must be at least 2 characters/)).toBeInTheDocument()
+      })
+    })
+
+    it('prevents moving to step 2 without sections', async () => {
+      const user = userEvent.setup()
+      render(<SimplifiedFormBuilder {...defaultProps} />)
+      
+      // Fill in title
+      const titleInput = screen.getByLabelText(/Form Title/)
+      await user.type(titleInput, 'Test Form')
+      
+      // Move to step 2
+      const nextButton = screen.getByText('Next')
+      await user.click(nextButton)
+      
+      // Try to move to step 3 without adding sections
+      const nextButton2 = screen.getByText('Next')
+      await user.click(nextButton2)
+      
+      await waitFor(() => {
+        expect(screen.getByText(/Please add at least one section to your form/)).toBeInTheDocument()
       })
     })
   })
@@ -487,20 +487,19 @@ describe('SimplifiedFormBuilder', () => {
       expect(categorySelect).toBeInTheDocument()
     })
 
-    it('renders with default fields', () => {
-      const defaultFields: FormFieldType[] = [
+    it('renders with default sections', () => {
+      const defaultSections = [
         {
-          id: 'field_1',
-          type: 'section',
-          label: 'Default Section',
-          required: false,
-          children: []
+          id: 'section_1',
+          title: 'Default Section',
+          description: 'Test section',
+          fields: []
         }
       ]
       
-      render(<SimplifiedFormBuilder {...defaultProps} defaultFields={defaultFields} />)
+      render(<SimplifiedFormBuilder {...defaultProps} defaultSections={defaultSections} />)
       
-      expect(screen.getByText('section: Default Section')).toBeInTheDocument()
+      expect(screen.getByText('Default Section')).toBeInTheDocument()
     })
   })
 

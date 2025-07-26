@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft } from "lucide-react"
 import { formService } from "@/services/formService"
@@ -33,15 +33,6 @@ export default function FormEditPage() {
 
     fetchForm()
   }, [id])
-
-  const handleSave = async (updatedForm: RegistrationForm) => {
-    // The SimplifiedFormBuilder will handle the success flow internally
-    // including showing the success modal and calling onClose when done
-    console.log("Form updated successfully:", updatedForm)
-    
-    // Don't navigate immediately - let the form builder handle the success flow
-    // The form builder will show its success modal and call onClose when the user closes it
-  }
 
   const handleClose = () => {
     navigate("/manage/forms")
@@ -76,25 +67,18 @@ export default function FormEditPage() {
     )
   }
 
-  // Transform backend format to form builder format
+  // Transform backend format to new form builder format
   const transformToBuilderFormat = (form: RegistrationForm) => {
-    const fields: any[] = []
+    const sections: any[] = []
+    let sectionId = 1
     let fieldId = 1
 
-    form.sections.forEach((section, sectionIndex) => {
-      const sectionField: any = {
-        id: `section_${fieldId++}`,
-        type: "section",
-        label: section.title,
+    form.sections.forEach((section) => {
+      const sectionData = {
+        id: `section_${sectionId++}`,
+        title: section.title,
         description: section.description,
-        required: false,
-        children: [],
-        isExpanded: true,
-      }
-      
-      const childIds: string[] = []
-      section.fields.forEach((field) => {
-        const fieldData = {
+        fields: section.fields.map((field) => ({
           id: `field_${fieldId++}`,
           type: field.type,
           label: field.label,
@@ -102,20 +86,16 @@ export default function FormEditPage() {
           required: field.required,
           description: field.helpText,
           options: field.options,
-          parentId: sectionField.id,
-        }
-        fields.push(fieldData)
-        childIds.push(fieldData.id)
-      })
-      
-      sectionField.children = childIds
-      fields.push(sectionField)
+          sectionId: `section_${sectionId - 1}`,
+        }))
+      }
+      sections.push(sectionData)
     })
 
-    return fields
+    return sections
   }
 
-  const defaultFields = transformToBuilderFormat(form)
+  const defaultSections = transformToBuilderFormat(form)
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -131,13 +111,12 @@ export default function FormEditPage() {
 
       <SimplifiedFormBuilder
         onClose={handleClose}
-        onSave={handleSave}
         formId={id}
         defaultValues={{
           title: form.title,
           description: form.description || "",
         }}
-        defaultFields={defaultFields}
+        defaultSections={defaultSections}
       />
     </div>
   )

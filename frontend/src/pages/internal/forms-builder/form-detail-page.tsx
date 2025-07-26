@@ -138,11 +138,31 @@ export default function FormDetailPage() {
                       <div className="space-y-2">
                         {section.fields.map((field, fieldIndex) => (
                           <div key={fieldIndex} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                            <div>
-                              <span className="font-medium">{field.label}</span>
-                              <span className="text-sm text-gray-500 ml-2">({field.type})</span>
-                              {field.required && (
-                                <Badge variant="outline" className="ml-2 text-xs">Required</Badge>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium">{field.label}</span>
+                                <span className="text-sm text-gray-500">({field.type})</span>
+                                {field.required && (
+                                  <Badge variant="outline" className="text-xs">Required</Badge>
+                                )}
+                              </div>
+                              {field.placeholder && (
+                                <p className="text-xs text-gray-500">Placeholder: "{field.placeholder}"</p>
+                              )}
+                              {field.helpText && (
+                                <p className="text-xs text-gray-500">Help: {field.helpText}</p>
+                              )}
+                              {(field.type === "dropdown" || field.type === "radio" || field.type === "checkbox") && field.options && field.options.length > 0 && (
+                                <div className="mt-1">
+                                  <p className="text-xs text-gray-500 mb-1">Options:</p>
+                                  <div className="flex flex-wrap gap-1">
+                                    {field.options.map((option, optionIndex) => (
+                                      <Badge key={optionIndex} variant="secondary" className="text-xs">
+                                        {option}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </div>
                               )}
                             </div>
                           </div>
