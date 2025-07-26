@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast"
 import { formService } from "@/services/formService"
 import { FormSuccessModal } from "./form-success-modal"
 import { RegistrationForm } from "@/types/form-types"
+import { FormFieldRenderer } from "./form-field-renderer"
 
 // --- Types and constants ---
 const formBuilderSchema = z.object({
@@ -42,7 +43,6 @@ const fieldTypes = [
   { id: "radio", label: "Radio Buttons", icon: "🔘", description: "Single selection with radio buttons" },
   { id: "checkbox", label: "Checkboxes", icon: "☑️", description: "Multiple selections" },
   { id: "date", label: "Date Picker", icon: "📅", description: "Date selection" },
-  { id: "file", label: "File Upload", icon: "📁", description: "File upload field" },
 ]
 
 export interface FormFieldType {
@@ -85,6 +85,7 @@ export default function SimplifiedFormBuilder({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccessModal, setShowSuccessModal] = useState(false)
   const [savedForm, setSavedForm] = useState<RegistrationForm | null>(null)
+  const [previewValues, setPreviewValues] = useState<Record<string, any>>({})
 
   // Form for form details
   const form = useForm<FormBuilderValues>({
@@ -339,16 +340,41 @@ export default function SimplifiedFormBuilder({
                           className="text-sm"
                         />
                         {(field.type === "dropdown" || field.type === "radio" || field.type === "checkbox") && (
-                          <Textarea
-                            value={field.options?.join("\n") || ""}
-                            onChange={(e) => {
-                              const options = e.target.value.split("\n").filter(option => option.trim())
-                              updateField(section.id, field.id, { options })
-                            }}
-                            placeholder="Option 1\nOption 2\nOption 3"
-                            rows={2}
-                            className="mt-2 text-sm"
-                          />
+                          <div className="mt-2">
+                            <div className="flex flex-wrap gap-2 mb-2">
+                              {field.options?.map((option, index) => (
+                                <div key={index} className="flex items-center bg-gray-100 px-2 py-1 rounded text-sm">
+                                  <span>{option}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const newOptions = field.options?.filter((_, i) => i !== index) || []
+                                      updateField(section.id, field.id, { options: newOptions })
+                                    }}
+                                    className="ml-2 text-gray-500 hover:text-red-500"
+                                  >
+                                    ×
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                            <Input
+                              placeholder="Type option and press Enter"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault()
+                                  const input = e.target as HTMLInputElement
+                                  const value = input.value.trim()
+                                  if (value && !field.options?.includes(value)) {
+                                    const newOptions = [...(field.options || []), value]
+                                    updateField(section.id, field.id, { options: newOptions })
+                                    input.value = ''
+                                  }
+                                }
+                              }}
+                              className="text-sm"
+                            />
+                          </div>
                         )}
                       </div>
                       <Button
@@ -401,67 +427,80 @@ export default function SimplifiedFormBuilder({
     </div>
   )
 
-    const renderStep3 = () => (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Step 3: Preview & Save</CardTitle>
-          <p className="text-muted-foreground">Review your form and save it when ready.</p>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {/* Form Preview */}
-            <div className="border rounded-lg p-6 bg-white">
-              <h3 className="text-xl font-semibold mb-2">{form.getValues("title") || "Form Title"}</h3>
-              {form.getValues("description") && (
-                <p className="text-muted-foreground mb-6">{form.getValues("description")}</p>
-              )}
-              
-              {sections.map((section) => (
-                <div key={section.id} className="mb-6">
-                  <h4 className="text-lg font-medium mb-2">{section.title}</h4>
-                  {section.description && (
-                    <p className="text-sm text-muted-foreground mb-3">{section.description}</p>
-                  )}
-                  <div className="space-y-3">
-                    {section.fields.map((field) => (
-                      <div key={field.id} className="space-y-1">
-                        <label className="text-sm font-medium">
-                          {field.label}
-                          {field.required && <span className="text-red-500 ml-1">*</span>}
-                        </label>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-muted-foreground">
-                            {fieldTypes.find(t => t.id === field.type)?.label}
-                          </span>
-                          {field.placeholder && (
-                            <span className="text-xs text-muted-foreground">
-                              Placeholder: "{field.placeholder}"
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
+    const renderStep3 = () => {
+    const handlePreviewFieldChange = (fieldId: string, value: any) => {
+      setPreviewValues(prev => ({ ...prev, [fieldId]: value }))
+    }
+
+    // Convert sections to the format expected by FormFieldRenderer
+    const previewSections = sections.map(section => ({
+      _id: section.id,
+      title: section.title,
+      description: section.description,
+      fields: section.fields.map(field => ({
+        _id: field.id,
+        label: field.label,
+        type: field.type,
+        required: field.required,
+        placeholder: field.placeholder,
+        helpText: field.description,
+        options: field.options,
+        validation: {}
+      }))
+    }))
+
+    return (
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Step 3: Preview & Save</CardTitle>
+            <p className="text-muted-foreground">Review your form and save it when ready.</p>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Form Preview */}
+              <div className="border rounded-lg p-6 bg-white">
+                <h3 className="text-xl font-semibold mb-2">{form.getValues("title") || "Form Title"}</h3>
+                {form.getValues("description") && (
+                  <p className="text-muted-foreground mb-6">{form.getValues("description")}</p>
+                )}
+                
+                {previewSections.map((section) => (
+                  <div key={section._id} className="mb-6">
+                    <h4 className="text-lg font-medium mb-2">{section.title}</h4>
+                    {section.description && (
+                      <p className="text-sm text-muted-foreground mb-3">{section.description}</p>
+                    )}
+                    <div className="space-y-4">
+                      {section.fields.map((field) => (
+                        <FormFieldRenderer
+                          key={field._id}
+                          field={field}
+                          value={previewValues[field._id]}
+                          onChange={handlePreviewFieldChange}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
+              
+              {/* Save button */}
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full"
+                size="lg"
+              >
+                <Save className="h-4 w-4 mr-2" />
+                {isSubmitting ? "Saving..." : (formId ? "Update Form" : "Save Form")}
+              </Button>
             </div>
-            
-            {/* Save button */}
-            <Button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full"
-              size="lg"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              {isSubmitting ? "Saving..." : (formId ? "Update Form" : "Save Form")}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </form>
-  )
+          </CardContent>
+        </Card>
+      </form>
+    )
+  }
 
   // --- Render ---
   return (
