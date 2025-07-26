@@ -468,7 +468,7 @@ export default function EnhancedEventDetailPage() {
                               You have successfully registered for this event. We look forward to seeing you!
                             </p>
                             <div className="flex justify-center gap-4">
-                              <Button onClick={() => navigate("/my-registrations")} variant="outline">
+                              <Button onClick={() => navigate("/profile/registrations")} variant="outline">
                                 View My Registrations
                               </Button>
                               <Button onClick={() => navigate("/enhanced-events")} className="bg-yellow-400 hover:bg-yellow-500 text-black">
@@ -502,7 +502,7 @@ export default function EnhancedEventDetailPage() {
                               <Button onClick={() => navigate("/enhanced-events")} variant="outline">
                                 Browse Other Events
                               </Button>
-                              <Button onClick={() => navigate("/my-registrations")} className="bg-yellow-400 hover:bg-yellow-500 text-black">
+                              <Button onClick={() => navigate("/profile/registrations")} className="bg-yellow-400 hover:bg-yellow-500 text-black">
                                 View My Registrations
                               </Button>
                             </div>
