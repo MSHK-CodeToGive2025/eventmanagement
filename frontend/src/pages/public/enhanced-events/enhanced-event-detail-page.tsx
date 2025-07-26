@@ -16,6 +16,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 
@@ -619,17 +620,43 @@ export default function EnhancedEventDetailPage() {
                                         </SelectContent>
                                       </Select>
                                     )}
+                                    {field.type === "radio" && (
+                                      <RadioGroup
+                                        value={formValues[field._id] || ""}
+                                        onValueChange={(value) => handleFieldChange(field._id, value)}
+                                      >
+                                        {field.options?.map((option) => (
+                                          <div key={option} className="flex items-center space-x-2">
+                                            <RadioGroupItem value={option} id={`${field._id}-${option}`} />
+                                            <Label htmlFor={`${field._id}-${option}`} className="text-sm font-normal">
+                                              {option}
+                                            </Label>
+                                          </div>
+                                        ))}
+                                      </RadioGroup>
+                                    )}
                                     {field.type === "checkbox" && (
-                                      <div className="flex items-center space-x-2">
-                                        <Checkbox
-                                          id={field._id}
-                                          checked={formValues[field._id] || false}
-                                          onCheckedChange={(checked) => handleFieldChange(field._id, checked)}
-                                          required={field.required}
-                                        />
-                                        <Label htmlFor={field._id} className="text-sm font-normal">
-                                          {field.label}
-                                        </Label>
+                                      <div className="space-y-2">
+                                        {field.options?.map((option) => (
+                                          <div key={option} className="flex items-center space-x-2">
+                                            <Checkbox
+                                              id={`${field._id}-${option}`}
+                                              checked={Array.isArray(formValues[field._id]) ? formValues[field._id].includes(option) : false}
+                                              onCheckedChange={(checked) => {
+                                                const currentValues = Array.isArray(formValues[field._id]) ? formValues[field._id] : []
+                                                if (checked) {
+                                                  handleFieldChange(field._id, [...currentValues, option])
+                                                } else {
+                                                  handleFieldChange(field._id, currentValues.filter((v: string) => v !== option))
+                                                }
+                                              }}
+                                              required={field.required}
+                                            />
+                                            <Label htmlFor={`${field._id}-${option}`} className="text-sm font-normal">
+                                              {option}
+                                            </Label>
+                                          </div>
+                                        ))}
                                       </div>
                                     )}
                                     {errors[field._id] && (
