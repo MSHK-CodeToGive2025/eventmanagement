@@ -8,6 +8,7 @@ import usersRoutes from './routes/users.js';
 import eventRegistrationRoutes from './routes/eventRegistrations.js';
 import registrationFormRoutes from './routes/registrationForms.js';
 import corsOptions from './cors-config.js';
+import reminderService from './services/reminderService.js';
 
 dotenv.config();
 
@@ -30,7 +31,12 @@ app.use('/api/registration-forms', registrationFormRoutes);
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB'))
+  .then(() => {
+    console.log('Connected to MongoDB');
+    
+    // Start the reminder service after database connection is established
+    reminderService.start();
+  })
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Basic route
@@ -89,6 +95,23 @@ app.get('/api/health/db', async (req, res) => {
       database: 'MongoDB',
       message: error.message,
       timestamp: new Date().toISOString()
+    });
+  }
+});
+
+// Manual reminder trigger endpoint (for testing)
+app.post('/api/reminders/trigger', async (req, res) => {
+  try {
+    await reminderService.triggerReminders();
+    res.json({ 
+      message: 'Reminder processing triggered successfully',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Error triggering reminders:', error);
+    res.status(500).json({ 
+      message: 'Error triggering reminders',
+      error: error.message 
     });
   }
 });

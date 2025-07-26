@@ -190,6 +190,22 @@ const eventSchema = new mongoose.Schema({
   registeredCount: {
     type: Number,
     default: 0
+  },
+  // Reminder configuration
+  reminderTimes: {
+    type: [Number], // Array of hours before event start (e.g., [48, 24, 3])
+    default: [24], // Default to 24 hours before
+    validate: {
+      validator: function(value) {
+        // Ensure all values are positive numbers
+        return value.every(hours => typeof hours === 'number' && hours > 0);
+      },
+      message: 'Reminder times must be positive numbers (hours before event)'
+    }
+  },
+  remindersSent: {
+    type: [Number], // Array of hours for which reminders have already been sent
+    default: []
   }
 });
 

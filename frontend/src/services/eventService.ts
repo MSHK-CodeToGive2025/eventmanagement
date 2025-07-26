@@ -59,6 +59,8 @@ export interface Event {
   updatedAt?: string;
   tags?: string[];
   registeredCount?: number;
+  reminderTimes?: number[];
+  remindersSent?: number[];
 }
 
 export interface EventFormData {
@@ -92,6 +94,7 @@ export interface EventFormData {
   }>;
   capacity?: number;
   tags?: string[];
+  reminderTimes?: number[];
 }
 
 // Add auth token to requests

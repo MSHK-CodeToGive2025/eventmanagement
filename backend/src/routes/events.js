@@ -136,6 +136,13 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
 
     const eventData = { ...req.body, createdBy: req.user.userId };
     
+    // Handle reminder times array
+    if (req.body['reminderTimes[]']) {
+      eventData.reminderTimes = Array.isArray(req.body['reminderTimes[]']) 
+        ? req.body['reminderTimes[]'].map(time => parseInt(time))
+        : [parseInt(req.body['reminderTimes[]'])];
+    }
+    
     // Handle image upload
     if (req.file) {
       // Check file size (500KB limit)
@@ -210,6 +217,13 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
     console.log('[EVENTS] Authorization successful - proceeding with update');
 
     const updateData = { ...req.body, updatedBy: req.user.userId };
+    
+    // Handle reminder times array
+    if (req.body['reminderTimes[]']) {
+      updateData.reminderTimes = Array.isArray(req.body['reminderTimes[]']) 
+        ? req.body['reminderTimes[]'].map(time => parseInt(time))
+        : [parseInt(req.body['reminderTimes[]'])];
+    }
     
     // Handle image removal
     if (req.body.removeImage === 'true') {
