@@ -166,11 +166,10 @@ export default function SimplifiedFormBuilder({
   }, [])
 
   // --- Navigation ---
-  const nextStep = useCallback(() => {
+  const nextStep = useCallback(async () => {
     if (currentStep === 1) {
-      const isValid = form.formState.isValid
+      const isValid = await form.trigger()
       if (!isValid) {
-        form.trigger()
         return
       }
     }
@@ -556,7 +555,7 @@ export default function SimplifiedFormBuilder({
               </Button>
               
               {currentStep < 3 && (
-                <Button type="button" onClick={nextStep}>
+                <Button type="button" onClick={() => nextStep()}>
                   Next
                   <ArrowRight className="h-4 w-4 ml-2" />
                 </Button>

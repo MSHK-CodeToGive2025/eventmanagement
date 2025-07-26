@@ -12,7 +12,6 @@ interface FormSuccessModalProps {
 }
 
 export function FormSuccessModal({ isOpen, onClose, form, isUpdate = false }: FormSuccessModalProps) {
-  console.log("FormSuccessModal props:", { isOpen, form, isUpdate })
   if (!form) return null
 
   return (
