@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft } from "lucide-react"
 import { formService } from "@/services/formService"
@@ -33,15 +33,6 @@ export default function FormEditPage() {
 
     fetchForm()
   }, [id])
-
-  const handleSave = async (updatedForm: RegistrationForm) => {
-    // The SimplifiedFormBuilder will handle the success flow internally
-    // including showing the success modal and calling onClose when done
-    console.log("Form updated successfully:", updatedForm)
-    
-    // Don't navigate immediately - let the form builder handle the success flow
-    // The form builder will show its success modal and call onClose when the user closes it
-  }
 
   const handleClose = () => {
     navigate("/manage/forms")
@@ -120,7 +111,6 @@ export default function FormEditPage() {
 
       <SimplifiedFormBuilder
         onClose={handleClose}
-        onSave={handleSave}
         formId={id}
         defaultValues={{
           title: form.title,

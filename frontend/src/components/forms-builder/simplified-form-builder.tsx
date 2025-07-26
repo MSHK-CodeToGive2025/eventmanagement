@@ -8,7 +8,6 @@
  * - Smooth user experience
  */
 
-import type React from "react"
 import { useState, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -18,8 +17,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Plus, Trash2, Eye, Save, ArrowLeft, ArrowRight, Settings } from "lucide-react"
+import { Plus, Trash2, Save, ArrowLeft, ArrowRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
@@ -67,7 +65,6 @@ export interface FormSectionType {
 
 interface SimplifiedFormBuilderProps {
   onClose: () => void
-  onSave: (data: any) => void
   formId?: string | null
   defaultValues?: Partial<FormBuilderValues>
   defaultSections?: FormSectionType[]
@@ -76,7 +73,6 @@ interface SimplifiedFormBuilderProps {
 // --- Main Component ---
 export default function SimplifiedFormBuilder({
   onClose,
-  onSave,
   formId,
   defaultValues,
   defaultSections = [],
@@ -287,7 +283,7 @@ export default function SimplifiedFormBuilder({
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {sections.map((section, index) => (
+            {sections.map((section) => (
               <div key={section.id} className="border rounded-lg p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex-1">
@@ -405,8 +401,8 @@ export default function SimplifiedFormBuilder({
     </div>
   )
 
-  const renderStep3 = () => (
-    <div className="space-y-6">
+    const renderStep3 = () => (
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Step 3: Preview & Save</CardTitle>
@@ -451,84 +447,85 @@ export default function SimplifiedFormBuilder({
               ))}
             </div>
             
-                         {/* Save button */}
-             <Button
-               type="button"
-               onClick={() => form.handleSubmit(onSubmit)()}
-               disabled={isSubmitting}
-               className="w-full"
-               size="lg"
-             >
-               <Save className="h-4 w-4 mr-2" />
-               {isSubmitting ? "Saving..." : (formId ? "Update Form" : "Save Form")}
-             </Button>
+            {/* Save button */}
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full"
+              size="lg"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {isSubmitting ? "Saving..." : (formId ? "Update Form" : "Save Form")}
+            </Button>
           </div>
         </CardContent>
       </Card>
-    </div>
+    </form>
   )
 
   // --- Render ---
   return (
     <>
-      <div className="bg-background rounded-lg shadow-sm p-6 w-full max-w-4xl mx-auto">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="text-center">
-            <h2 className="text-2xl font-bold">{formId ? "Edit Form" : "Create New Form"}</h2>
-            <p className="text-muted-foreground">Build your registration form step by step</p>
-          </div>
+      <Form {...form}>
+        <div className="bg-background rounded-lg shadow-sm p-6 w-full max-w-4xl mx-auto">
+          <div className="space-y-6">
+            {/* Header */}
+            <div className="text-center">
+              <h2 className="text-2xl font-bold">{formId ? "Edit Form" : "Create New Form"}</h2>
+              <p className="text-muted-foreground">Build your registration form step by step</p>
+            </div>
 
-          {/* Progress indicator */}
-          <div className="flex items-center justify-center space-x-4">
-            {[1, 2, 3].map((step) => (
-              <div key={step} className="flex items-center">
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
-                  step <= currentStep 
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-gray-200 text-gray-500"
-                )}>
-                  {step}
-                </div>
-                {step < 3 && (
+            {/* Progress indicator */}
+            <div className="flex items-center justify-center space-x-4">
+              {[1, 2, 3].map((step) => (
+                <div key={step} className="flex items-center">
                   <div className={cn(
-                    "w-12 h-0.5 mx-2",
-                    step < currentStep ? "bg-primary" : "bg-gray-200"
-                  )} />
-                )}
-              </div>
-            ))}
-          </div>
+                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                    step <= currentStep 
+                      ? "bg-primary text-primary-foreground" 
+                      : "bg-gray-200 text-gray-500"
+                  )}>
+                    {step}
+                  </div>
+                  {step < 3 && (
+                    <div className={cn(
+                      "w-12 h-0.5 mx-2",
+                      step < currentStep ? "bg-primary" : "bg-gray-200"
+                    )} />
+                  )}
+                </div>
+              ))}
+            </div>
 
-          {/* Step content */}
-          <div className="min-h-[400px]">
-            {currentStep === 1 && renderStep1()}
-            {currentStep === 2 && renderStep2()}
-            {currentStep === 3 && renderStep3()}
-          </div>
+            {/* Step content */}
+            <div className="min-h-[400px]">
+              {currentStep === 1 && renderStep1()}
+              {currentStep === 2 && renderStep2()}
+              {currentStep === 3 && renderStep3()}
+            </div>
 
-          {/* Navigation */}
-          <div className="flex justify-between pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={currentStep === 1 ? onClose : prevStep}
-              disabled={currentStep === 1}
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {currentStep === 1 ? "Cancel" : "Previous"}
-            </Button>
-            
-            {currentStep < 3 && (
-              <Button type="button" onClick={nextStep}>
-                Next
-                <ArrowRight className="h-4 w-4 ml-2" />
+            {/* Navigation */}
+            <div className="flex justify-between pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={currentStep === 1 ? onClose : prevStep}
+                disabled={currentStep === 1}
+              >
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                {currentStep === 1 ? "Cancel" : "Previous"}
               </Button>
-            )}
+              
+              {currentStep < 3 && (
+                <Button type="button" onClick={nextStep}>
+                  Next
+                  <ArrowRight className="h-4 w-4 ml-2" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </Form>
 
       {/* Success Modal */}
       <FormSuccessModal 
