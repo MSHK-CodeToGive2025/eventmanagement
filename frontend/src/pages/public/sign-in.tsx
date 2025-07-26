@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label"
 // TODO: Uncomment when implementing remember me functionality
 // import { Checkbox } from "@/components/ui/checkbox"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { AlertCircle, ExternalLink, Phone, Mail, MapPin } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 
 export default function SignIn() {
@@ -15,6 +16,7 @@ export default function SignIn() {
   const { login } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false)
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -98,9 +100,13 @@ export default function SignIn() {
                     required
                   />
                   <div className="text-right">
-                    <Link to="#" className="text-sm text-yellow-500 hover:underline">
+                    <button
+                      type="button"
+                      onClick={() => setShowForgotPasswordDialog(true)}
+                      className="text-sm text-yellow-500 hover:underline"
+                    >
                       Forgot password?
-                    </Link>
+                    </button>
                   </div>
                 </div>
 
@@ -134,6 +140,63 @@ export default function SignIn() {
           </CardFooter>
         </Card>
       </div>
+
+      {/* Forgot Password Dialog */}
+      <Dialog open={showForgotPasswordDialog} onOpenChange={setShowForgotPasswordDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-yellow-500" />
+              Forgot Password?
+            </DialogTitle>
+            <DialogDescription>
+              Please contact The Zubin Foundation for password assistance.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h4 className="font-medium mb-3">Contact Information</h4>
+              
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm">info@zubinfoundation.org</span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm">+852 2540 9588 (General)</span>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Phone className="h-4 w-4 text-gray-500" />
+                  <span className="text-sm">+852 9682 3100 (Call Mira & Counselling Helpline)</span>
+                </div>
+                
+                <div className="flex items-start gap-2">
+                  <MapPin className="h-4 w-4 text-gray-500 mt-0.5" />
+                  <div className="text-sm">
+                    <div>Unit 5F, High Fashion Centre</div>
+                    <div>No. 1 Kwai Hei Street, Kwai Chung</div>
+                    <div>Hong Kong</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-center">
+              <Button
+                onClick={() => window.open('https://www.zubinfoundation.org/contact-us/', '_blank')}
+                className="bg-yellow-400 hover:bg-yellow-500 text-black"
+              >
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Visit Contact Page
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
