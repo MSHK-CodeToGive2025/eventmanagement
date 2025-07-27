@@ -8,7 +8,7 @@ A web-based platform designed to streamline the management of events for Hong Ko
 - Event Management (Create, Read, Update, Delete)
 - Participant Registration System
 - WhatsApp Integration for Communication
-- Dashboard and Analytics
+- Dashboard and Analytics (TODO in later phase)
 - Responsive Design for Desktop and Mobile
 
 ## Tech Stack
