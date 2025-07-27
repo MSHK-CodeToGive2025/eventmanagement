@@ -46,12 +46,38 @@ export default function EnhancedEventDetailPage() {
   const [registrationComplete, setRegistrationComplete] = useState(false)
   const [currentStep, setCurrentStep] = useState(1)
   const totalSteps = 3 // Sessions, Form, Confirmation
+  const [registrationFormRef, setRegistrationFormRef] = useState<HTMLDivElement | null>(null)
+  const [showRegistrationStarted, setShowRegistrationStarted] = useState(false)
 
   // Check if user can register (no active registration exists)
   const canRegister = !activeRegistration && isAuthenticated && user
   const isRegistered = activeRegistration?.status === 'registered'
   const hasCancelledRegistration = userRegistrations.some(reg => reg.status === 'cancelled' || reg.status === 'rejected')
   const isEventFull = event?.registeredCount && event?.capacity && event.registeredCount >= event.capacity
+
+  // Function to handle starting registration
+  const handleStartRegistration = () => {
+    setShowRegistrationForm(true)
+    setCurrentStep(1)
+    setSelectedSessions([])
+    setFormValues({})
+    setErrors({})
+    setShowRegistrationStarted(true)
+    
+    // Hide the notification after 3 seconds
+    setTimeout(() => setShowRegistrationStarted(false), 3000)
+    
+    // Scroll to registration form after a brief delay to ensure it's rendered
+    setTimeout(() => {
+      if (registrationFormRef) {
+        registrationFormRef.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        })
+      }
+    }, 100)
+  }
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -385,7 +411,7 @@ export default function EnhancedEventDetailPage() {
             }
           </p>
           <Button
-            onClick={() => setShowRegistrationForm(true)}
+            onClick={handleStartRegistration}
             className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold py-3"
             size="lg"
           >
@@ -400,7 +426,7 @@ export default function EnhancedEventDetailPage() {
     if (!showRegistrationForm) return null
 
     return (
-      <Card className="mt-6">
+      <Card className="mt-6 border-2 border-yellow-300 shadow-lg animate-in slide-in-from-bottom-2" ref={setRegistrationFormRef}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="text-xl">Event Registration</CardTitle>
@@ -761,6 +787,16 @@ export default function EnhancedEventDetailPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
+          {/* Registration Started Notification */}
+          {showRegistrationStarted && (
+            <Alert className="mb-4 bg-yellow-50 border-yellow-200 animate-in slide-in-from-top-2">
+              <CheckCircle className="h-4 w-4 text-yellow-600" />
+              <AlertDescription className="text-yellow-800">
+                Registration started! Scroll down to complete your registration form.
+              </AlertDescription>
+            </Alert>
+          )}
+
           <Card className="mb-8">
             <CardContent className="p-0">
               {event.coverImage && (
