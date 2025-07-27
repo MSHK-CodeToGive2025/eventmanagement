@@ -331,7 +331,7 @@ export default function EnhancedEventsPage() {
             <Select
               value={selectedCategory || ""}
               onValueChange={(value) => {
-                setSelectedCategory(value || null)
+                setSelectedCategory(value === "all" ? null : value)
                 setCurrentPage(1)
               }}
             >
@@ -354,7 +354,7 @@ export default function EnhancedEventsPage() {
             <Select
               value={selectedTargetGroup || ""}
               onValueChange={(value) => {
-                setSelectedTargetGroup(value || null)
+                setSelectedTargetGroup(value === "all" ? null : value)
                 setCurrentPage(1)
               }}
             >
@@ -377,7 +377,7 @@ export default function EnhancedEventsPage() {
             <Select
               value={selectedLocation || ""}
               onValueChange={(value) => {
-                setSelectedLocation(value || null)
+                setSelectedLocation(value === "all" ? null : value)
                 setCurrentPage(1)
               }}
             >
@@ -574,7 +574,7 @@ export default function EnhancedEventsPage() {
               <Select
                 value={selectedCategory || ""}
                 onValueChange={(value) => {
-                  setSelectedCategory(value || null)
+                  setSelectedCategory(value === "all" ? null : value)
                   setCurrentPage(1)
                 }}
               >
@@ -598,7 +598,7 @@ export default function EnhancedEventsPage() {
               <Select
                 value={selectedTargetGroup || ""}
                 onValueChange={(value) => {
-                  setSelectedTargetGroup(value || null)
+                  setSelectedTargetGroup(value === "all" ? null : value)
                   setCurrentPage(1)
                 }}
               >
@@ -622,7 +622,7 @@ export default function EnhancedEventsPage() {
               <Select
                 value={selectedLocation || ""}
                 onValueChange={(value) => {
-                  setSelectedLocation(value || null)
+                  setSelectedLocation(value === "all" ? null : value)
                   setCurrentPage(1)
                 }}
               >

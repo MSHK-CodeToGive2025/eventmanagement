@@ -220,10 +220,10 @@ export function Navigation() {
             <Button
               variant="ghost"
               size="sm"
-              className={cn("p-1.5 mr-1", isActive("/events") ? "bg-yellow-100 text-yellow-700" : "text-gray-600")}
+              className={cn("p-1.5 mr-1", isActive("/enhanced-events") ? "bg-yellow-100 text-yellow-700" : "text-gray-600")}
               asChild
             >
-              <Link to="/events">
+              <Link to="/enhanced-events">
                 <CalendarDays className="h-5 w-5" />
               </Link>
             </Button>
@@ -247,10 +247,10 @@ export function Navigation() {
           <div className="container mx-auto px-4 py-4 space-y-3">
             {/* Enhanced Mobile Events Link */}
             <Link
-              to="/events"
+              to="/enhanced-events"
               className={cn(
                 "flex items-center justify-between py-3 px-4 rounded-lg text-base font-medium transition-all",
-                isActive("/events")
+                isActive("/enhanced-events")
                   ? "bg-yellow-50 text-yellow-600 border border-yellow-200"
                   : "bg-gray-50 text-gray-700 hover:bg-yellow-50 hover:text-yellow-600",
               )}
