@@ -64,19 +64,8 @@ export default function EnhancedEventDetailPage() {
     setErrors({})
     setShowRegistrationStarted(true)
     
-    // Hide the notification after 3 seconds
-    setTimeout(() => setShowRegistrationStarted(false), 3000)
-    
-    // Scroll to registration form after a brief delay to ensure it's rendered
-    setTimeout(() => {
-      if (registrationFormRef) {
-        registrationFormRef.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'start',
-          inline: 'nearest'
-        })
-      }
-    }, 100)
+    // Hide the notification after 4 seconds
+    setTimeout(() => setShowRegistrationStarted(false), 4000)
   }
 
   useEffect(() => {
@@ -140,6 +129,25 @@ export default function EnhancedEventDetailPage() {
 
     return () => window.removeEventListener('focus', handleFocus)
   }, [event?._id, isAuthenticated, user, location.key])
+
+  // Handle scrolling to registration form when it appears
+  useEffect(() => {
+    if (showRegistrationForm && registrationFormRef && showRegistrationStarted) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          // Double-check that the element still exists and is in the DOM
+          if (registrationFormRef && document.contains(registrationFormRef)) {
+            registrationFormRef.scrollIntoView({ 
+              behavior: 'smooth', 
+              block: 'start',
+              inline: 'nearest'
+            })
+          }
+        }, 150) // Slightly increased delay for better reliability
+      })
+    }
+  }, [showRegistrationForm, registrationFormRef, showRegistrationStarted])
 
   const checkUserRegistrations = async (eventId: string) => {
     if (!isAuthenticated || !user) return
