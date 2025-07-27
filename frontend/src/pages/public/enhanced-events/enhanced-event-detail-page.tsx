@@ -3,8 +3,7 @@ import { useState, useEffect } from "react"
 import { useParams, useNavigate, useLocation } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Clock, Users, Share2, Calendar, MapPin, AlertCircle, Loader2, CheckCircle, XCircle, ArrowLeft } from "lucide-react"
+import { Clock, Users, Share2, Calendar, MapPin, AlertCircle, Loader2, CheckCircle, XCircle, ArrowLeft, UserPlus, Star } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { ZubinEvent } from "@/types/event-types"
 import { RegistrationForm } from "@/types/form-types"
@@ -19,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Progress } from "@/components/ui/progress"
 
 export default function EnhancedEventDetailPage() {
   const { id } = useParams()
@@ -37,18 +37,21 @@ export default function EnhancedEventDetailPage() {
   const [activeRegistration, setActiveRegistration] = useState<EventRegistration | null>(null)
   const [checkingRegistration, setCheckingRegistration] = useState(false)
 
-  // Form state
-  const [activeTab, setActiveTab] = useState("overview")
+  // Streamlined form state
+  const [showRegistrationForm, setShowRegistrationForm] = useState(false)
   const [selectedSessions, setSelectedSessions] = useState<string[]>([])
   const [formValues, setFormValues] = useState<Record<string, any>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [registrationComplete, setRegistrationComplete] = useState(false)
+  const [currentStep, setCurrentStep] = useState(1)
+  const totalSteps = 3 // Sessions, Form, Confirmation
 
   // Check if user can register (no active registration exists)
   const canRegister = !activeRegistration && isAuthenticated && user
   const isRegistered = activeRegistration?.status === 'registered'
   const hasCancelledRegistration = userRegistrations.some(reg => reg.status === 'cancelled' || reg.status === 'rejected')
+  const isEventFull = event?.registeredCount && event?.capacity && event.registeredCount >= event.capacity
 
   useEffect(() => {
     const fetchEventData = async () => {
@@ -154,30 +157,40 @@ export default function EnhancedEventDetailPage() {
     }
   }
 
-  const validateForm = () => {
-    if (!registrationForm) return false
-
+  const validateCurrentStep = () => {
     const newErrors: Record<string, string> = {}
     let isValid = true
 
-    // Validate session selection
-    if (selectedSessions.length === 0) {
-      newErrors.sessions = "Please select at least one session"
-      isValid = false
-    }
-
-    // Validate form fields
-    registrationForm.sections.forEach(section => {
-      section.fields.forEach(field => {
-        if (field.required && !formValues[field._id]) {
-          newErrors[field._id] = `${field.label} is required`
-          isValid = false
-        }
+    if (currentStep === 1) {
+      // Validate session selection
+      if (selectedSessions.length === 0) {
+        newErrors.sessions = "Please select at least one session"
+        isValid = false
+      }
+    } else if (currentStep === 2 && registrationForm) {
+      // Validate form fields
+      registrationForm.sections.forEach(section => {
+        section.fields.forEach(field => {
+          if (field.required && !formValues[field._id]) {
+            newErrors[field._id] = `${field.label} is required`
+            isValid = false
+          }
+        })
       })
-    })
+    }
 
     setErrors(newErrors)
     return isValid
+  }
+
+  const nextStep = () => {
+    if (validateCurrentStep()) {
+      setCurrentStep(prev => Math.min(prev + 1, totalSteps))
+    }
+  }
+
+  const prevStep = () => {
+    setCurrentStep(prev => Math.max(prev - 1, 1))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -185,7 +198,7 @@ export default function EnhancedEventDetailPage() {
 
     if (!event || !registrationForm || !user) return
 
-    if (!validateForm()) {
+    if (!validateCurrentStep()) {
       return
     }
 
@@ -216,6 +229,7 @@ export default function EnhancedEventDetailPage() {
       await eventService.registerForEventV2(event._id, registrationData)
 
       setRegistrationComplete(true)
+      setCurrentStep(3)
       
       // Refresh registration status immediately
       await checkUserRegistrations(event._id)
@@ -239,6 +253,8 @@ export default function EnhancedEventDetailPage() {
     setFormValues({})
     setErrors({})
     setRegistrationComplete(false)
+    setCurrentStep(1)
+    setShowRegistrationForm(false)
   }
 
   const getRegistrationStatusBadge = () => {
@@ -257,6 +273,408 @@ export default function EnhancedEventDetailPage() {
       <Badge variant={config.variant as any} className={config.className}>
         {config.label}
       </Badge>
+    )
+  }
+
+  const renderRegistrationStatus = () => {
+    if (!isAuthenticated) {
+      return (
+        <Card className="bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200">
+          <CardContent className="p-6 text-center">
+            <UserPlus className="h-12 w-12 text-yellow-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-3 text-yellow-800">Join This Event</h3>
+            <p className="text-gray-700 mb-6">Sign in to register and secure your spot!</p>
+            <div className="flex justify-center gap-4">
+              <Button onClick={() => navigate("/sign-in")} variant="outline">
+                Sign In
+              </Button>
+              <Button
+                onClick={() => navigate("/sign-up")}
+                className="bg-yellow-400 hover:bg-yellow-500 text-black"
+              >
+                Sign Up
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    if (checkingRegistration) {
+      return (
+        <Card className="bg-gray-50 border-gray-200">
+          <CardContent className="p-6 text-center">
+            <Loader2 className="h-12 w-12 animate-spin text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-3">Checking Registration Status</h3>
+            <p className="text-gray-700">Please wait while we check your registration status...</p>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    if (isRegistered) {
+      return (
+        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+          <CardContent className="p-6 text-center">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-3 text-green-700">✓ Successfully Registered!</h3>
+            <p className="text-gray-700 mb-6">
+              You're all set for this event. We look forward to seeing you!
+            </p>
+            <div className="flex justify-center gap-4">
+              <Button onClick={() => navigate("/profile/registrations")} variant="outline">
+                View My Registrations
+              </Button>
+              <Button onClick={() => navigate("/enhanced-events")} className="bg-yellow-400 hover:bg-yellow-500 text-black">
+                Browse Other Events
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    if (isEventFull) {
+      return (
+        <Card className="bg-gradient-to-r from-red-50 to-pink-50 border-red-200">
+          <CardContent className="p-6 text-center">
+            <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-3 text-red-700">Event Full</h3>
+            <p className="text-gray-700 mb-6">
+              This event has reached its capacity. Please check back later or explore other events.
+            </p>
+            <Button onClick={() => navigate("/enhanced-events")} variant="outline">
+              Browse Other Events
+            </Button>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    if (registrationComplete) {
+      return (
+        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+          <CardContent className="p-6 text-center">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-3 text-green-700">Registration Complete!</h3>
+            <p className="text-gray-700 mb-6">
+              Thank you for registering for this event. 
+            </p>
+            <div className="flex justify-center gap-4">
+              <Button onClick={() => navigate("/enhanced-events")} variant="outline">
+                Browse Other Events
+              </Button>
+              <Button onClick={() => navigate("/profile/registrations")} className="bg-yellow-400 hover:bg-yellow-500 text-black">
+                View My Registrations
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    return (
+      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
+        <CardContent className="p-6 text-center">
+          <Star className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold mb-3 text-blue-800">Ready to Join?</h3>
+          <p className="text-gray-700 mb-6">
+            {hasCancelledRegistration 
+              ? "You can register again for this event."
+              : "Secure your spot by registering now!"
+            }
+          </p>
+          <Button
+            onClick={() => setShowRegistrationForm(true)}
+            className="w-full bg-yellow-400 hover:bg-yellow-500 text-black font-semibold py-3"
+            size="lg"
+          >
+            Register Now
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const renderRegistrationForm = () => {
+    if (!showRegistrationForm) return null
+
+    return (
+      <Card className="mt-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-xl">Event Registration</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowRegistrationForm(false)}
+            >
+              <XCircle className="h-4 w-4" />
+            </Button>
+          </div>
+          <Progress value={(currentStep / totalSteps) * 100} className="w-full" />
+          <div className="flex justify-between text-sm text-gray-600">
+            <span>Step {currentStep} of {totalSteps}</span>
+            <span>{currentStep === 1 ? "Select Sessions" : currentStep === 2 ? "Fill Form" : "Confirm"}</span>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {currentStep === 1 && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Select Sessions</h3>
+                <p className="text-gray-600 mb-6">Choose the session(s) you'd like to attend:</p>
+              </div>
+              
+              {errors.sessions && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{errors.sessions}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="space-y-3">
+                {event?.sessions.map((session) => (
+                  <Card key={session._id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-semibold mb-2">{session.title}</h4>
+                          {session.description && (
+                            <p className="text-gray-600 mb-2 text-sm">{session.description}</p>
+                          )}
+                          <div className="flex items-center text-sm text-gray-500">
+                            <Calendar className="h-4 w-4 mr-2" />
+                            <span>{new Date(session.date).toLocaleDateString()}</span>
+                            <Clock className="h-4 w-4 mr-2 ml-4" />
+                            <span>{session.startTime} - {session.endTime}</span>
+                          </div>
+                        </div>
+                        <Checkbox
+                          id={session._id}
+                          checked={selectedSessions.includes(session._id)}
+                          onCheckedChange={() => handleSessionSelection(session._id)}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <Button
+                  onClick={nextStep}
+                  className="bg-yellow-400 hover:bg-yellow-500 text-black"
+                  disabled={selectedSessions.length === 0}
+                >
+                  Next: Fill Form
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 2 && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Registration Information</h3>
+                <p className="text-gray-600">Please provide the required information:</p>
+              </div>
+
+              {hasCancelledRegistration && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    You previously cancelled your registration for this event. You can register again if you'd like to attend.
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {errors.submit && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{errors.submit}</AlertDescription>
+                </Alert>
+              )}
+
+              {registrationForm?.sections.map((section) => (
+                <Card key={section._id}>
+                  <CardHeader>
+                    <CardTitle className="text-lg">{section.title}</CardTitle>
+                    {section.description && (
+                      <p className="text-gray-600">{section.description}</p>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {section.fields.map((field) => (
+                      <div key={field._id} className="space-y-2">
+                        <Label htmlFor={field._id}>
+                          {field.label}
+                          {field.required && <span className="text-red-500 ml-1">*</span>}
+                        </Label>
+                        {field.helpText && (
+                          <p className="text-sm text-gray-500">{field.helpText}</p>
+                        )}
+                        {field.type === "text" && (
+                          <Input
+                            id={field._id}
+                            type="text"
+                            placeholder={field.placeholder}
+                            value={formValues[field._id] || ""}
+                            onChange={(e) => handleFieldChange(field._id, e.target.value)}
+                            required={field.required}
+                          />
+                        )}
+                        {field.type === "email" && (
+                          <Input
+                            id={field._id}
+                            type="email"
+                            placeholder={field.placeholder}
+                            value={formValues[field._id] || ""}
+                            onChange={(e) => handleFieldChange(field._id, e.target.value)}
+                            required={field.required}
+                          />
+                        )}
+                        {field.type === "phone" && (
+                          <Input
+                            id={field._id}
+                            type="tel"
+                            placeholder={field.placeholder}
+                            value={formValues[field._id] || ""}
+                            onChange={(e) => handleFieldChange(field._id, e.target.value)}
+                            required={field.required}
+                          />
+                        )}
+                        {field.type === "number" && (
+                          <Input
+                            id={field._id}
+                            type="number"
+                            placeholder={field.placeholder}
+                            value={formValues[field._id] || ""}
+                            onChange={(e) => handleFieldChange(field._id, e.target.value)}
+                            required={field.required}
+                            min={field.validation?.minValue}
+                            max={field.validation?.maxValue}
+                          />
+                        )}
+                        {field.type === "textarea" && (
+                          <textarea
+                            id={field._id}
+                            className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
+                            placeholder={field.placeholder}
+                            value={formValues[field._id] || ""}
+                            onChange={(e) => handleFieldChange(field._id, e.target.value)}
+                            required={field.required}
+                          />
+                        )}
+                        {field.type === "dropdown" && (
+                          <Select
+                            value={formValues[field._id] || ""}
+                            onValueChange={(value) => handleFieldChange(field._id, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={field.placeholder || "Select an option"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {field.options?.map((option) => (
+                                <SelectItem key={option} value={option}>
+                                  {option}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {field.type === "radio" && (
+                          <RadioGroup
+                            value={formValues[field._id] || ""}
+                            onValueChange={(value) => handleFieldChange(field._id, value)}
+                          >
+                            {field.options?.map((option) => (
+                              <div key={option} className="flex items-center space-x-2">
+                                <RadioGroupItem value={option} id={`${field._id}-${option}`} />
+                                <Label htmlFor={`${field._id}-${option}`} className="text-sm font-normal">
+                                  {option}
+                                </Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        )}
+                        {field.type === "checkbox" && (
+                          <div className="space-y-2">
+                            {field.options?.map((option) => (
+                              <div key={option} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`${field._id}-${option}`}
+                                  checked={Array.isArray(formValues[field._id]) ? formValues[field._id].includes(option) : false}
+                                  onCheckedChange={(checked) => {
+                                    const currentValues = Array.isArray(formValues[field._id]) ? formValues[field._id] : []
+                                    if (checked) {
+                                      handleFieldChange(field._id, [...currentValues, option])
+                                    } else {
+                                      handleFieldChange(field._id, currentValues.filter((v: string) => v !== option))
+                                    }
+                                  }}
+                                  required={field.required}
+                                />
+                                <Label htmlFor={`${field._id}-${option}`} className="text-sm font-normal">
+                                  {option}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {errors[field._id] && (
+                          <p className="text-sm text-red-500">{errors[field._id]}</p>
+                        )}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              ))}
+
+              <div className="flex justify-between pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={prevStep}
+                >
+                  Back to Sessions
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  className="bg-yellow-400 hover:bg-yellow-500 text-black"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
+                    </>
+                  ) : (
+                    "Complete Registration"
+                  )}
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {currentStep === 3 && (
+            <div className="text-center py-8">
+              <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
+              <h3 className="text-xl font-semibold mb-2 text-green-700">Registration Submitted!</h3>
+              <p className="text-gray-600 mb-6">
+                Your registration has been successfully submitted. You will receive a confirmation email shortly.
+              </p>
+              <div className="flex justify-center gap-4">
+                <Button onClick={resetForm} variant="outline">
+                  Register for Another Event
+                </Button>
+                <Button onClick={() => navigate("/profile/registrations")} className="bg-yellow-400 hover:bg-yellow-500 text-black">
+                  View My Registrations
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     )
   }
 
@@ -355,42 +773,23 @@ export default function EnhancedEventDetailPage() {
                 </div>
               )}
               <div className="p-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="mb-6 w-full">
-                    <TabsTrigger value="overview" className="flex-1">
-                      Overview
-                    </TabsTrigger>
-                    <TabsTrigger value="sessions" className="flex-1">
-                      Sessions
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="registration"
-                      className="flex-1 bg-yellow-50 data-[state=active]:bg-yellow-400 data-[state=active]:text-black"
-                    >
-                      Registration
-                    </TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="overview" className="space-y-6">
-                    <div>
-                      <h2 className="text-xl font-semibold mb-4">About This Event</h2>
-                      <div className="prose max-w-none">
-                        <p className="text-gray-700 whitespace-pre-line leading-relaxed">{event.description}</p>
-                      </div>
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-semibold mb-4">About This Event</h2>
+                    <div className="prose max-w-none">
+                      <p className="text-gray-700 whitespace-pre-line leading-relaxed">{event.description}</p>
                     </div>
-                  </TabsContent>
+                  </div>
 
-                  <TabsContent value="sessions" className="space-y-6">
+                  <Separator />
+
+                  <div>
                     <h2 className="text-xl font-semibold mb-4">Event Sessions</h2>
-                    <p className="text-gray-700 mb-6">
-                      Please select the session(s) you wish to attend.
-                    </p>
-
                     <div className="space-y-4">
                       {event.sessions.map((session) => (
                         <Card key={session._id} className="hover:shadow-md transition-shadow">
                           <CardContent className="p-4">
-                            <div className="flex items-start justify-between">
+                            <div className="flex items-start">
                               <div className="flex-1">
                                 <h3 className="font-semibold mb-2">{session.title}</h3>
                                 {session.description && (
@@ -411,297 +810,25 @@ export default function EnhancedEventDetailPage() {
                                   </div>
                                 )}
                               </div>
-                              <Checkbox
-                                id={session._id}
-                                checked={selectedSessions.includes(session._id)}
-                                onCheckedChange={() => handleSessionSelection(session._id)}
-                              />
                             </div>
                           </CardContent>
                         </Card>
                       ))}
                     </div>
-                  </TabsContent>
-
-                  <TabsContent value="registration">
-                    <div className="space-y-6">
-                      <div>
-                        <h2 className="text-xl font-semibold mb-2">Registration Information</h2>
-                        <p className="text-gray-700">
-                          Please fill in the registration form to secure your spot.
-                        </p>
-                      </div>
-
-                      {!isAuthenticated ? (
-                        <Card className="bg-gray-50 border-gray-200">
-                          <CardContent className="p-6 text-center">
-                            <AlertCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold mb-3">Sign In Required</h3>
-                            <p className="text-gray-700 mb-6">You need to be logged in to register for this event.</p>
-                            <div className="flex justify-center gap-4">
-                              <Button onClick={() => navigate("/sign-in")} variant="outline">
-                                Sign In
-                              </Button>
-                              <Button
-                                onClick={() => navigate("/sign-up")}
-                                className="bg-yellow-400 hover:bg-yellow-500 text-black"
-                              >
-                                Sign Up
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ) : checkingRegistration ? (
-                        <Card className="bg-gray-50 border-gray-200">
-                          <CardContent className="p-6 text-center">
-                            <Loader2 className="h-12 w-12 animate-spin text-gray-400 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold mb-3">Checking Registration Status</h3>
-                            <p className="text-gray-700">Please wait while we check your registration status...</p>
-                          </CardContent>
-                        </Card>
-                      ) : isRegistered ? (
-                        <Card className="bg-green-50 border-green-200">
-                          <CardContent className="p-6 text-center">
-                            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold mb-3 text-green-700">Already Registered!</h3>
-                            <p className="text-gray-700 mb-6">
-                              You have successfully registered for this event. We look forward to seeing you!
-                            </p>
-                            <div className="flex justify-center gap-4">
-                              <Button onClick={() => navigate("/profile/registrations")} variant="outline">
-                                View My Registrations
-                              </Button>
-                              <Button onClick={() => navigate("/enhanced-events")} className="bg-yellow-400 hover:bg-yellow-500 text-black">
-                                Browse Other Events
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ) : event.registeredCount && event.capacity && event.registeredCount >= event.capacity ? (
-                        <Card className="bg-gray-50 border-gray-200">
-                          <CardContent className="p-6 text-center">
-                            <XCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold mb-3">Event Full</h3>
-                            <p className="text-gray-700 mb-6">
-                              This event has reached its capacity. Please check back later or explore other events.
-                            </p>
-                            <Button onClick={() => navigate("/enhanced-events")} variant="outline">
-                              Browse Other Events
-                            </Button>
-                          </CardContent>
-                        </Card>
-                      ) : registrationComplete ? (
-                        <Card className="bg-green-50 border-green-200">
-                          <CardContent className="p-6 text-center">
-                            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-                            <h3 className="text-lg font-semibold mb-3 text-green-700">Registration Complete!</h3>
-                            <p className="text-gray-700 mb-6">
-                              Thank you for registering for this event. 
-                            </p>
-                            <div className="flex justify-center gap-4">
-                              <Button onClick={() => navigate("/enhanced-events")} variant="outline">
-                                Browse Other Events
-                              </Button>
-                              <Button onClick={() => navigate("/profile/registrations")} className="bg-yellow-400 hover:bg-yellow-500 text-black">
-                                View My Registrations
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ) : (
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                          {hasCancelledRegistration && (
-                            <Alert>
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertDescription>
-                                You previously cancelled your registration for this event. You can register again if you'd like to attend.
-                              </AlertDescription>
-                            </Alert>
-                          )}
-
-                          {errors.sessions && (
-                            <Alert variant="destructive">
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertDescription>{errors.sessions}</AlertDescription>
-                            </Alert>
-                          )}
-
-                          {errors.submit && (
-                            <Alert variant="destructive">
-                              <AlertCircle className="h-4 w-4" />
-                              <AlertDescription>{errors.submit}</AlertDescription>
-                            </Alert>
-                          )}
-
-                          {registrationForm?.sections.map((section) => (
-                            <Card key={section._id}>
-                              <CardHeader>
-                                <CardTitle className="text-lg">{section.title}</CardTitle>
-                                {section.description && (
-                                  <p className="text-gray-600">{section.description}</p>
-                                )}
-                              </CardHeader>
-                              <CardContent className="space-y-4">
-                                {section.fields.map((field) => (
-                                  <div key={field._id} className="space-y-2">
-                                    <Label htmlFor={field._id}>
-                                      {field.label}
-                                      {field.required && <span className="text-red-500 ml-1">*</span>}
-                                    </Label>
-                                    {field.helpText && (
-                                      <p className="text-sm text-gray-500">{field.helpText}</p>
-                                    )}
-                                    {field.type === "text" && (
-                                      <Input
-                                        id={field._id}
-                                        type="text"
-                                        placeholder={field.placeholder}
-                                        value={formValues[field._id] || ""}
-                                        onChange={(e) => handleFieldChange(field._id, e.target.value)}
-                                        required={field.required}
-                                      />
-                                    )}
-                                    {field.type === "email" && (
-                                      <Input
-                                        id={field._id}
-                                        type="email"
-                                        placeholder={field.placeholder}
-                                        value={formValues[field._id] || ""}
-                                        onChange={(e) => handleFieldChange(field._id, e.target.value)}
-                                        required={field.required}
-                                      />
-                                    )}
-                                    {field.type === "phone" && (
-                                      <Input
-                                        id={field._id}
-                                        type="tel"
-                                        placeholder={field.placeholder}
-                                        value={formValues[field._id] || ""}
-                                        onChange={(e) => handleFieldChange(field._id, e.target.value)}
-                                        required={field.required}
-                                      />
-                                    )}
-                                    {field.type === "number" && (
-                                      <Input
-                                        id={field._id}
-                                        type="number"
-                                        placeholder={field.placeholder}
-                                        value={formValues[field._id] || ""}
-                                        onChange={(e) => handleFieldChange(field._id, e.target.value)}
-                                        required={field.required}
-                                        min={field.validation?.minValue}
-                                        max={field.validation?.maxValue}
-                                      />
-                                    )}
-                                    {field.type === "textarea" && (
-                                      <textarea
-                                        id={field._id}
-                                        className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent"
-                                        placeholder={field.placeholder}
-                                        value={formValues[field._id] || ""}
-                                        onChange={(e) => handleFieldChange(field._id, e.target.value)}
-                                        required={field.required}
-                                      />
-                                    )}
-                                    {field.type === "dropdown" && (
-                                      <Select
-                                        value={formValues[field._id] || ""}
-                                        onValueChange={(value) => handleFieldChange(field._id, value)}
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder={field.placeholder || "Select an option"} />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {field.options?.map((option) => (
-                                            <SelectItem key={option} value={option}>
-                                              {option}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    )}
-                                    {field.type === "radio" && (
-                                      <RadioGroup
-                                        value={formValues[field._id] || ""}
-                                        onValueChange={(value) => handleFieldChange(field._id, value)}
-                                      >
-                                        {field.options?.map((option) => (
-                                          <div key={option} className="flex items-center space-x-2">
-                                            <RadioGroupItem value={option} id={`${field._id}-${option}`} />
-                                            <Label htmlFor={`${field._id}-${option}`} className="text-sm font-normal">
-                                              {option}
-                                            </Label>
-                                          </div>
-                                        ))}
-                                      </RadioGroup>
-                                    )}
-                                    {field.type === "checkbox" && (
-                                      <div className="space-y-2">
-                                        {field.options?.map((option) => (
-                                          <div key={option} className="flex items-center space-x-2">
-                                            <Checkbox
-                                              id={`${field._id}-${option}`}
-                                              checked={Array.isArray(formValues[field._id]) ? formValues[field._id].includes(option) : false}
-                                              onCheckedChange={(checked) => {
-                                                const currentValues = Array.isArray(formValues[field._id]) ? formValues[field._id] : []
-                                                if (checked) {
-                                                  handleFieldChange(field._id, [...currentValues, option])
-                                                } else {
-                                                  handleFieldChange(field._id, currentValues.filter((v: string) => v !== option))
-                                                }
-                                              }}
-                                              required={field.required}
-                                            />
-                                            <Label htmlFor={`${field._id}-${option}`} className="text-sm font-normal">
-                                              {option}
-                                            </Label>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                    {errors[field._id] && (
-                                      <p className="text-sm text-red-500">{errors[field._id]}</p>
-                                    )}
-                                  </div>
-                                ))}
-                              </CardContent>
-                            </Card>
-                          ))}
-
-                          <div className="flex justify-end gap-3 pt-4">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setActiveTab("overview")}
-                              disabled={isSubmitting}
-                            >
-                              Back to Overview
-                            </Button>
-                            <Button
-                              type="submit"
-                              className="bg-yellow-400 hover:bg-yellow-500 text-black"
-                              disabled={isSubmitting}
-                            >
-                              {isSubmitting ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...
-                                </>
-                              ) : (
-                                "Complete Registration"
-                              )}
-                            </Button>
-                          </div>
-                        </form>
-                      )}
-                    </div>
-                  </TabsContent>
-                </Tabs>
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Registration Form */}
+          {renderRegistrationForm()}
         </div>
 
         <div className="space-y-6">
+          {/* Registration Status - Now Prominent */}
+          {renderRegistrationStatus()}
+
           <Card>
             <CardHeader>
               <CardTitle>Event Details</CardTitle>
@@ -743,46 +870,6 @@ export default function EnhancedEventDetailPage() {
                     </span>
                   </div>
                 </>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Registration Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {!isAuthenticated ? (
-                <div className="text-center py-4">
-                  <p className="text-gray-600 mb-4">Sign in to register for this event</p>
-                  <Button
-                    onClick={() => setActiveTab("registration")}
-                    className="w-full bg-yellow-400 hover:bg-yellow-500 text-black"
-                  >
-                    Register Now
-                  </Button>
-                </div>
-              ) : checkingRegistration ? (
-                <div className="text-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                  <p className="text-gray-600">Checking registration status...</p>
-                </div>
-              ) : isRegistered || registrationComplete ? (
-                <div className="text-center py-4">
-                  <CheckCircle className="h-8 w-8 text-green-500 mx-auto mb-2" />
-                  <p className="text-green-700 font-medium mb-2">✓ Registered</p>
-                  <p className="text-gray-600 text-sm">You're all set for this event!</p>
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-gray-600 mb-4">Ready to join this event?</p>
-                  <Button
-                    onClick={() => setActiveTab("registration")}
-                    className="w-full bg-yellow-400 hover:bg-yellow-500 text-black"
-                  >
-                    Register Now
-                  </Button>
-                </div>
               )}
             </CardContent>
           </Card>
