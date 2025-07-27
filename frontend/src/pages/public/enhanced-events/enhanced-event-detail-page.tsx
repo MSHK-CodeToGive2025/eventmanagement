@@ -698,8 +698,8 @@ export default function EnhancedEventDetailPage() {
                 Your registration has been successfully submitted. You will receive a confirmation email shortly.
               </p>
               <div className="flex justify-center gap-4">
-                <Button onClick={resetForm} variant="outline">
-                  Register for Another Event
+                <Button onClick={() => navigate("/enhanced-events")} variant="outline">
+                  Browse Other Events
                 </Button>
                 <Button onClick={() => navigate("/profile/registrations")} className="bg-yellow-400 hover:bg-yellow-500 text-black">
                   View My Registrations
