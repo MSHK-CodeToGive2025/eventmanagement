@@ -100,9 +100,7 @@ export default function EnhancedEventsPage() {
         }))
         
         setEvents(transformedEvents)
-        console.log(`[EVENTS] Loaded ${transformedEvents.length} published, non-expired events`)
       } catch (error) {
-        console.error("Error fetching events:", error)
         setError("Failed to fetch events. Please try again later.")
       } finally {
         setLoading(false)

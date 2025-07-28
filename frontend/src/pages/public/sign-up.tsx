@@ -8,6 +8,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertCircle, CheckCircle2, Info } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
+import { validatePhoneNumberForForm, formatPhoneNumberForDisplay } from "@/lib/phone-utils"
+import { PhoneInput } from "@/components/ui/phone-input"
 
 export default function SignUp() {
   const navigate = useNavigate()
@@ -53,6 +55,13 @@ export default function SignUp() {
       return false
     }
 
+    // Validate phone number format
+    const phoneValidation = validatePhoneNumberForForm(formData.mobile)
+    if (!phoneValidation.isValid) {
+      setError(phoneValidation.error || "Please enter a valid phone number")
+      return false
+    }
+
     if (formData.password.length < 8) {
       setError("Password must be at least 8 characters")
       return false
@@ -81,6 +90,13 @@ export default function SignUp() {
     setError("")
 
     try {
+      // Format phone number for Twilio compliance
+      const phoneValidation = validatePhoneNumberForForm(formData.mobile)
+      if (!phoneValidation.isValid) {
+        setError(phoneValidation.error || "Please enter a valid phone number")
+        return
+      }
+
       await register({
         username: formData.username,
         firstName: formData.firstName,
@@ -181,25 +197,15 @@ export default function SignUp() {
                   </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="mobile" className="flex items-center">
-                    Mobile Number <span className="text-red-500 ml-1">*</span>
-                  </Label>
-                  <Input
-                    id="mobile"
-                    name="mobile"
-                    type="tel"
-                    placeholder="+852 1234 5678"
-                    value={formData.mobile}
-                    onChange={handleChange}
-                    required
-                    className="border-gray-300 focus:border-yellow-500 focus:ring focus:ring-yellow-200"
-                  />
-                  <div className="flex items-start mt-1 text-xs text-gray-500">
-                    <Info className="h-3.5 w-3.5 mr-1 flex-shrink-0 text-yellow-500" />
-                    <span>Required for WhatsApp event reminders and notifications</span>
-                  </div>
-                </div>
+                <PhoneInput
+                  id="mobile"
+                  name="mobile"
+                  label="Mobile Number"
+                  value={formData.mobile}
+                  onChange={(value) => setFormData(prev => ({ ...prev, mobile: value }))}
+                  required
+                  placeholder="+852 1234 5678"
+                />
 
                 <div className="space-y-2">
                   <Label htmlFor="email" className="flex items-center">

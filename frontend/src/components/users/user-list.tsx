@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/select"
 import { Eye, Edit, Trash2, MoreHorizontal, UserPlus, Key, Search } from "lucide-react"
 import { UserStatus, UserRole, User } from "@/types/user-types"
-import { Pagination } from "@/components/ui/pagination"
+import { PaginationControls } from "@/components/ui/pagination-controls"
 
 interface UserListProps {
   /** Array of users to display */
@@ -399,10 +399,14 @@ export function UserList({
 
       {onPageChange && (
         <div className="flex justify-center">
-          <Pagination
+          <PaginationControls
             currentPage={currentPage}
-            totalPages={Math.ceil(users.length / itemsPerPage)}
+            totalItems={users.length}
+            itemsPerPage={itemsPerPage}
             onPageChange={onPageChange}
+            onItemsPerPageChange={(newItemsPerPage) => {
+              // Handle items per page change if needed
+            }}
           />
         </div>
       )}

@@ -16,7 +16,15 @@ const userSchema = new mongoose.Schema({
   mobile: {
     type: String,
     required: true,
-    trim: true
+    trim: true,
+    validate: {
+      validator: function(v) {
+        // Simple regex validation for E.164 format
+        const phoneRegex = /^\+[1-9]\d{1,14}$/;
+        return phoneRegex.test(v);
+      },
+      message: 'Mobile number must be in E.164 format (e.g., +85212345678)'
+    }
   },
   email: {
     type: String,

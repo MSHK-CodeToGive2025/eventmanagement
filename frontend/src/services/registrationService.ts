@@ -2,9 +2,7 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
-// Debug logging
-console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
-console.log('Final API_URL:', API_URL);
+
 
 // Add auth token to requests
 export const authHeader = (): { Authorization?: string } => {
@@ -90,7 +88,6 @@ const registrationService = {
       });
       return eventRegistration || null;
     } catch (error) {
-      console.error('Error checking user registration:', error);
       return null;
     }
   },
@@ -102,20 +99,15 @@ const registrationService = {
         headers: authHeader(),
       });
       const registrations = response.data;
-      console.log('[REGISTRATION SERVICE] All user registrations:', registrations);
-      console.log('[REGISTRATION SERVICE] Looking for eventId:', eventId);
       
       const filteredRegistrations = registrations.filter((reg: EventRegistration) => {
         // Handle both populated eventId (object) and string eventId
         const regEventId = typeof reg.eventId === 'object' && reg.eventId !== null ? (reg.eventId as any)._id : reg.eventId;
-        console.log('[REGISTRATION SERVICE] Comparing:', regEventId, 'with', eventId, 'result:', regEventId === eventId);
         return regEventId === eventId;
       });
       
-      console.log('[REGISTRATION SERVICE] Filtered registrations for event:', filteredRegistrations);
       return filteredRegistrations;
     } catch (error) {
-      console.error('Error getting user event registrations:', error);
       return [];
     }
   },

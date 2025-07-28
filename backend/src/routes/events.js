@@ -6,6 +6,7 @@ import User from '../models/User.js';
 import EventRegistration from '../models/EventRegistration.js';
 import multer from 'multer';
 import twilio from 'twilio';
+import { formatForWhatsApp } from '../utils/phoneUtils.js';
 
 dotenv.config();
 
@@ -632,10 +633,8 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
         try {
           console.log(`[WhatsApp] Sending to ${registration.attendee.firstName} ${registration.attendee.lastName} (${registration.attendee.phone})`);
           
-          // Format phone number to E.164 format if needed
-          const formattedNumber = registration.attendee.phone.startsWith('+') 
-            ? registration.attendee.phone 
-            : `+${registration.attendee.phone.replace(/\D/g, '')}`;
+          // Format phone number for Twilio WhatsApp compliance
+          const formattedNumber = formatForWhatsApp(registration.attendee.phone);
 
           if (!twilioClient) {
             console.error('Twilio client not initialized, cannot send WhatsApp message');

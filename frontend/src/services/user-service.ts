@@ -5,8 +5,8 @@ import { type CreateUserData, type UpdateUserData, type UserFilterCriteria, type
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Debug logging
-console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
-console.log('Final API_URL:', API_URL);
+//console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
+//console.log('Final API_URL:', API_URL);
 
 /**
  * Interface for user form data when creating/updating users
@@ -162,12 +162,7 @@ export class UserService {
         method: 'GET',
         url: `${API_URL}/users`
       });
-      
-      // Debug logging
-      console.log('getAllUsers response:', backendUsers);
-      console.log('Response type:', typeof backendUsers);
-      console.log('Is array:', Array.isArray(backendUsers));
-      
+            
       // Ensure we have an array
       if (!Array.isArray(backendUsers)) {
         console.error('getAllUsers: Response is not an array:', backendUsers);
