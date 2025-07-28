@@ -7,6 +7,7 @@ interface AuthContextType {
   login: (credentials: LoginCredentials) => Promise<void>
   register: (userData: RegisterData) => Promise<void>
   logout: () => void
+  refreshUser: () => Promise<void>
   isAuthenticated: boolean
 }
 
@@ -38,7 +39,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(currentUser)
         }
       } catch (error) {
-        console.error("Failed to get current user:", error)
         authService.logout()
       } finally {
         setLoading(false)
@@ -79,12 +79,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setUser(null)
   }
 
+  const refreshUser = async () => {
+    try {
+      if (authService.isAuthenticated()) {
+        const currentUser = await authService.getCurrentUser()
+        setUser(currentUser)
+      }
+    } catch (error) {
+      authService.logout()
+      setUser(null)
+    }
+  }
+
   const value: AuthContextType = {
     user,
     loading,
     login,
     register,
     logout,
+    refreshUser,
     isAuthenticated: !!user,
   }
 

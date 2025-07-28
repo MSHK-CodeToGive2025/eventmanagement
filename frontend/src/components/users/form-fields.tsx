@@ -2,6 +2,7 @@ import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessa
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
+import { PhoneInput } from "@/components/ui/phone-input"
 import { type Control } from "react-hook-form"
 import { type UserFormValues } from "./user-form"
 
@@ -96,7 +97,13 @@ export function ContactFields({ control }: FormFieldProps) {
           <FormItem>
             <FormLabel>Mobile <span className="text-red-500">*</span></FormLabel>
             <FormControl>
-              <Input placeholder="91234567" {...field} />
+              <PhoneInput
+                placeholder="+852 1234 5678"
+                value={field.value}
+                onChange={field.onChange}
+                onBlur={field.onBlur}
+                name={field.name}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

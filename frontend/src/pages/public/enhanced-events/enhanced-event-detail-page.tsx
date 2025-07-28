@@ -92,7 +92,7 @@ export default function EnhancedEventDetailPage() {
           const formData = await formService.getForm(eventData.registrationFormId)
           setRegistrationForm(formData)
         } catch (error) {
-          console.error("Error fetching registration form:", error)
+          // Error fetching registration form
         }
 
         // Check user registrations for this event
@@ -100,7 +100,6 @@ export default function EnhancedEventDetailPage() {
           await checkUserRegistrations(eventData._id)
         }
       } catch (error: any) {
-        console.error("Error fetching event:", error)
         setError(error.message || "Failed to load event details")
       } finally {
         setLoading(false)
@@ -114,7 +113,6 @@ export default function EnhancedEventDetailPage() {
   useEffect(() => {
     const handleFocus = () => {
       if (event && isAuthenticated && user) {
-        console.log('[FRONTEND] Window focused, rechecking registration status')
         checkUserRegistrations(event._id)
       }
     }
@@ -123,7 +121,6 @@ export default function EnhancedEventDetailPage() {
     
     // Also check when the component mounts or location changes
     if (event && isAuthenticated && user) {
-      console.log('[FRONTEND] Location changed or component mounted, checking registration status')
       checkUserRegistrations(event._id)
     }
 
@@ -155,15 +152,13 @@ export default function EnhancedEventDetailPage() {
     setCheckingRegistration(true)
     try {
       const registrations = await registrationService.getUserEventRegistrations(eventId)
-      console.log('[FRONTEND] User registrations for event:', registrations)
       setUserRegistrations(registrations)
       
       // Find active registration (status: registered)
       const active = registrations.find(reg => reg.status === 'registered')
-      console.log('[FRONTEND] Active registration found:', active)
       setActiveRegistration(active || null)
     } catch (error) {
-      console.error("Error checking user registrations:", error)
+      // Error checking user registrations
     } finally {
       setCheckingRegistration(false)
     }
@@ -257,7 +252,7 @@ export default function EnhancedEventDetailPage() {
         }
       };
 
-      console.log('Submitting registration data:', registrationData);
+
 
       // Call backend to save registration
       await eventService.registerForEventV2(event._id, registrationData)
@@ -274,7 +269,6 @@ export default function EnhancedEventDetailPage() {
       setActiveRegistration(newActiveRegistration || null)
       setUserRegistrations(updatedRegistrations)
     } catch (error: any) {
-      console.error("Error submitting form:", error)
       const errorMessage = error.response?.data?.message || "There was an unexpected error. Please try again later."
       setErrors({ submit: errorMessage })
     } finally {

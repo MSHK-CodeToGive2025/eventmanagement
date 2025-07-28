@@ -9,6 +9,7 @@ import { AlertCircle, CheckCircle2, User, Key, Save, Users } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import RouteGuard from "@/components/route-guard"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { PhoneInput } from "@/components/ui/phone-input"
 import axios from "axios"
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -28,7 +29,7 @@ interface PasswordFormData {
 }
 
 export default function UserProfile() {
-  const { user, logout } = useAuth()
+  const { user, logout, refreshUser } = useAuth()
   const { toast } = useToast()
   const [activeTab, setActiveTab] = useState("profile")
   
@@ -82,7 +83,7 @@ export default function UserProfile() {
           const response = await axios.get(`${API_URL}/users`)
           setAvailableUsers(response.data)
         } catch (error) {
-          console.error('Failed to fetch users:', error)
+          // Failed to fetch users
         }
       }
     }
@@ -137,6 +138,10 @@ export default function UserProfile() {
       })
 
       setProfileSuccess("Profile updated successfully!")
+      
+      // Refresh user context to reflect changes immediately
+      await refreshUser()
+      
       toast({
         title: "Success",
         description: "Profile updated successfully",
@@ -313,16 +318,14 @@ export default function UserProfile() {
                     />
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="mobile">Mobile Number</Label>
-                    <Input
-                      id="mobile"
-                      type="tel"
-                      value={profileData.mobile}
-                      onChange={(e) => handleProfileChange("mobile", e.target.value)}
-                      required
-                    />
-                  </div>
+                  <PhoneInput
+                    id="mobile"
+                    label="Mobile Number"
+                    value={profileData.mobile}
+                    onChange={(value) => handleProfileChange("mobile", value)}
+                    required
+                    placeholder="+852 1234 5678"
+                  />
 
                   <div className="flex justify-end">
                     <Button type="submit" disabled={isProfileLoading}>

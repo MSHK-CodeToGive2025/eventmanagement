@@ -1,6 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import auth from '../middleware/auth.js';
+import { validatePhoneNumberMiddleware } from '../utils/phoneUtils.js';
 
 const router = express.Router();
 
@@ -38,7 +39,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Create new user (admin only)
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, validatePhoneNumberMiddleware, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     if (!user || user.role !== 'admin') {
@@ -98,7 +99,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // Update user (admin only, or user updating their own profile)
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, validatePhoneNumberMiddleware, async (req, res) => {
   try {
     const requestingUser = await User.findById(req.user.userId);
     if (!requestingUser) {

@@ -2,6 +2,7 @@ import cron from 'node-cron';
 import Event from '../models/Event.js';
 import EventRegistration from '../models/EventRegistration.js';
 import twilio from 'twilio';
+import { formatForWhatsApp } from '../utils/phoneUtils.js';
 
 // Initialize Twilio client
 let twilioClient = null;
@@ -136,10 +137,8 @@ class ReminderService {
           try {
             const message = this.createReminderMessage(event, reminderHours);
             
-            // Format phone number to E.164 format if needed
-            const formattedNumber = registration.attendee.phone.startsWith('+') 
-              ? registration.attendee.phone 
-              : `+${registration.attendee.phone.replace(/\D/g, '')}`;
+            // Format phone number for Twilio WhatsApp compliance
+            const formattedNumber = formatForWhatsApp(registration.attendee.phone);
 
             await twilioClient.messages.create({
               body: message,

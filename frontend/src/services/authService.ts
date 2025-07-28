@@ -3,8 +3,8 @@ import axios from 'axios';
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Debug logging
-console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
-console.log('Final API_URL:', API_URL);
+//console.log('VITE_API_URL:', import.meta.env.VITE_API_URL);
+//console.log('Final API_URL:', API_URL);
 
 export interface LoginCredentials {
   username: string;

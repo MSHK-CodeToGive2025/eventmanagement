@@ -2,12 +2,13 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import auth from '../middleware/auth.js';
+import { validatePhoneNumberMiddleware } from '../utils/phoneUtils.js';
 
 const router = express.Router();
 const expiresIn = '24h';
 
 // Register new user (public registration - always creates participants, except first user is admin)
-router.post('/register', async (req, res) => { 
+router.post('/register', validatePhoneNumberMiddleware, async (req, res) => { 
   try {
     const { username, password, firstName, lastName, mobile, email } = req.body;
     if (!username || !password || !firstName || !lastName || !mobile) {
