@@ -3,6 +3,7 @@ import express from 'express';
 import auth from '../middleware/auth.js';
 import Event from '../models/Event.js';
 import User from '../models/User.js';
+import EventRegistration from '../models/EventRegistration.js';
 import multer from 'multer';
 import twilio from 'twilio';
 
@@ -135,6 +136,13 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
 
     const eventData = { ...req.body, createdBy: req.user.userId };
     
+    // Handle reminder times array
+    if (req.body['reminderTimes[]']) {
+      eventData.reminderTimes = Array.isArray(req.body['reminderTimes[]']) 
+        ? req.body['reminderTimes[]'].map(time => parseInt(time))
+        : [parseInt(req.body['reminderTimes[]'])];
+    }
+    
     // Handle image upload
     if (req.file) {
       // Check file size (500KB limit)
@@ -209,6 +217,13 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
     console.log('[EVENTS] Authorization successful - proceeding with update');
 
     const updateData = { ...req.body, updatedBy: req.user.userId };
+    
+    // Handle reminder times array
+    if (req.body['reminderTimes[]']) {
+      updateData.reminderTimes = Array.isArray(req.body['reminderTimes[]']) 
+        ? req.body['reminderTimes[]'].map(time => parseInt(time))
+        : [parseInt(req.body['reminderTimes[]'])];
+    }
     
     // Handle image removal
     if (req.body.removeImage === 'true') {
@@ -574,22 +589,22 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     
-    // Only admin or staff can send messages
+    // Only admin, staff, or event creator can send messages
     if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
       console.error(`[WhatsApp] Unauthorized access attempt by user: ${req.user.userId}`);
       return res.status(403).json({ message: 'Only admin or staff can send WhatsApp messages' });
     }
 
-    const event = await Event.findById(req.params.id)
-      .populate({
-        path: 'registeredParticipants',
-        select: 'name email phoneNumber',
-        model: 'User'
-      });
-
+    const event = await Event.findById(req.params.id);
     if (!event) {
       console.error(`[WhatsApp] Event not found: ${req.params.id}`);
       return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Check if user is event creator (additional authorization)
+    if (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId) {
+      console.error(`[WhatsApp] Unauthorized access attempt by user: ${req.user.userId} for event: ${req.params.id}`);
+      return res.status(403).json({ message: 'Only admin, staff, or event creator can send WhatsApp messages' });
     }
 
     const { message } = req.body;
@@ -598,27 +613,33 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
       return res.status(400).json({ message: 'Message content is required' });
     }
 
+    // Get all registered participants for this event
+    const registrations = await EventRegistration.find({
+      eventId: req.params.id,
+      status: 'registered'
+    });
+
     console.log(`[WhatsApp] Starting message send for event: ${event.title} (${event._id})`);
     console.log(`[WhatsApp] Message content: ${message}`);
-    console.log(`[WhatsApp] Number of registered participants: ${event.registeredParticipants.length}`);
+    console.log(`[WhatsApp] Number of registered participants: ${registrations.length}`);
 
     const failedNumbers = [];
     const successfulNumbers = [];
 
     // Send message to each participant
-    for (const participant of event.registeredParticipants) {
-      if (participant && participant.phoneNumber) {
+    for (const registration of registrations) {
+      if (registration.attendee && registration.attendee.phone) {
         try {
-          console.log(`[WhatsApp] Sending to ${participant.name || 'Unknown User'} (${participant.phoneNumber})`);
+          console.log(`[WhatsApp] Sending to ${registration.attendee.firstName} ${registration.attendee.lastName} (${registration.attendee.phone})`);
           
           // Format phone number to E.164 format if needed
-          const formattedNumber = participant.phoneNumber.startsWith('+') 
-            ? participant.phoneNumber 
-            : `+${participant.phoneNumber.replace(/\D/g, '')}`;
+          const formattedNumber = registration.attendee.phone.startsWith('+') 
+            ? registration.attendee.phone 
+            : `+${registration.attendee.phone.replace(/\D/g, '')}`;
 
           if (!twilioClient) {
             console.error('Twilio client not initialized, cannot send WhatsApp message');
-            failedNumbers.push(participant.phoneNumber);
+            failedNumbers.push(registration.attendee.phone);
             continue;
           }
           
@@ -631,8 +652,8 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
           console.log(`[WhatsApp] Successfully sent to ${formattedNumber}`);
           successfulNumbers.push(formattedNumber);
         } catch (error) {
-          console.error(`[WhatsApp] Failed to send to ${participant.phoneNumber}:`, error.message);
-          failedNumbers.push(participant.phoneNumber);
+          console.error(`[WhatsApp] Failed to send to ${registration.attendee.phone}:`, error.message);
+          failedNumbers.push(registration.attendee.phone);
         }
       } else {
         console.log(`[WhatsApp] Skipping participant - no phone number or invalid data`);

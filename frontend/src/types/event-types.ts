@@ -57,6 +57,8 @@ export interface ZubinEvent {
   updatedAt?: Date; // Updated at of the event
   tags?: string[]; // Tags of the event
   registeredCount?: number; // Registered count of the event
+  reminderTimes?: number[]; // Array of hours before event start for reminders (e.g., [48, 24, 3])
+  remindersSent?: number[]; // Array of hours for which reminders have already been sent
 }
 
 // Event categories

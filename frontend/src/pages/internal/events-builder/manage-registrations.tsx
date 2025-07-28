@@ -12,22 +12,27 @@ import { format } from "date-fns"
 import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2 } from "lucide-react"
 import { ZubinEvent, eventCategories, targetGroups } from "@/types/event-types"
 import RegistrationFormDialog from "@/components/events-builder/registration-form-dialog"
+import WhatsAppMessageDialog from "@/components/events-builder/whatsapp-message-dialog"
 import { RegistrationForm } from "@/types/form-types"
 import registrationService, { EventRegistration } from "@/services/registrationService"
 import { formService } from "@/services/formService"
+import eventService from "@/services/eventService"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function ManageRegistrations() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const event = location.state?.event as ZubinEvent;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("all");
   const [selectedRegistration, setSelectedRegistration] = useState<EventRegistration | null>(null);
   const [registrationToReject, setRegistrationToReject] = useState<EventRegistration | null>(null);
+  const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   
   // State for real data
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -79,6 +84,23 @@ export default function ManageRegistrations() {
 
   const handleViewForm = (registration: EventRegistration) => {
     setSelectedRegistration(registration);
+  };
+
+  // Check if user can send WhatsApp messages (admin, staff, or event creator)
+  const canSendWhatsApp = user && (
+    user.role === 'admin' || 
+    user.role === 'staff' || 
+    (event?.createdBy && event.createdBy._id === user._id)
+  );
+
+  // Get registered participants count
+  const registeredParticipantsCount = registrations.filter(reg => reg.status === 'registered').length;
+
+  const handleSendWhatsAppMessage = async (message: string) => {
+    if (!event?._id) {
+      throw new Error("Event ID not found");
+    }
+    return await eventService.sendWhatsAppMessage(event._id, message);
   };
 
   const handleRejectRegistration = async (registrationId: string) => {
@@ -255,6 +277,15 @@ export default function ManageRegistrations() {
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
+              {canSendWhatsApp && registeredParticipantsCount > 0 && (
+                <Button
+                  onClick={() => setShowWhatsAppDialog(true)}
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Send WhatsApp
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -381,6 +412,17 @@ export default function ManageRegistrations() {
           registration={selectedRegistration}
           form={registrationForm}
           onReject={handleRejectRegistration}
+        />
+      )}
+
+      {/* WhatsApp Message Dialog */}
+      {showWhatsAppDialog && (
+        <WhatsAppMessageDialog
+          isOpen={showWhatsAppDialog}
+          onClose={() => setShowWhatsAppDialog(false)}
+          eventTitle={event.title}
+          participantCount={registeredParticipantsCount}
+          onSendMessage={handleSendWhatsAppMessage}
         />
       )}
     </div>

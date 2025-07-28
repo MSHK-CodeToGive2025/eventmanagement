@@ -13,6 +13,7 @@ import { CalendarIcon, MapPin, Link } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import EventSessions from "./event-sessions"
+import ReminderTimeConfig from "./reminder-time-config"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
 import eventService from "@/services/eventService"
@@ -82,6 +83,7 @@ const eventFormSchema = z.object({
   ),
   capacity: z.number().optional(),
   tags: z.array(z.string()).optional(),
+  reminderTimes: z.array(z.number()).optional(),
 })
 
 type EventFormValues = z.infer<typeof eventFormSchema>
@@ -153,6 +155,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       sessions: [],
       capacity: undefined,
       tags: [],
+      reminderTimes: [24], // Default to 24 hours before event
     },
   })
 
@@ -187,7 +190,8 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
               capacity: session.capacity
             })),
             capacity: eventData.capacity,
-            tags: eventData.tags || []
+            tags: eventData.tags || [],
+            reminderTimes: eventData.reminderTimes || [24]
           }
 
           // Reset form with the fetched data
@@ -301,6 +305,13 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       if (data.tags && data.tags.length > 0) {
         data.tags.forEach(tag => {
           formData.append('tags[]', tag)
+        })
+      }
+
+      // Add reminder times
+      if (data.reminderTimes && data.reminderTimes.length > 0) {
+        data.reminderTimes.forEach(time => {
+          formData.append('reminderTimes[]', time.toString())
         })
       }
 
@@ -921,6 +932,23 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                       <FormDescription>
                         Leave empty for unlimited capacity.
                       </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="reminderTimes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <ReminderTimeConfig
+                          value={field.value || []}
+                          onChange={field.onChange}
+                          disabled={isSubmitting}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
