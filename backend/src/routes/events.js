@@ -140,6 +140,16 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     // Handle reminder times array
     console.log('[EVENTS] Reminder times in request body:', req.body['reminderTimes[]']);
     console.log('[EVENTS] All request body keys:', Object.keys(req.body));
+    console.log('[EVENTS] Staff contact in request body:', req.body['staffContact[name]'], req.body['staffContact[phone]']);
+    
+    // Handle staff contact information
+    if (req.body['staffContact[name]'] || req.body['staffContact[phone]']) {
+      eventData.staffContact = {
+        name: req.body['staffContact[name]'] || "",
+        phone: req.body['staffContact[phone]'] || ""
+      };
+    }
+    
     if (req.body['reminderTimes[]']) {
       eventData.reminderTimes = Array.isArray(req.body['reminderTimes[]']) 
         ? req.body['reminderTimes[]'].map(time => parseInt(time))
@@ -226,6 +236,16 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
     
     // Handle reminder times array
     console.log('[EVENTS] Update - Reminder times in request body:', req.body['reminderTimes[]']);
+    console.log('[EVENTS] Update - Staff contact in request body:', req.body['staffContact[name]'], req.body['staffContact[phone]']);
+    
+    // Handle staff contact information
+    if (req.body['staffContact[name]'] || req.body['staffContact[phone]']) {
+      updateData.staffContact = {
+        name: req.body['staffContact[name]'] || "",
+        phone: req.body['staffContact[phone]'] || ""
+      };
+    }
+    
     if (req.body['reminderTimes[]']) {
       updateData.reminderTimes = Array.isArray(req.body['reminderTimes[]']) 
         ? req.body['reminderTimes[]'].map(time => parseInt(time))
