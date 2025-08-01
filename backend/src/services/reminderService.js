@@ -334,12 +334,13 @@ class ReminderService {
       }
     }
     
-    message += `\n\nWe look forward to seeing you!`;
-    
-    // Add staff contact information if available
+    // Add staff contact information if available (right after location/meeting link)
     if (event.staffContact && event.staffContact.name && event.staffContact.phone) {
-      message += `\n\nContact ${event.staffContact.name} on ${event.staffContact.phone} for any issue.`;
+      message += `\n👤 Contact: ${event.staffContact.name}`;
+      message += `\n📞 Phone: ${event.staffContact.phone}`;
     }
+    
+    message += `\n\nWe look forward to seeing you!`;
     
     return message;
   }
