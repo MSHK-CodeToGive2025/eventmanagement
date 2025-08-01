@@ -94,16 +94,16 @@ export default function WhatsAppMessageDialog({
 
           {/* Message Title Input */}
           <div className="space-y-2">
-            <Label htmlFor="messageTitle">Message Title (Optional)</Label>
+            <Label htmlFor="messageTitle">Message Subtitle (Optional)</Label>
             <Input
               id="messageTitle"
-              placeholder="Enter a title for your message..."
+              placeholder="Enter a subtitle for your message..."
               value={messageTitle}
               onChange={(e) => setMessageTitle(e.target.value)}
               disabled={isSending}
             />
             <p className="text-sm text-gray-500">
-              Leave empty to use default title "Event Notification"
+              Leave empty to send without a subtitle
             </p>
           </div>
 
@@ -119,9 +119,7 @@ export default function WhatsAppMessageDialog({
               className="resize-none"
               disabled={isSending}
             />
-            <p className="text-sm text-gray-500">
-              The message will be prefixed with "{messageTitle || 'Event Notification'}: [Event Title]"
-            </p>
+
           </div>
 
           {/* Error Display */}
@@ -160,7 +158,7 @@ export default function WhatsAppMessageDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={isSending}>
-            Cancel
+            Close
           </Button>
           <Button 
             onClick={handleSend} 

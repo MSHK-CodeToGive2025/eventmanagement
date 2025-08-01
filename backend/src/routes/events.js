@@ -614,8 +614,8 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
       return res.status(400).json({ message: 'Message content is required' });
     }
 
-    // Use provided title or default to "Event Notification"
-    const messageTitle = title || "Event Notification";
+    // Use provided title as subtitle (optional)
+    const messageSubtitle = title || "";
 
     // Get all registered participants for this event
     const registrations = await EventRegistration.find({
@@ -646,7 +646,7 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
           }
           
           await twilioClient.messages.create({
-            body: `${messageTitle}: ${event.title}\n\n${message}`,
+            body: `Zubin Event Notification: ${event.title}${messageSubtitle ? `\n${messageSubtitle}` : ''}\n\n${message}`,
             from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
             to: `whatsapp:${formattedNumber}`
           });
