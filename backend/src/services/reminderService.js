@@ -86,32 +86,73 @@ class ReminderService {
   // Process reminders for a specific event
   async processEventReminders(event, now) {
     try {
-      const eventStartTime = new Date(event.startDate);
-      const timeUntilEvent = eventStartTime.getTime() - now.getTime();
-      const hoursUntilEvent = timeUntilEvent / (1000 * 60 * 60);
+      console.log(`[REMINDER SERVICE] Processing reminders for event: ${event.title}`);
 
-      console.log(`[REMINDER SERVICE] Event: ${event.title} - ${hoursUntilEvent.toFixed(1)} hours until start`);
+      // Check reminders for the main event
+      if (event.startDate) {
+        await this.processSingleEventReminder(event, event.startDate, now, 'main event');
+      }
 
-      // Check each configured reminder time
-      for (const reminderHours of event.reminderTimes) {
-        // Check if reminder is due (within 1 hour window)
-        if (hoursUntilEvent >= reminderHours - 0.5 && hoursUntilEvent <= reminderHours + 0.5) {
-          // Check if this reminder has already been sent
-          if (!event.remindersSent.includes(reminderHours)) {
-            console.log(`[REMINDER SERVICE] Sending ${reminderHours}h reminder for event: ${event.title}`);
-            await this.sendEventReminder(event, reminderHours);
-          } else {
-            console.log(`[REMINDER SERVICE] ${reminderHours}h reminder already sent for event: ${event.title}`);
+      // Check reminders for all sessions
+      if (event.sessions && event.sessions.length > 0) {
+        console.log(`[REMINDER SERVICE] Event has ${event.sessions.length} sessions to check`);
+        
+        for (const session of event.sessions) {
+          // Validate session has required fields
+          if (!session.date || !session.startTime || !session.title) {
+            console.log(`[REMINDER SERVICE] Skipping session - missing required fields: ${session.title || 'Unknown'}`);
+            continue;
           }
+          
+          // Combine session date with start time to get the actual session start datetime
+          const sessionDate = new Date(session.date);
+          const [hours, minutes] = session.startTime.split(':').map(Number);
+          sessionDate.setHours(hours, minutes, 0, 0);
+          
+          console.log(`[REMINDER SERVICE] Session "${session.title}" scheduled for ${sessionDate.toISOString()}`);
+          await this.processSingleEventReminder(event, sessionDate, now, `session: ${session.title}`);
         }
+      } else {
+        console.log(`[REMINDER SERVICE] Event has no sessions, only checking main event`);
       }
     } catch (error) {
       console.error(`[REMINDER SERVICE] Error processing reminders for event ${event.title}:`, error);
     }
   }
 
+  // Process reminder for a single event or session
+  async processSingleEventReminder(event, startDateTime, now, eventType) {
+    try {
+      const timeUntilEvent = startDateTime.getTime() - now.getTime();
+      const hoursUntilEvent = timeUntilEvent / (1000 * 60 * 60);
+
+      console.log(`[REMINDER SERVICE] ${eventType} - ${hoursUntilEvent.toFixed(1)} hours until start`);
+
+      // Check each configured reminder time
+      for (const reminderHours of event.reminderTimes) {
+        // Check if reminder is due (within 1 hour window)
+        if (hoursUntilEvent >= reminderHours - 0.5 && hoursUntilEvent <= reminderHours + 0.5) {
+          // Create a unique identifier for this reminder (event + session + reminder time)
+          const reminderKey = eventType === 'main event' 
+            ? `main_${reminderHours}` 
+            : `session_${eventType.replace('session: ', '')}_${reminderHours}`;
+          
+          // Check if this reminder has already been sent
+          if (!event.remindersSent.includes(reminderKey)) {
+            console.log(`[REMINDER SERVICE] Sending ${reminderHours}h reminder for ${eventType}: ${event.title}`);
+            await this.sendEventReminder(event, reminderHours, eventType, startDateTime);
+          } else {
+            console.log(`[REMINDER SERVICE] ${reminderHours}h reminder already sent for ${eventType}: ${event.title}`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`[REMINDER SERVICE] Error processing reminder for ${eventType}:`, error);
+    }
+  }
+
   // Send reminder for a specific event
-  async sendEventReminder(event, reminderHours) {
+  async sendEventReminder(event, reminderHours, eventType, startDateTime) {
     try {
       // Get all registered participants for this event
       const registrations = await EventRegistration.find({
@@ -124,7 +165,7 @@ class ReminderService {
       if (registrations.length === 0) {
         console.log(`[REMINDER SERVICE] No registered participants for event: ${event.title}`);
         // Still mark as sent to avoid repeated processing
-        await this.markReminderSent(event._id, reminderHours);
+        await this.markReminderSent(event._id, reminderHours, eventType, startDateTime);
         return;
       }
 
@@ -135,7 +176,7 @@ class ReminderService {
       for (const registration of registrations) {
         if (registration.attendee && registration.attendee.phone) {
           try {
-            const message = this.createReminderMessage(event, reminderHours);
+            const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
             
             // Format phone number for Twilio WhatsApp compliance
             const formattedNumber = formatForWhatsApp(registration.attendee.phone);
@@ -161,7 +202,7 @@ class ReminderService {
       console.log(`[REMINDER SERVICE] Successful: ${successfulNumbers.length}, Failed: ${failedNumbers.length}`);
 
       // Mark reminder as sent regardless of failures
-      await this.markReminderSent(event._id, reminderHours);
+      await this.markReminderSent(event._id, reminderHours, eventType, startDateTime);
 
     } catch (error) {
       console.error(`[REMINDER SERVICE] Error sending reminder for event ${event.title}:`, error);
@@ -169,8 +210,8 @@ class ReminderService {
   }
 
   // Create reminder message
-  createReminderMessage(event, reminderHours) {
-    const eventStartTime = new Date(event.startDate);
+  createReminderMessage(event, reminderHours, eventType, startDateTime) {
+    const eventStartTime = startDateTime; // Use the actual startDateTime
     const formattedDate = eventStartTime.toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -190,16 +231,56 @@ class ReminderService {
       timeText = `${reminderHours} hour${reminderHours > 1 ? 's' : ''}`;
     }
 
-    return `🔔 Event Reminder: "${event.title}"\n\n⏰ The event will start in ${timeText}\n📅 Date: ${formattedDate}\n🕐 Time: ${formattedTime}\n📍 Location: ${event.location.venue}, ${event.location.district}\n\nWe look forward to seeing you!`;
+    // Determine if this is a session or main event
+    const isSession = eventType.startsWith('session:');
+    const sessionTitle = isSession ? eventType.replace('session: ', '') : null;
+
+    let message = `🔔 Event Reminder: "${event.title}"`;
+    
+    if (isSession) {
+      message += `\n📋 Session: "${sessionTitle}"`;
+    }
+    
+    message += `\n\n⏰ The ${isSession ? 'session' : 'event'} will start in ${timeText}\n📅 Date: ${formattedDate}\n🕐 Time: ${formattedTime}`;
+    
+    // Add location information
+    if (isSession) {
+      // For sessions, use session location if available, otherwise fall back to event location
+      const session = event.sessions.find(s => s.title === sessionTitle);
+      if (session && session.location && session.location.venue) {
+        message += `\n📍 Location: ${session.location.venue}`;
+        if (session.location.meetingLink) {
+          message += `\n🔗 Meeting Link: ${session.location.meetingLink}`;
+        }
+      } else {
+        message += `\n📍 Location: ${event.location.venue}, ${event.location.district}`;
+        if (event.location.meetingLink) {
+          message += `\n🔗 Meeting Link: ${event.location.meetingLink}`;
+        }
+      }
+    } else {
+      message += `\n📍 Location: ${event.location.venue}, ${event.location.district}`;
+      if (event.location.meetingLink) {
+        message += `\n🔗 Meeting Link: ${event.location.meetingLink}`;
+      }
+    }
+    
+    message += `\n\nWe look forward to seeing you!`;
+    
+    return message;
   }
 
   // Mark reminder as sent
-  async markReminderSent(eventId, reminderHours) {
+  async markReminderSent(eventId, reminderHours, eventType, startDateTime) {
     try {
+      const reminderKey = eventType === 'main event' 
+        ? `main_${reminderHours}` 
+        : `session_${eventType.replace('session: ', '')}_${reminderHours}`;
+
       await Event.findByIdAndUpdate(eventId, {
-        $addToSet: { remindersSent: reminderHours }
+        $addToSet: { remindersSent: reminderKey }
       });
-      console.log(`[REMINDER SERVICE] Marked ${reminderHours}h reminder as sent for event: ${eventId}`);
+      console.log(`[REMINDER SERVICE] Marked ${reminderHours}h reminder as sent for ${eventType}: ${eventId}`);
     } catch (error) {
       console.error(`[REMINDER SERVICE] Error marking reminder as sent:`, error);
     }
