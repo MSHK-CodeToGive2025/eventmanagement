@@ -138,10 +138,15 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     const eventData = { ...req.body, createdBy: req.user.userId };
     
     // Handle reminder times array
+    console.log('[EVENTS] Reminder times in request body:', req.body['reminderTimes[]']);
+    console.log('[EVENTS] All request body keys:', Object.keys(req.body));
     if (req.body['reminderTimes[]']) {
       eventData.reminderTimes = Array.isArray(req.body['reminderTimes[]']) 
         ? req.body['reminderTimes[]'].map(time => parseInt(time))
         : [parseInt(req.body['reminderTimes[]'])];
+      console.log('[EVENTS] Set reminder times to:', eventData.reminderTimes);
+    } else {
+      console.log('[EVENTS] No reminder times provided, will use default');
     }
     
     // Handle image upload
@@ -220,10 +225,14 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
     const updateData = { ...req.body, updatedBy: req.user.userId };
     
     // Handle reminder times array
+    console.log('[EVENTS] Update - Reminder times in request body:', req.body['reminderTimes[]']);
     if (req.body['reminderTimes[]']) {
       updateData.reminderTimes = Array.isArray(req.body['reminderTimes[]']) 
         ? req.body['reminderTimes[]'].map(time => parseInt(time))
         : [parseInt(req.body['reminderTimes[]'])];
+      console.log('[EVENTS] Update - Set reminder times to:', updateData.reminderTimes);
+    } else {
+      console.log('[EVENTS] Update - No reminder times provided, keeping existing');
     }
     
     // Handle image removal

@@ -68,17 +68,33 @@ class ReminderService {
       const now = new Date();
       console.log(`[REMINDER SERVICE] Current time: ${now.toISOString()}`);
       
+      // Get all published events - we need to check both main events and all sessions
+      // The filtering for which events/sessions need reminders happens in processEventReminders
       const events = await Event.find({
-        status: 'Published', // Only process published events
-        startDate: { $gt: now } // Only future events
+        status: 'Published' // Only process published events
       });
 
-      console.log(`[REMINDER SERVICE] Found ${events.length} published future events`);
+      // Filter out events that are already completed (endDate < now)
+      const activeEvents = events.filter(event => {
+        if (!event.endDate) return true; // If no end date, keep it
+        return event.endDate > now;
+      });
+
+      console.log(`[REMINDER SERVICE] Found ${events.length} published events, ${activeEvents.length} are still active`);
+
+      console.log(`[REMINDER SERVICE] Found ${activeEvents.length} active published events`);
+
+      // Debug: Log all events and their reminder times
+      for (const event of activeEvents) {
+        console.log(`[REMINDER SERVICE] DEBUG - Event: ${event.title}`);
+        console.log(`[REMINDER SERVICE] DEBUG - Reminder times: ${JSON.stringify(event.reminderTimes)}`);
+        console.log(`[REMINDER SERVICE] DEBUG - Reminders sent: ${JSON.stringify(event.remindersSent)}`);
+      }
 
       let totalRemindersSent = 0;
       let totalSessionsChecked = 0;
 
-      for (const event of events) {
+      for (const event of activeEvents) {
         const result = await this.processEventReminders(event, now);
         if (result) {
           totalRemindersSent += result.remindersSent;
@@ -99,11 +115,21 @@ class ReminderService {
       console.log(`[REMINDER SERVICE] Processing reminders for event: ${event.title}`);
       console.log(`[REMINDER SERVICE] Event reminder times: ${event.reminderTimes.join(', ')} hours before`);
       console.log(`[REMINDER SERVICE] Event reminders already sent: ${event.remindersSent.join(', ')}`);
+      console.log(`[REMINDER SERVICE] Event ID: ${event._id}`);
+      console.log(`[REMINDER SERVICE] Reminder times type: ${typeof event.reminderTimes}, length: ${event.reminderTimes.length}`);
+      console.log(`[REMINDER SERVICE] Raw reminder times:`, JSON.stringify(event.reminderTimes));
+
+      let remindersSent = 0;
+      let sessionsChecked = 0;
 
       // Check reminders for the main event
       if (event.startDate) {
         console.log(`[REMINDER SERVICE] Main event start date: ${event.startDate.toISOString()}`);
-        await this.processSingleEventReminder(event, event.startDate, now, 'main event');
+        const mainEventResult = await this.processSingleEventReminder(event, event.startDate, now, 'main event');
+        if (mainEventResult && mainEventResult.reminderSent) {
+          remindersSent++;
+        }
+        sessionsChecked++;
       }
 
       // Check reminders for all sessions
@@ -123,13 +149,21 @@ class ReminderService {
           sessionDate.setHours(hours, minutes, 0, 0);
           
           console.log(`[REMINDER SERVICE] Session "${session.title}" scheduled for ${sessionDate.toISOString()}`);
-          await this.processSingleEventReminder(event, sessionDate, now, `session: ${session.title}`);
+          const sessionResult = await this.processSingleEventReminder(event, sessionDate, now, `session: ${session.title}`);
+          if (sessionResult && sessionResult.reminderSent) {
+            remindersSent++;
+          }
+          sessionsChecked++;
         }
       } else {
         console.log(`[REMINDER SERVICE] Event has no sessions, only checking main event`);
       }
+
+      console.log(`[REMINDER SERVICE] 📊 Event "${event.title}": Checked ${sessionsChecked} sessions/events, sent ${remindersSent} reminders`);
+      return { remindersSent, sessionsChecked };
     } catch (error) {
       console.error(`[REMINDER SERVICE] Error processing reminders for event ${event.title}:`, error);
+      return { remindersSent: 0, sessionsChecked: 0 };
     }
   }
 
@@ -141,9 +175,12 @@ class ReminderService {
 
       console.log(`[REMINDER SERVICE] ${eventType} - ${hoursUntilEvent.toFixed(1)} hours until start`);
 
+      let reminderSent = false;
+
       // Check each configured reminder time
+      console.log(`[REMINDER SERVICE] Total reminder times to check: ${event.reminderTimes.length}`);
       for (const reminderHours of event.reminderTimes) {
-        console.log(`[REMINDER SERVICE] Checking ${reminderHours}h reminder for ${eventType}`);
+        console.log(`[REMINDER SERVICE] Checking ${reminderHours}h reminder for ${eventType} (type: ${typeof reminderHours})`);
         console.log(`[REMINDER SERVICE] Time window: ${reminderHours - 0.5} to ${reminderHours + 0.5} hours before`);
         console.log(`[REMINDER SERVICE] Current hours until event: ${hoursUntilEvent.toFixed(1)}`);
         
@@ -163,6 +200,7 @@ class ReminderService {
           if (!event.remindersSent.includes(reminderKey)) {
             console.log(`[REMINDER SERVICE] 🚀 Sending ${reminderHours}h reminder for ${eventType}: ${event.title}`);
             await this.sendEventReminder(event, reminderHours, eventType, startDateTime);
+            reminderSent = true;
           } else {
             console.log(`[REMINDER SERVICE] ⏭️ ${reminderHours}h reminder already sent for ${eventType}: ${event.title}`);
           }
@@ -170,8 +208,11 @@ class ReminderService {
           console.log(`[REMINDER SERVICE] ❌ ${reminderHours}h reminder does NOT match criteria for ${eventType}`);
         }
       }
+
+      return { reminderSent };
     } catch (error) {
       console.error(`[REMINDER SERVICE] Error processing reminder for ${eventType}:`, error);
+      return { reminderSent: false };
     }
   }
 
