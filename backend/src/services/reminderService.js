@@ -336,6 +336,11 @@ class ReminderService {
     
     message += `\n\nWe look forward to seeing you!`;
     
+    // Add staff contact information if available
+    if (event.staffContact && event.staffContact.name && event.staffContact.phone) {
+      message += `\n\nContact ${event.staffContact.name} on ${event.staffContact.phone} for any issue.`;
+    }
+    
     return message;
   }
 

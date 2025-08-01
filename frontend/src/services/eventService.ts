@@ -61,6 +61,10 @@ export interface Event {
   registeredCount?: number;
   reminderTimes?: number[];
   remindersSent?: number[];
+  staffContact?: {
+    name?: string;
+    phone?: string;
+  };
 }
 
 export interface EventFormData {
@@ -95,6 +99,10 @@ export interface EventFormData {
   capacity?: number;
   tags?: string[];
   reminderTimes?: number[];
+  staffContact?: {
+    name?: string;
+    phone?: string;
+  };
 }
 
 // Add auth token to requests
