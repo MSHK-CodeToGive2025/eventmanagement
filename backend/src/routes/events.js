@@ -608,11 +608,14 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only admin, staff, or event creator can send WhatsApp messages' });
     }
 
-    const { message } = req.body;
+    const { title, message } = req.body;
     if (!message) {
       console.error('[WhatsApp] Message content is required');
       return res.status(400).json({ message: 'Message content is required' });
     }
+
+    // Use provided title or default to "Event Notification"
+    const messageTitle = title || "Event Notification";
 
     // Get all registered participants for this event
     const registrations = await EventRegistration.find({
@@ -643,7 +646,7 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
           }
           
           await twilioClient.messages.create({
-            body: `Event Notification: ${event.title}\n\n${message}`,
+            body: `${messageTitle}: ${event.title}\n\n${message}`,
             from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
             to: `whatsapp:${formattedNumber}`
           });
