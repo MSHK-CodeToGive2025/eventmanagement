@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
-import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2 } from "lucide-react"
+import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer } from "lucide-react"
 import { ZubinEvent, eventCategories, targetGroups } from "@/types/event-types"
 import RegistrationFormDialog from "@/components/events-builder/registration-form-dialog"
 import WhatsAppMessageDialog from "@/components/events-builder/whatsapp-message-dialog"
@@ -29,7 +29,7 @@ export default function ManageRegistrations() {
   const event = location.state?.event as ZubinEvent;
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("registered");
   const [selectedRegistration, setSelectedRegistration] = useState<EventRegistration | null>(null);
   const [registrationToReject, setRegistrationToReject] = useState<EventRegistration | null>(null);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
@@ -131,7 +131,198 @@ export default function ManageRegistrations() {
     }
   };
 
+  // Get session details for a registration
+  const getSessionDetails = (sessionIds: string[]) => {
+    if (!event?.sessions) return [];
+    return sessionIds
+      .map(sessionId => event.sessions.find(session => session._id === sessionId))
+      .filter(session => session)
+      .map(session => ({
+        title: session!.title,
+        date: new Date(session!.date),
+        startTime: session!.startTime,
+        endTime: session!.endTime
+      }));
+  };
 
+  // Print functionality
+  const handlePrint = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Event Registrations - ${event?.title}</title>
+          <style>
+            @media print {
+              @page {
+                size: A4;
+                margin: 1cm;
+              }
+            }
+            body {
+              font-family: Arial, sans-serif;
+              line-height: 1.6;
+              margin: 0;
+              padding: 20px;
+              font-size: 12px;
+            }
+            .header {
+              text-align: center;
+              margin-bottom: 30px;
+              border-bottom: 2px solid #333;
+              padding-bottom: 20px;
+            }
+            .event-details {
+              margin-bottom: 30px;
+              padding: 15px;
+              background-color: #f9f9f9;
+              border-radius: 5px;
+            }
+            .event-details h2 {
+              margin: 0 0 15px 0;
+              color: #333;
+            }
+            .event-info {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 10px;
+              margin-bottom: 15px;
+            }
+            .event-info div {
+              display: flex;
+              align-items: center;
+            }
+            .event-info strong {
+              min-width: 120px;
+              display: inline-block;
+            }
+            .registrations-table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            .registrations-table th,
+            .registrations-table td {
+              border: 1px solid #ddd;
+              padding: 8px;
+              text-align: left;
+              word-wrap: break-word;
+              max-width: 200px;
+            }
+            .registrations-table th {
+              background-color: #f2f2f2;
+              font-weight: bold;
+            }
+            .registrations-table tr:nth-child(even) {
+              background-color: #f9f9f9;
+            }
+            .sessions-list {
+              max-width: 250px;
+              word-wrap: break-word;
+              padding: 8px;
+            }
+            .status-badge {
+              padding: 2px 6px;
+              border-radius: 3px;
+              font-size: 10px;
+              font-weight: bold;
+            }
+            .status-registered {
+              background-color: #d4edda;
+              color: #155724;
+            }
+            .status-cancelled {
+              background-color: #f8d7da;
+              color: #721c24;
+            }
+            .status-rejected {
+              background-color: #f8d7da;
+              color: #721c24;
+            }
+            .footer {
+              margin-top: 30px;
+              text-align: center;
+              font-size: 10px;
+              color: #666;
+            }
+            @media print {
+              .no-print {
+                display: none;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Event Registrations Report</h1>
+            <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+          </div>
+          
+          <div class="event-details">
+            <h2>${event?.title}</h2>
+            <div class="event-info">
+              <div><strong>Date:</strong> ${event?.startDate ? format(new Date(event.startDate), "MMM d, yyyy") : 'N/A'}</div>
+              <div><strong>Location:</strong> ${event?.location?.venue || 'N/A'}</div>
+              <div><strong>Category:</strong> ${event?.category || 'N/A'}</div>
+              <div><strong>Target Group:</strong> ${event?.targetGroup || 'N/A'}</div>
+              <div><strong>Total Sessions:</strong> ${event?.sessions?.length || 0}</div>
+              <div><strong>Total Registrations:</strong> ${filteredRegistrations.length}</div>
+            </div>
+          </div>
+          
+          <table class="registrations-table">
+            <thead>
+              <tr>
+                <th>No.</th>
+                <th>Participant Name</th>
+                <th>Mobile Number</th>
+                <th>Email</th>
+                <th>Sessions Registered (Date & Time)</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredRegistrations.map((registration, index) => {
+                const sessionDetails = getSessionDetails(registration.sessions);
+                const sessionsHtml = sessionDetails.length > 0 
+                  ? sessionDetails.map(session => 
+                      `<div style="margin-bottom: 8px; padding: 4px; border-left: 3px solid #3b82f6; background-color: #f8fafc;">
+                        <div style="font-weight: bold; font-size: 11px; color: #1f2937;">${session.title}</div>
+                        <div style="font-size: 10px; color: #6b7280;">${format(session.date, "MMM d, yyyy")} • ${session.startTime} - ${session.endTime}</div>
+                      </div>`
+                    ).join('')
+                  : 'No sessions selected';
+                return `
+                  <tr>
+                    <td>${index + 1}</td>
+                    <td>${registration.attendee.firstName} ${registration.attendee.lastName}</td>
+                    <td>${registration.attendee.phone}</td>
+                    <td>${registration.attendee.email || '-'}</td>
+                    <td class="sessions-list">${sessionsHtml}</td>
+                    <td><span class="status-badge status-${registration.status}">${registration.status.charAt(0).toUpperCase() + registration.status.slice(1)}</span></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+          
+          <div class="footer">
+            <p>Zubin Foundation Event Management System</p>
+            <p>This report contains ${filteredRegistrations.length} registration(s)</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  };
 
   type RegistrationStatus = "registered" | "cancelled" | "rejected";
 
@@ -254,7 +445,7 @@ export default function ManageRegistrations() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <CardTitle>
-              Registrations ({registrations.length})
+              Registrations ({filteredRegistrations.length})
             </CardTitle>
             <div className="flex gap-4">
               <div className="relative">
@@ -277,6 +468,14 @@ export default function ManageRegistrations() {
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                onClick={handlePrint}
+                variant="outline"
+                className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                Print Report
+              </Button>
               {canSendWhatsApp && registeredParticipantsCount > 0 && (
                 <Button
                   onClick={() => setShowWhatsAppDialog(true)}
@@ -301,102 +500,109 @@ export default function ManageRegistrations() {
                   <TableRow>
                     <TableHead>Participant</TableHead>
                     <TableHead>Contact</TableHead>
+                    <TableHead>Sessions Registered (with Date & Time)</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Registration Date</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredRegistrations.map((registration) => (
-                    <TableRow key={registration._id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">
-                            {registration.attendee.firstName} {registration.attendee.lastName}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <p className="text-sm">{registration.attendee.phone}</p>
-                          {registration.attendee.email && (
-                            <p className="text-sm text-gray-500">{registration.attendee.email}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={getStatusVariant(registration.status)}
-                          className={getStatusClassName(registration.status)}
-                        >
-                          {registration.status.charAt(0).toUpperCase() + registration.status.slice(1)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(registration.registeredAt), "MMM d, yyyy")}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewForm(registration)}
+                  {filteredRegistrations.map((registration) => {
+                    const sessionDetails = getSessionDetails(registration.sessions);
+                    return (
+                      <TableRow key={registration._id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">
+                              {registration.attendee.firstName} {registration.attendee.lastName}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="space-y-1">
+                            <p className="text-sm">{registration.attendee.phone}</p>
+                            {registration.attendee.email && (
+                              <p className="text-sm text-gray-500">{registration.attendee.email}</p>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="max-w-xs">
+                            {sessionDetails.length > 0 ? (
+                              <div className="space-y-2">
+                                {sessionDetails.map((session, index) => (
+                                  <div key={index} className="border rounded p-2 bg-gray-50 mb-2">
+                                    <div className="font-medium text-xs text-gray-900 mb-1">
+                                      {session.title}
+                                    </div>
+                                    <div className="text-xs text-gray-600">
+                                      {format(session.date, "MMM d, yyyy")} • {session.startTime} - {session.endTime}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-gray-500 text-sm">No sessions selected</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={getStatusVariant(registration.status)}
+                            className={getStatusClassName(registration.status)}
                           >
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Form
-                          </Button>
-                          {/* 
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              // TODO: Implement WhatsApp message functionality
-                              console.log("Send WhatsApp message to:", registration.attendee.phone);
-                            }}
-                          >
-                            <MessageSquare className="h-4 w-4 mr-2" />
-                            WhatsApp
-                          </Button>
-                          */}
-                          {registration.status !== "cancelled" && registration.status !== "rejected" && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  onClick={() => setRegistrationToReject(registration)}
-                                >
-                                  <X className="h-4 w-4 mr-2" />
-                                  Reject
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>Reject Registration</AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Are you sure you want to reject the registration for{" "}
-                                    <strong>{registration.attendee.firstName} {registration.attendee.lastName}</strong>?
-                                    This action cannot be undone.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                  <AlertDialogCancel onClick={() => setRegistrationToReject(null)}>
-                                    Cancel
-                                  </AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleRejectRegistration(registration._id)}
-                                    className="bg-red-600 hover:bg-red-700"
+                            {registration.status.charAt(0).toUpperCase() + registration.status.slice(1)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewForm(registration)}
+                            >
+                              <Eye className="h-4 w-4 mr-2" />
+                              View Form
+                            </Button>
+                            {registration.status !== "cancelled" && registration.status !== "rejected" && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => setRegistrationToReject(registration)}
                                   >
-                                    Reject Registration
-                                  </AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                                    <X className="h-4 w-4 mr-2" />
+                                    Reject
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Reject Registration</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to reject the registration for{" "}
+                                      <strong>{registration.attendee.firstName} {registration.attendee.lastName}</strong>?
+                                      This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel onClick={() => setRegistrationToReject(null)}>
+                                      Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleRejectRegistration(registration._id)}
+                                      className="bg-red-600 hover:bg-red-700"
+                                    >
+                                      Reject Registration
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
