@@ -138,10 +138,25 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     const eventData = { ...req.body, createdBy: req.user.userId };
     
     // Handle reminder times array
+    console.log('[EVENTS] Reminder times in request body:', req.body['reminderTimes[]']);
+    console.log('[EVENTS] All request body keys:', Object.keys(req.body));
+    console.log('[EVENTS] Staff contact in request body:', req.body['staffContact[name]'], req.body['staffContact[phone]']);
+    
+    // Handle staff contact information
+    if (req.body['staffContact[name]'] || req.body['staffContact[phone]']) {
+      eventData.staffContact = {
+        name: req.body['staffContact[name]'] || "",
+        phone: req.body['staffContact[phone]'] || ""
+      };
+    }
+    
     if (req.body['reminderTimes[]']) {
       eventData.reminderTimes = Array.isArray(req.body['reminderTimes[]']) 
         ? req.body['reminderTimes[]'].map(time => parseInt(time))
         : [parseInt(req.body['reminderTimes[]'])];
+      console.log('[EVENTS] Set reminder times to:', eventData.reminderTimes);
+    } else {
+      console.log('[EVENTS] No reminder times provided, will use default');
     }
     
     // Handle image upload
@@ -220,10 +235,24 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
     const updateData = { ...req.body, updatedBy: req.user.userId };
     
     // Handle reminder times array
+    console.log('[EVENTS] Update - Reminder times in request body:', req.body['reminderTimes[]']);
+    console.log('[EVENTS] Update - Staff contact in request body:', req.body['staffContact[name]'], req.body['staffContact[phone]']);
+    
+    // Handle staff contact information
+    if (req.body['staffContact[name]'] || req.body['staffContact[phone]']) {
+      updateData.staffContact = {
+        name: req.body['staffContact[name]'] || "",
+        phone: req.body['staffContact[phone]'] || ""
+      };
+    }
+    
     if (req.body['reminderTimes[]']) {
       updateData.reminderTimes = Array.isArray(req.body['reminderTimes[]']) 
         ? req.body['reminderTimes[]'].map(time => parseInt(time))
         : [parseInt(req.body['reminderTimes[]'])];
+      console.log('[EVENTS] Update - Set reminder times to:', updateData.reminderTimes);
+    } else {
+      console.log('[EVENTS] Update - No reminder times provided, keeping existing');
     }
     
     // Handle image removal
@@ -608,11 +637,14 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only admin, staff, or event creator can send WhatsApp messages' });
     }
 
-    const { message } = req.body;
+    const { title, message } = req.body;
     if (!message) {
       console.error('[WhatsApp] Message content is required');
       return res.status(400).json({ message: 'Message content is required' });
     }
+
+    // Use provided title as subtitle (optional)
+    const messageSubtitle = title || "";
 
     // Get all registered participants for this event
     const registrations = await EventRegistration.find({
@@ -643,7 +675,7 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
           }
           
           await twilioClient.messages.create({
-            body: `Event Notification: ${event.title}\n\n${message}`,
+            body: `Zubin Event Notification: ${event.title}${messageSubtitle ? `\n${messageSubtitle}` : ''}\n\n${message}`,
             from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
             to: `whatsapp:${formattedNumber}`
           });

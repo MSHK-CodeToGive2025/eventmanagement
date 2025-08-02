@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, MessageSquare, AlertTriangle, CheckCircle } from "lucide-react"
@@ -11,7 +12,7 @@ interface WhatsAppMessageDialogProps {
   onClose: () => void
   eventTitle: string
   participantCount: number
-  onSendMessage: (message: string) => Promise<{
+  onSendMessage: (title: string, message: string) => Promise<{
     message: string
     successful: number
     failed: number
@@ -26,6 +27,7 @@ export default function WhatsAppMessageDialog({
   participantCount,
   onSendMessage
 }: WhatsAppMessageDialogProps) {
+  const [messageTitle, setMessageTitle] = useState("")
   const [message, setMessage] = useState("")
   const [isSending, setIsSending] = useState(false)
   const [result, setResult] = useState<{
@@ -46,7 +48,7 @@ export default function WhatsAppMessageDialog({
     setResult(null)
 
     try {
-      const response = await onSendMessage(message)
+      const response = await onSendMessage(messageTitle, message)
       setResult({
         successful: response.successful,
         failed: response.failed,
@@ -54,6 +56,7 @@ export default function WhatsAppMessageDialog({
       })
       
       // Clear the form on success
+      setMessageTitle("")
       setMessage("")
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to send WhatsApp messages")
@@ -63,6 +66,7 @@ export default function WhatsAppMessageDialog({
   }
 
   const handleClose = () => {
+    setMessageTitle("")
     setMessage("")
     setError(null)
     setResult(null)
@@ -88,6 +92,21 @@ export default function WhatsAppMessageDialog({
             </p>
           </div>
 
+          {/* Message Title Input */}
+          <div className="space-y-2">
+            <Label htmlFor="messageTitle">Message Subtitle (Optional)</Label>
+            <Input
+              id="messageTitle"
+              placeholder="Enter a subtitle for your message..."
+              value={messageTitle}
+              onChange={(e) => setMessageTitle(e.target.value)}
+              disabled={isSending}
+            />
+            <p className="text-sm text-gray-500">
+              Leave empty to send without a subtitle
+            </p>
+          </div>
+
           {/* Message Input */}
           <div className="space-y-2">
             <Label htmlFor="message">Message Content</Label>
@@ -100,9 +119,7 @@ export default function WhatsAppMessageDialog({
               className="resize-none"
               disabled={isSending}
             />
-            <p className="text-sm text-gray-500">
-              The message will be prefixed with "Event Notification: [Event Title]"
-            </p>
+
           </div>
 
           {/* Error Display */}
@@ -141,7 +158,7 @@ export default function WhatsAppMessageDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={handleClose} disabled={isSending}>
-            Cancel
+            Close
           </Button>
           <Button 
             onClick={handleSend} 

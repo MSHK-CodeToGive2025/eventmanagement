@@ -11,6 +11,11 @@ export interface SessionLocation {
   meetingLink?: string;
 }
 
+export interface StaffContact {
+  name?: string;
+  phone?: string;
+}
+
 export interface Session {
   _id: string;
   title: string;
@@ -59,6 +64,7 @@ export interface ZubinEvent {
   registeredCount?: number; // Registered count of the event
   reminderTimes?: number[]; // Array of hours before event start for reminders (e.g., [48, 24, 3])
   remindersSent?: number[]; // Array of hours for which reminders have already been sent
+  staffContact?: StaffContact; // Staff contact information for the event
 }
 
 // Event categories

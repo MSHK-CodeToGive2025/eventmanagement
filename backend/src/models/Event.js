@@ -206,6 +206,19 @@ const eventSchema = new mongoose.Schema({
   remindersSent: {
     type: [Number], // Array of hours for which reminders have already been sent
     default: []
+  },
+  // Staff contact information for notifications
+  staffContact: {
+    name: {
+      type: String,
+      required: false,
+      trim: true
+    },
+    phone: {
+      type: String,
+      required: false,
+      trim: true
+    }
   }
 });
 

@@ -96,11 +96,11 @@ export default function ManageRegistrations() {
   // Get registered participants count
   const registeredParticipantsCount = registrations.filter(reg => reg.status === 'registered').length;
 
-  const handleSendWhatsAppMessage = async (message: string) => {
+  const handleSendWhatsAppMessage = async (title: string, message: string) => {
     if (!event?._id) {
       throw new Error("Event ID not found");
     }
-    return await eventService.sendWhatsAppMessage(event._id, message);
+    return await eventService.sendWhatsAppMessage(event._id, title, message);
   };
 
   const handleRejectRegistration = async (registrationId: string) => {

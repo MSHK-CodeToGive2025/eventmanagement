@@ -61,6 +61,10 @@ export interface Event {
   registeredCount?: number;
   reminderTimes?: number[];
   remindersSent?: number[];
+  staffContact?: {
+    name?: string;
+    phone?: string;
+  };
 }
 
 export interface EventFormData {
@@ -95,6 +99,10 @@ export interface EventFormData {
   capacity?: number;
   tags?: string[];
   reminderTimes?: number[];
+  staffContact?: {
+    name?: string;
+    phone?: string;
+  };
 }
 
 // Add auth token to requests
@@ -238,17 +246,17 @@ const eventService = {
   },
 
   // Send WhatsApp message to all registered participants
-  async sendWhatsAppMessage(eventId: string, message: string): Promise<{
+  async sendWhatsAppMessage(eventId: string, title: string, message: string): Promise<{
     message: string;
     successful: number;
     failed: number;
     failedNumbers: string[];
   }> {
     const url = `${API_URL}/events/${eventId}/send-whatsapp`;
-    //console.log('[eventService] POST', url, 'message:', message);
+    //console.log('[eventService] POST', url, 'title:', title, 'message:', message);
     const response = await axios.post(
       url,
-      { message },
+      { title, message },
       { headers: authHeader() }
     );
     //console.log('[eventService] WhatsApp Response:', response.data);

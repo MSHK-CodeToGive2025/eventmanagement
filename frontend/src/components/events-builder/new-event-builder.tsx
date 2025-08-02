@@ -84,6 +84,10 @@ const eventFormSchema = z.object({
   capacity: z.number().optional(),
   tags: z.array(z.string()).optional(),
   reminderTimes: z.array(z.number()).optional(),
+  staffContact: z.object({
+    name: z.string().optional(),
+    phone: z.string().optional(),
+  }).optional(),
 })
 
 type EventFormValues = z.infer<typeof eventFormSchema>
@@ -156,6 +160,10 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       capacity: undefined,
       tags: [],
       reminderTimes: [24], // Default to 24 hours before event
+      staffContact: {
+        name: "",
+        phone: "",
+      },
     },
   })
 
@@ -191,8 +199,16 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
             })),
             capacity: eventData.capacity,
             tags: eventData.tags || [],
-            reminderTimes: eventData.reminderTimes || [24]
+            reminderTimes: eventData.reminderTimes || [24],
+            staffContact: eventData.staffContact || {
+              name: "",
+              phone: "",
+            }
           }
+
+          console.log('Event data from API:', eventData);
+          console.log('Staff contact from API:', eventData.staffContact);
+          console.log('Form data staff contact:', formData.staffContact);
 
           // Reset form with the fetched data
           form.reset(formData)
@@ -313,6 +329,22 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         data.reminderTimes.forEach(time => {
           formData.append('reminderTimes[]', time.toString())
         })
+      }
+
+      // Add staff contact information
+      if (data.staffContact) {
+        if (data.staffContact.name) {
+          formData.append('staffContact[name]', data.staffContact.name)
+        }
+        if (data.staffContact.phone) {
+          formData.append('staffContact[phone]', data.staffContact.phone)
+        }
+      }
+
+      console.log('Form data staff contact:', data.staffContact);
+      console.log('FormData entries:');
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}: ${value}`);
       }
 
       // Add image file if selected
@@ -953,6 +985,51 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                     </FormItem>
                   )}
                 />
+
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Staff Contact Information</h3>
+                  <p className="text-sm text-muted-foreground">
+                    This information will be included in event notification messages for participants to contact if they have any issues.
+                  </p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="staffContact.name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-base font-medium">Staff Name</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter staff member name"
+                              {...field}
+                              className="h-12"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="staffContact.phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-base font-medium">Staff Phone Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="Enter phone number (e.g., +852 1234 5678)"
+                              {...field}
+                              className="h-12"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
               </TabsContent>
 
               <div className="flex justify-end space-x-4 pt-4">
