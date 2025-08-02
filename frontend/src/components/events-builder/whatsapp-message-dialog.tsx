@@ -1,11 +1,10 @@
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-
+import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, MessageSquare, AlertTriangle, CheckCircle } from "lucide-react"
-import { RichTextEditor } from "@/components/ui/rich-text-editor"
 
 interface WhatsAppMessageDialogProps {
   isOpen: boolean
@@ -92,11 +91,14 @@ export default function WhatsAppMessageDialog({
           {/* Message Input */}
           <div className="space-y-2">
             <Label htmlFor="message">Message Content</Label>
-            <RichTextEditor
-              value={message}
-              onChange={setMessage}
+            <Textarea
+              id="message"
               placeholder="Enter your message here..."
-              minHeight="200px"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              rows={6}
+              className="resize-none"
+              disabled={isSending}
             />
             <p className="text-sm text-gray-500">
               The message will be prefixed with "Event Notification: [Event Title]"
