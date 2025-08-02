@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch"
 import { format } from "date-fns"
 import { CalendarIcon, MapPin, Link } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import { EnhancedRichTextEditor } from "@/components/ui/enhanced-rich-text-editor"
 import EventSessions from "./event-sessions"
 import ReminderTimeConfig from "./reminder-time-config"
 import { formService } from "@/services/formService"
@@ -501,7 +501,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                         Description <span className="text-red-500 ml-1">*</span>
                       </FormLabel>
                       <FormControl>
-                        <RichTextEditor
+                        <EnhancedRichTextEditor
                           value={field.value}
                           onChange={field.onChange}
                           placeholder="Enter event description..."

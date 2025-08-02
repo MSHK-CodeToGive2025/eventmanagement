@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
 import { FormFieldRenderer } from "./form-field-renderer"
-import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import { EnhancedRichTextEditor } from "@/components/ui/enhanced-rich-text-editor"
 
 // --- Types and constants ---
 const formBuilderSchema = z.object({
@@ -249,20 +249,20 @@ export default function SimplifiedFormBuilder({
             <FormMessage />
           </FormItem>
         )} />
-        <FormField control={form.control} name="description" render={({ field }) => (
-          <FormItem>
-            <FormLabel>Description</FormLabel>
-            <FormControl>
-              <RichTextEditor
-                value={field.value || ""}
-                onChange={field.onChange}
-                placeholder="Describe what this form is for..."
-                minHeight="150px"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )} />
+                  <FormField control={form.control} name="description" render={({ field }) => (
+            <FormItem>
+              <FormLabel>Description</FormLabel>
+              <FormControl>
+                <EnhancedRichTextEditor
+                  value={field.value || ""}
+                  onChange={field.onChange}
+                  placeholder="Describe what this form is for..."
+                  minHeight="150px"
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )} />
       </CardContent>
     </Card>
   )
@@ -286,14 +286,14 @@ export default function SimplifiedFormBuilder({
                       placeholder="Section title"
                       className="font-medium"
                     />
-                    <div className="mt-2">
-                      <RichTextEditor
-                        value={section.description || ""}
-                        onChange={(value) => updateSection(section.id, { description: value })}
-                        placeholder="Section description (optional)"
-                        minHeight="100px"
-                      />
-                    </div>
+                            <div className="mt-2">
+          <EnhancedRichTextEditor
+            value={section.description || ""}
+            onChange={(value) => updateSection(section.id, { description: value })}
+            placeholder="Section description (optional)"
+            minHeight="100px"
+          />
+        </div>
                   </div>
                   <Button
                     type="button"

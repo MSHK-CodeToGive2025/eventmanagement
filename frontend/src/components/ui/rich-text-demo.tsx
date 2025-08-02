@@ -1,6 +1,6 @@
 import React, { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { RichTextEditor } from "./rich-text-editor"
+import { EnhancedRichTextEditor } from "./enhanced-rich-text-editor"
 import { RichTextDisplay } from "./rich-text-display"
 
 export function RichTextDemo() {
@@ -34,7 +34,7 @@ export function RichTextDemo() {
           <CardTitle>Rich Text Editor Demo</CardTitle>
         </CardHeader>
         <CardContent>
-          <RichTextEditor
+          <EnhancedRichTextEditor
             value={content}
             onChange={setContent}
             placeholder="Start typing your rich content here..."
