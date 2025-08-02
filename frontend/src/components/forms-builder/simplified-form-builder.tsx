@@ -24,7 +24,7 @@ import { useToast } from "@/hooks/use-toast"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
 import { FormFieldRenderer } from "./form-field-renderer"
-import { EnhancedRichTextEditor } from "@/components/ui/enhanced-rich-text-editor"
+import { ReactQuillEditor } from "@/components/ui/react-quill-editor"
 
 // --- Types and constants ---
 const formBuilderSchema = z.object({
@@ -253,7 +253,7 @@ export default function SimplifiedFormBuilder({
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <EnhancedRichTextEditor
+                <ReactQuillEditor
                   value={field.value || ""}
                   onChange={field.onChange}
                   placeholder="Describe what this form is for..."
@@ -287,7 +287,7 @@ export default function SimplifiedFormBuilder({
                       className="font-medium"
                     />
                             <div className="mt-2">
-          <EnhancedRichTextEditor
+          <ReactQuillEditor
             value={section.description || ""}
             onChange={(value) => updateSection(section.id, { description: value })}
             placeholder="Section description (optional)"

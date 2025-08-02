@@ -1,69 +1,78 @@
 import React, { useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { EnhancedRichTextEditor } from "./enhanced-rich-text-editor"
+import { ReactQuillEditor } from "./react-quill-editor"
 import { RichTextDisplay } from "./rich-text-display"
 
-export function RichTextDemo() {
-  const [content, setContent] = useState(`<h1>Welcome to Rich Text Editor Demo</h1>
-<p>This is a <strong>bold text</strong> and this is <em>italic text</em>.</p>
-<h2>Features Available:</h2>
+export default function RichTextDemo() {
+  const [content, setContent] = useState(`<h1>Rich Text Editor Demo</h1>
+<p>This is a demonstration of the <strong>rich text editor</strong> capabilities:</p>
 <ul>
   <li><strong>Bold text</strong></li>
   <li><em>Italic text</em></li>
-  <li><a href="https://example.com" target="_blank">Links</a></li>
   <li>Bullet lists</li>
   <li>Numbered lists</li>
   <li>Text alignment</li>
-  <li>Headings (H1, H2)</li>
-  <li>Blockquotes</li>
+  <li>Headers (H1, H2, H3)</li>
+  <li>Colors and backgrounds</li>
+  <li>Links and images</li>
 </ul>
+<ol>
+  <li>First numbered item</li>
+  <li>Second numbered item</li>
+  <li>Third numbered item</li>
+</ol>
+<p style="text-align: center;">This text is center-aligned</p>
+<p style="text-align: right;">This text is right-aligned</p>
 <blockquote>
   <p>This is a blockquote example for important information.</p>
-</blockquote>
-<div style="text-align: center;">
-  <p>This text is center-aligned</p>
-</div>
-<div style="text-align: right;">
-  <p>This text is right-aligned</p>
-</div>`)
+</blockquote>`)
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Rich Text Editor Demo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <EnhancedRichTextEditor
-            value={content}
-            onChange={setContent}
-            placeholder="Start typing your rich content here..."
-            minHeight="300px"
-          />
-        </CardContent>
-      </Card>
+      <div className="text-center">
+        <h1 className="text-3xl font-bold mb-2">Rich Text Editor Demo</h1>
+        <p className="text-gray-600">Test the React-Quill rich text editor</p>
+      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Rich Text Display Demo</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <RichTextDisplay 
-            content={content} 
-            className="border rounded-lg p-4 bg-gray-50"
-            placeholder="No content to display"
-          />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Editor */}
+        <Card>
+          <CardHeader>
+            <CardTitle>React-Quill Editor</CardTitle>
+            <p className="text-sm text-gray-600">Edit content and see live preview</p>
+          </CardHeader>
+          <CardContent>
+            <ReactQuillEditor
+              value={content}
+              onChange={setContent}
+              placeholder="Start typing your rich content here..."
+              minHeight="300px"
+            />
+          </CardContent>
+        </Card>
 
+        {/* Display */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Rendered Output</CardTitle>
+            <p className="text-sm text-gray-600">How the content looks when displayed</p>
+          </CardHeader>
+          <CardContent>
+            <RichTextDisplay content={content} />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* HTML Output */}
       <Card>
         <CardHeader>
           <CardTitle>HTML Output</CardTitle>
+          <p className="text-sm text-gray-600">The HTML that gets saved to the database</p>
         </CardHeader>
         <CardContent>
-          <pre className="bg-gray-100 p-4 rounded-lg overflow-x-auto text-sm">
-            {content}
-          </pre>
+          <div className="bg-gray-100 p-4 rounded-md text-sm font-mono overflow-x-auto">
+            <pre>{content}</pre>
+          </div>
         </CardContent>
       </Card>
     </div>
