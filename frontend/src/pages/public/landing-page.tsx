@@ -938,7 +938,7 @@ export default function LandingPage() {
                 Join our community and help us transform the lives of ethnic minorities in Hong Kong.
               </p>
               <a
-                href="https://www.zubinfoundation.org/donate"
+                href="https://www.zubinfoundation.org/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-yellow-500 hover:text-yellow-600 font-medium inline-flex items-center"
