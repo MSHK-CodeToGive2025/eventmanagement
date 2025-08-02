@@ -20,7 +20,7 @@ export function EnhancedRichTextEditor({
   className
 }: EnhancedRichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
-  const [isFocused, setIsFocused] = useState(false)
+
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
 
@@ -196,8 +196,7 @@ export function EnhancedRichTextEditor({
             onInput={handleInput}
             onPaste={handlePaste}
             onKeyDown={handleKeyDown}
-            onFocus={() => setIsFocused(true)}
-            onBlur={() => setIsFocused(false)}
+
             className={cn(
               "outline-none min-h-[200px] prose prose-sm max-w-none",
               !value && "text-gray-400"
