@@ -3,6 +3,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { RichTextDisplay } from "@/components/ui/rich-text-display"
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
@@ -119,7 +120,12 @@ export function DynamicFormField({ field, value, onChange, error }: DynamicFormF
       <div className="space-y-2">
         {renderField()}
         {error && <p className="text-red-500 text-sm">{error}</p>}
-        {field.helpText && <p className="text-gray-500 text-sm">{field.helpText}</p>}
+        {field.helpText && (
+          <RichTextDisplay 
+            content={field.helpText} 
+            className="text-gray-500 text-sm"
+          />
+        )}
       </div>
     )
   }

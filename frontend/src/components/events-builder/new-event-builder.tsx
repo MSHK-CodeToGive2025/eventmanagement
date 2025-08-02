@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -6,18 +6,22 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
+import { CalendarIcon, MapPin, Link, Save, ArrowLeft } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { format } from "date-fns"
-import { CalendarIcon, MapPin, Link } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import { useAuth } from "@/contexts/auth-context"
+import eventService from "@/services/eventService"
+import { ReactQuillEditor } from "@/components/ui/react-quill-editor"
 import EventSessions from "./event-sessions"
 import ReminderTimeConfig from "./reminder-time-config"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
-import eventService from "@/services/eventService"
-import { useAuth } from "@/contexts/auth-context"
 import {
   ZubinEvent,
   eventCategories,
@@ -501,7 +505,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                         Description <span className="text-red-500 ml-1">*</span>
                       </FormLabel>
                       <FormControl>
-                        <RichTextEditor
+                        <ReactQuillEditor
                           value={field.value}
                           onChange={field.onChange}
                           placeholder="Enter event description..."

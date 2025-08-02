@@ -19,6 +19,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
+import { RichTextDisplay } from "@/components/ui/rich-text-display"
 
 export default function EnhancedEventDetailPage() {
   const { id } = useParams()
@@ -539,9 +540,12 @@ export default function EnhancedEventDetailPage() {
                           {field.label}
                           {field.required && <span className="text-red-500 ml-1">*</span>}
                         </Label>
-                        {field.helpText && (
-                          <p className="text-sm text-gray-500">{field.helpText}</p>
-                        )}
+                                        {field.helpText && (
+                  <RichTextDisplay 
+                    content={field.helpText} 
+                    className="text-sm text-gray-500"
+                  />
+                )}
                         {field.type === "text" && (
                           <Input
                             id={field._id}
@@ -814,9 +818,11 @@ export default function EnhancedEventDetailPage() {
                 <div className="space-y-6">
                   <div>
                     <h2 className="text-xl font-semibold mb-4">About This Event</h2>
-                    <div className="prose max-w-none">
-                      <p className="text-gray-700 whitespace-pre-line leading-relaxed">{event.description}</p>
-                    </div>
+                    <RichTextDisplay 
+                      content={event.description} 
+                      className="text-gray-700"
+                      placeholder="No description available for this event."
+                    />
                   </div>
 
                   <Separator />

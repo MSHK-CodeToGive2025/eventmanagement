@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { RichTextDisplay } from "@/components/ui/rich-text-display"
 
 export interface FormFieldData {
   _id: string
@@ -198,7 +199,10 @@ export function FormFieldRenderer({
         {!disableValidation && field.required && <span className="text-red-500 ml-1">*</span>}
       </Label>
       {field.helpText && (
-        <p className="text-sm text-gray-500">{field.helpText}</p>
+        <RichTextDisplay 
+          content={field.helpText} 
+          className="text-sm text-gray-500"
+        />
       )}
       {renderField()}
       {error && (

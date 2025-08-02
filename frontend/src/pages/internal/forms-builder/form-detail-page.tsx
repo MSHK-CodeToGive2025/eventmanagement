@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft, Edit } from "lucide-react"
+import { RichTextDisplay } from "@/components/ui/rich-text-display"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
 
@@ -76,7 +77,13 @@ export default function FormDetailPage() {
           <div>
             <h1 className="text-3xl font-bold">{form.title}</h1>
             {form.description && (
-              <p className="text-gray-600 mt-2">{form.description}</p>
+              <div className="mt-2">
+                <RichTextDisplay 
+                  content={form.description} 
+                  className="text-gray-600"
+                  placeholder="No description available."
+                />
+              </div>
             )}
           </div>
           <Button asChild>
@@ -149,9 +156,15 @@ export default function FormDetailPage() {
                               {field.placeholder && (
                                 <p className="text-xs text-gray-500">Placeholder: "{field.placeholder}"</p>
                               )}
-                              {field.helpText && (
-                                <p className="text-xs text-gray-500">Help: {field.helpText}</p>
-                              )}
+                                                  {field.helpText && (
+                      <div className="text-xs text-gray-500">
+                        <span className="font-medium">Help: </span>
+                        <RichTextDisplay 
+                          content={field.helpText} 
+                          className="inline"
+                        />
+                      </div>
+                    )}
                               {(field.type === "dropdown" || field.type === "radio" || field.type === "checkbox") && field.options && field.options.length > 0 && (
                                 <div className="mt-1">
                                   <p className="text-xs text-gray-500 mb-1">Options:</p>
