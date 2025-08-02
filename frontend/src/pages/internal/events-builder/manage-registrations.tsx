@@ -131,13 +131,18 @@ export default function ManageRegistrations() {
     }
   };
 
-  // Get session titles for a registration
-  const getSessionTitles = (sessionIds: string[]) => {
+  // Get session details for a registration
+  const getSessionDetails = (sessionIds: string[]) => {
     if (!event?.sessions) return [];
     return sessionIds
       .map(sessionId => event.sessions.find(session => session._id === sessionId))
       .filter(session => session)
-      .map(session => session!.title);
+      .map(session => ({
+        title: session!.title,
+        date: new Date(session!.date),
+        startTime: session!.startTime,
+        endTime: session!.endTime
+      }));
   };
 
   // Print functionality
@@ -215,8 +220,9 @@ export default function ManageRegistrations() {
               background-color: #f9f9f9;
             }
             .sessions-list {
-              max-width: 200px;
+              max-width: 250px;
               word-wrap: break-word;
+              padding: 8px;
             }
             .status-badge {
               padding: 2px 6px;
@@ -274,20 +280,28 @@ export default function ManageRegistrations() {
                 <th>Participant Name</th>
                 <th>Mobile Number</th>
                 <th>Email</th>
-                <th>Sessions Registered</th>
+                <th>Sessions Registered (Date & Time)</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
               ${filteredRegistrations.map((registration, index) => {
-                const sessionTitles = getSessionTitles(registration.sessions);
+                const sessionDetails = getSessionDetails(registration.sessions);
+                const sessionsHtml = sessionDetails.length > 0 
+                  ? sessionDetails.map(session => 
+                      `<div style="margin-bottom: 8px; padding: 4px; border-left: 3px solid #3b82f6; background-color: #f8fafc;">
+                        <div style="font-weight: bold; font-size: 11px; color: #1f2937;">${session.title}</div>
+                        <div style="font-size: 10px; color: #6b7280;">${format(session.date, "MMM d, yyyy")} • ${session.startTime} - ${session.endTime}</div>
+                      </div>`
+                    ).join('')
+                  : 'No sessions selected';
                 return `
                   <tr>
                     <td>${index + 1}</td>
                     <td>${registration.attendee.firstName} ${registration.attendee.lastName}</td>
                     <td>${registration.attendee.phone}</td>
                     <td>${registration.attendee.email || '-'}</td>
-                    <td class="sessions-list">${sessionTitles.length > 0 ? sessionTitles.join(', ') : 'No sessions selected'}</td>
+                    <td class="sessions-list">${sessionsHtml}</td>
                     <td><span class="status-badge status-${registration.status}">${registration.status.charAt(0).toUpperCase() + registration.status.slice(1)}</span></td>
                   </tr>
                 `;
@@ -486,14 +500,14 @@ export default function ManageRegistrations() {
                   <TableRow>
                     <TableHead>Participant</TableHead>
                     <TableHead>Contact</TableHead>
-                    <TableHead>Sessions Registered</TableHead>
+                    <TableHead>Sessions Registered (with Date & Time)</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredRegistrations.map((registration) => {
-                    const sessionTitles = getSessionTitles(registration.sessions);
+                    const sessionDetails = getSessionDetails(registration.sessions);
                     return (
                       <TableRow key={registration._id}>
                         <TableCell>
@@ -513,12 +527,17 @@ export default function ManageRegistrations() {
                         </TableCell>
                         <TableCell>
                           <div className="max-w-xs">
-                            {sessionTitles.length > 0 ? (
-                              <div className="space-y-1">
-                                {sessionTitles.map((title, index) => (
-                                  <Badge key={index} variant="outline" className="text-xs mr-1 mb-1">
-                                    {title}
-                                  </Badge>
+                            {sessionDetails.length > 0 ? (
+                              <div className="space-y-2">
+                                {sessionDetails.map((session, index) => (
+                                  <div key={index} className="border rounded p-2 bg-gray-50 mb-2">
+                                    <div className="font-medium text-xs text-gray-900 mb-1">
+                                      {session.title}
+                                    </div>
+                                    <div className="text-xs text-gray-600">
+                                      {format(session.date, "MMM d, yyyy")} • {session.startTime} - {session.endTime}
+                                    </div>
+                                  </div>
                                 ))}
                               </div>
                             ) : (
