@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Bold, Italic, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, Link } from "lucide-react"
+import { Bold, Italic, List, ListOrdered, AlignLeft, AlignCenter, AlignRight, Link, Heading1, Heading2, Quote } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
@@ -64,6 +64,21 @@ export function RichTextEditor({ value, onChange, placeholder = "", minHeight = 
     handleChange(newValue)
   }
 
+  const insertHeading = (level: number) => {
+    const textarea = document.getElementById("rich-text-editor") as HTMLTextAreaElement
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const beforeText = textarea.value.substring(0, start)
+    const afterText = textarea.value.substring(start)
+
+    const headingTag = `h${level}`
+    const headingText = `Heading ${level}`
+    const newValue = `${beforeText}<${headingTag}>${headingText}</${headingTag}>${afterText}`
+
+    handleChange(newValue)
+  }
+
   return (
     <div className="border rounded-md">
       <div className="bg-gray-50 p-2 border-b flex flex-wrap gap-1">
@@ -72,6 +87,15 @@ export function RichTextEditor({ value, onChange, placeholder = "", minHeight = 
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => insertTag("em")} title="Italic">
           <Italic className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => insertHeading(1)} title="Heading 1">
+          <Heading1 className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => insertHeading(2)} title="Heading 2">
+          <Heading2 className="h-4 w-4" />
+        </Button>
+        <Button type="button" variant="ghost" size="sm" onClick={() => insertTag("blockquote")} title="Quote">
+          <Quote className="h-4 w-4" />
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => insertList(false)} title="Bullet List">
           <List className="h-4 w-4" />
@@ -141,7 +165,10 @@ export function RichTextEditor({ value, onChange, placeholder = "", minHeight = 
 
         <TabsContent value="preview" className="p-4 prose max-w-none">
           {htmlValue ? (
-            <div dangerouslySetInnerHTML={{ __html: htmlValue }} />
+            <div 
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: htmlValue }} 
+            />
           ) : (
             <p className="text-gray-400">{placeholder || "No content to preview"}</p>
           )}

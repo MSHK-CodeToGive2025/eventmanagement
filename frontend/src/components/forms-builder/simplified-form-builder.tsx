@@ -24,6 +24,7 @@ import { useToast } from "@/hooks/use-toast"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
 import { FormFieldRenderer } from "./form-field-renderer"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 
 // --- Types and constants ---
 const formBuilderSchema = z.object({
@@ -252,10 +253,11 @@ export default function SimplifiedFormBuilder({
           <FormItem>
             <FormLabel>Description</FormLabel>
             <FormControl>
-              <Textarea 
-                placeholder="Describe what this form is for..." 
-                rows={3}
-                {...field} 
+              <RichTextEditor
+                value={field.value || ""}
+                onChange={field.onChange}
+                placeholder="Describe what this form is for..."
+                minHeight="150px"
               />
             </FormControl>
             <FormMessage />
@@ -284,13 +286,14 @@ export default function SimplifiedFormBuilder({
                       placeholder="Section title"
                       className="font-medium"
                     />
-                    <Textarea
-                      value={section.description || ""}
-                      onChange={(e) => updateSection(section.id, { description: e.target.value })}
-                      placeholder="Section description (optional)"
-                      rows={1}
-                      className="mt-2"
-                    />
+                    <div className="mt-2">
+                      <RichTextEditor
+                        value={section.description || ""}
+                        onChange={(value) => updateSection(section.id, { description: value })}
+                        placeholder="Section description (optional)"
+                        minHeight="100px"
+                      />
+                    </div>
                   </div>
                   <Button
                     type="button"
