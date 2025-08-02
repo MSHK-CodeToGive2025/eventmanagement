@@ -16,6 +16,7 @@ import EventsBuilderPage from './pages/internal/events-builder/events-builder-pa
 import EnhancedEventsPage from './pages/public/enhanced-events/enhanced-events-page';
 import EnhancedEventDetailPage from './pages/public/enhanced-events/enhanced-event-detail-page';
 import EnhancedRichTextTest from './pages/internal/forms-builder/enhanced-rich-text-test';
+import RichTextComparison from './pages/internal/forms-builder/rich-text-comparison';
 
 import SignUp from './pages/public/sign-up';
 import EventRemindersPage from './pages/internal/events-builder/event-reminders-page';
@@ -49,6 +50,7 @@ const App: React.FC = () => {
               <Route path="/manage/forms/:id" element={<FormDetailPage />} />
               <Route path="/manage/forms/:id/edit" element={<FormEditPage />} />
               <Route path="/manage/forms/test/rich-text" element={<EnhancedRichTextTest />} />
+              <Route path="/manage/forms/test/comparison" element={<RichTextComparison />} />
               <Route path="/manage/users" element={<UserManagementPage />} />
               <Route path="/profile" element={<UserProfile />} />
               <Route path="/profile/registrations" element={<MyRegistrations />} />
