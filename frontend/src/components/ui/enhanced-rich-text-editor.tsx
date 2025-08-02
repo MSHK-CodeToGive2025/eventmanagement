@@ -1,6 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Bold, Italic, List, ListOrdered, Undo, Redo, AlignLeft, AlignCenter, AlignRight } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -20,7 +19,6 @@ export function EnhancedRichTextEditor({
   className
 }: EnhancedRichTextEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null)
-
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
 
@@ -42,7 +40,21 @@ export function EnhancedRichTextEditor({
   // Execute command and update content
   const executeCommand = useCallback((command: string, value?: string) => {
     if (editorRef.current) {
+      // Ensure the editor is focused
       editorRef.current.focus()
+      
+      // For list commands, ensure we have a selection
+      if (command === "insertUnorderedList" || command === "insertOrderedList") {
+        const selection = window.getSelection()
+        if (!selection || selection.rangeCount === 0) {
+          // If no selection, create a new line and select it
+          const range = document.createRange()
+          range.selectNodeContents(editorRef.current)
+          selection?.removeAllRanges()
+          selection?.addRange(range)
+        }
+      }
+      
       document.execCommand(command, false, value)
       updateUndoRedoState()
       
@@ -182,44 +194,22 @@ export function EnhancedRichTextEditor({
         </Button>
       </div>
 
-      {/* Editor */}
-      <Tabs defaultValue="edit" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="edit">Edit</TabsTrigger>
-          <TabsTrigger value="preview">Preview</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="edit" className="p-4">
-          <div
-            ref={editorRef}
-            contentEditable
-            onInput={handleInput}
-            onPaste={handlePaste}
-            onKeyDown={handleKeyDown}
-
-            className={cn(
-              "outline-none min-h-[200px] prose prose-sm max-w-none",
-              !value && "text-gray-400"
-            )}
-            style={{ minHeight }}
-            data-placeholder={placeholder}
-          />
-        </TabsContent>
-        
-        <TabsContent value="preview" className="p-4">
-          {value ? (
-            <div
-              className="prose prose-sm max-w-none min-h-[200px]"
-              style={{ minHeight }}
-              dangerouslySetInnerHTML={{ __html: value }}
-            />
-          ) : (
-            <div className="text-gray-400 italic min-h-[200px] flex items-center justify-center">
-              {placeholder}
-            </div>
+      {/* WYSIWYG Editor */}
+      <div className="p-4">
+        <div
+          ref={editorRef}
+          contentEditable
+          onInput={handleInput}
+          onPaste={handlePaste}
+          onKeyDown={handleKeyDown}
+          className={cn(
+            "outline-none min-h-[200px] prose prose-sm max-w-none",
+            !value && "text-gray-400"
           )}
-        </TabsContent>
-      </Tabs>
+          style={{ minHeight }}
+          data-placeholder={placeholder}
+        />
+      </div>
     </div>
   )
 } 
