@@ -728,13 +728,10 @@ export default function LandingPage() {
                   }
                   
                   .person-group:hover {
-                    transform: scale(1.1) translateY(-5px);
+                    transform: scale(1.05);
+                    transition: transform 10s ease-out;
                   }
-                  
-                  .person-group.clicked {
-                    animation: pop 0.5s ease-out;
-                  }
-                  
+          
                   .person-group.celebrate {
                     animation: celebrate 2s ease-in-out infinite;
                   }
