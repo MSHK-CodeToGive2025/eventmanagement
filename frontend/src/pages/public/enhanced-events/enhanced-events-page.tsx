@@ -832,17 +832,16 @@ export default function EnhancedEventsPage() {
                     <span className="line-clamp-1">{event.location.venue}</span>
                   </div>
                 </div>
-                {/* Event Tags */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">
-                    {event.category}
-                  </span>
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                    {event.targetGroup}
-                  </span>
-                </div>
-                {/* Event Footer */}
-                <div className="flex justify-end">
+                {/* Event Tags and Button - Horizontal Layout */}
+                <div className="flex justify-between items-center">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">
+                      {event.category}
+                    </span>
+                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                      {event.targetGroup}
+                    </span>
+                  </div>
                   <Button
                     onClick={() => navigateToEvent(event._id)}
                     className="bg-yellow-400 hover:bg-yellow-500 text-black"
