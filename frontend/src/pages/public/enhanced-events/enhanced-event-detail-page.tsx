@@ -718,7 +718,7 @@ export default function EnhancedEventDetailPage() {
           <div className="h-4 bg-gray-200 rounded w-1/2"></div>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-4">
-              <div className="bg-gray-200 h-64 rounded-lg"></div>
+              <div className="bg-gray-200 aspect-square rounded-lg"></div>
               <div className="space-y-2">
                 <div className="h-4 bg-gray-200 rounded w-full"></div>
                 <div className="h-4 bg-gray-200 rounded w-full"></div>
@@ -726,8 +726,8 @@ export default function EnhancedEventDetailPage() {
               </div>
             </div>
             <div className="space-y-4">
-              <div className="bg-gray-200 h-40 rounded-lg"></div>
-              <div className="bg-gray-200 h-40 rounded-lg"></div>
+              <div className="bg-gray-200 aspect-square rounded-lg"></div>
+              <div className="bg-gray-200 aspect-square rounded-lg"></div>
             </div>
           </div>
         </div>
@@ -806,7 +806,7 @@ export default function EnhancedEventDetailPage() {
           <Card className="mb-8">
             <CardContent className="p-0">
               {event.coverImage && (
-                <div className="relative w-full h-64 sm:h-80">
+                <div className="relative w-full aspect-square">
                   <img
                     src={eventService.getEventImageUrl(event._id, event)}
                     alt={event.title}

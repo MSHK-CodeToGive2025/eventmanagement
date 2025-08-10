@@ -829,7 +829,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                       )}
                       
                       {previewImage && (
-                        <div className="relative aspect-video rounded-md overflow-hidden border">
+                        <div className="relative aspect-square rounded-md overflow-hidden border">
                           <img
                             src={previewImage}
                             alt="Event preview"
@@ -857,6 +857,10 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                     <div className="flex items-center gap-2 text-sm">
                       <span className="font-medium text-green-600">✅ Supported Formats:</span>
                       <span className="text-gray-600">JPEG, PNG, GIF, WebP</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium text-purple-600">📐 Recommended:</span>
+                      <span className="text-gray-600">Square images (1:1 ratio) work best</span>
                     </div>
                   </div>
                 </FormItem>

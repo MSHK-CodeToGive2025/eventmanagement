@@ -261,7 +261,7 @@ export default function EnhancedEventsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="animate-pulse">
-              <div className="bg-gray-200 h-48 rounded-t-lg"></div>
+              <div className="bg-gray-200 aspect-square rounded-t-lg"></div>
               <div className="p-4 border border-gray-200 rounded-b-lg">
                 <div className="h-6 bg-gray-200 rounded w-3/4 mb-3"></div>
                 <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
@@ -807,9 +807,9 @@ export default function EnhancedEventsPage() {
             <Card key={event._id} className="overflow-hidden hover:shadow-md transition-shadow">
               {/* Event Image */}
               {showImages && (
-                <div className="relative h-48">
+                <div className="relative aspect-square">
                   <img
-                    src={eventService.getEventImageUrl(event._id, event) || "/placeholder.svg?height=200&width=400&query=event"}
+                    src={eventService.getEventImageUrl(event._id, event) || "/placeholder.svg?height=400&width=400&query=event"}
                     alt={event.title}
                     className="object-cover w-full h-full"
                   />

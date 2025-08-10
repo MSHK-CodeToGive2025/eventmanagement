@@ -818,9 +818,9 @@ export default function LandingPage() {
                 .map((event: Event) => (
                   <Card key={event._id} className="overflow-hidden hover:shadow-md transition-shadow">
                     {/* Event Image */}
-                    <div className="relative h-48">
+                    <div className="relative aspect-square">
                       <img
-                        src={eventService.getEventImageUrl(event._id, event) || "/placeholder.svg?height=200&width=400&query=event"}
+                        src={eventService.getEventImageUrl(event._id, event) || "/placeholder.svg?height=400&width=400&query=event"}
                         alt={event.title}
                         className="object-cover w-full h-full"
                         onError={(e) => {
