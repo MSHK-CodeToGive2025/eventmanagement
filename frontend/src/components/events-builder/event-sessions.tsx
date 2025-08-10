@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { PlusCircle, Trash2, Calendar, Clock, MapPin, Link } from "lucide-react"
+import { PlusCircle, Trash2, Calendar, Clock, MapPin, Link, Copy, Check } from "lucide-react"
 import { Session, SessionLocation } from "@/types/event-types"
 import { format } from "date-fns"
 
@@ -15,6 +15,8 @@ interface EventSessionsProps {
 }
 
 export default function EventSessions({ sessions, onChange }: EventSessionsProps) {
+  const [clonedSessionIndex, setClonedSessionIndex] = useState<number | null>(null);
+
   // Pre-populate one session if none exists
   useEffect(() => {
     if (sessions.length === 0) {
@@ -77,10 +79,55 @@ export default function EventSessions({ sessions, onChange }: EventSessionsProps
     onChange(newSessions);
   };
 
+  const cloneSession = (index: number) => {
+    const sessionToClone = sessions[index];
+    
+    // Create a better title for the cloned session
+    let newTitle = sessionToClone.title;
+    if (sessionToClone.title.trim()) {
+      // If the original title has "(Copy)" or "(Copy X)", increment the number
+      const copyMatch = sessionToClone.title.match(/^(.*?)(?:\s*\(Copy(?:\s*(\d+))?\))?$/);
+      if (copyMatch) {
+        const baseTitle = copyMatch[1].trim();
+        const copyNumber = copyMatch[2] ? parseInt(copyMatch[2]) : 0;
+        newTitle = `${baseTitle} (Copy ${copyNumber + 1})`;
+      } else {
+        newTitle = `${sessionToClone.title} (Copy)`;
+      }
+    } else {
+      newTitle = "New Session (Copy)";
+    }
+    
+    const clonedSession: Session = {
+      _id: `temp-${Date.now()}`,
+      title: newTitle,
+      description: sessionToClone.description,
+      date: new Date(sessionToClone.date),
+      startTime: sessionToClone.startTime,
+      endTime: sessionToClone.endTime,
+      location: {
+        venue: sessionToClone.location?.venue,
+        meetingLink: sessionToClone.location?.meetingLink,
+      },
+      capacity: sessionToClone.capacity,
+    };
+    
+    onChange([...sessions, clonedSession]);
+    
+    // Show visual feedback
+    setClonedSessionIndex(index);
+    setTimeout(() => setClonedSessionIndex(null), 1500);
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium">Event Sessions</h3>
+        <div>
+          <h3 className="text-lg font-medium">Event Sessions</h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Manage your event sessions. Use the Clone button to duplicate a session and add it as a new session.
+          </p>
+        </div>
         <Button onClick={addSession} variant="outline" size="sm">
           <PlusCircle className="h-4 w-4 mr-2" />
           Add Session
@@ -92,16 +139,43 @@ export default function EventSessions({ sessions, onChange }: EventSessionsProps
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
               <CardTitle className="text-base">Session {index + 1}</CardTitle>
-              {sessions.length > 1 && (
+              <div className="flex space-x-2">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  onClick={() => removeSession(index)}
-                  className="text-red-500 hover:text-red-700"
+                  onClick={() => cloneSession(index)}
+                  className={`${
+                    clonedSessionIndex === index 
+                      ? "text-green-600 border-green-200 bg-green-50" 
+                      : "text-blue-600 border-blue-200 hover:text-blue-700 hover:bg-blue-50 hover:border-blue-300"
+                  }`}
+                  title="Clone this session"
+                  disabled={clonedSessionIndex === index}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  {clonedSessionIndex === index ? (
+                    <>
+                      <Check className="h-4 w-4 mr-1" />
+                      Cloned!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4 mr-1" />
+                      Clone
+                    </>
+                  )}
                 </Button>
-              )}
+                {sessions.length > 1 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => removeSession(index)}
+                    className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                    title="Delete this session"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
