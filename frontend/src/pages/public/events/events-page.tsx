@@ -1310,7 +1310,7 @@ export default function EventsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, index) => (
             <Card key={index} className="overflow-hidden">
-              <Skeleton className="h-48 w-full" />
+              <Skeleton className="aspect-square w-full" />
               <CardHeader>
                 <Skeleton className="h-6 w-3/4 mb-2" />
                 <Skeleton className="h-4 w-full" />
@@ -1343,7 +1343,7 @@ export default function EventsPage() {
               className={cn("overflow-hidden hover:shadow-lg transition-shadow duration-300", !showImages && "pt-3")}
             >
               {showImages && (
-                <div className="aspect-video relative">
+                <div className="aspect-square relative">
                   <img
                     src={event.image || "/placeholder.svg"}
                     alt={event.title}
@@ -1422,11 +1422,11 @@ export default function EventsPage() {
             <Card key={event.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-300">
               <div className="flex flex-col md:flex-row">
                 {showImages ? (
-                  <div className="md:w-1/4 relative">
+                  <div className="md:w-1/3 relative">
                     <img
                       src={event.image || "/placeholder.svg"}
                       alt={event.title}
-                      className="object-cover w-full h-full min-h-[200px]"
+                      className="object-cover w-full h-full aspect-square"
                     />
                     <div className="absolute top-3 right-3 bg-yellow-400 text-black text-xs font-medium px-2 py-1 rounded">
                       {event.category}

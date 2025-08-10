@@ -11,7 +11,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
-import { CalendarIcon, MapPin, Link, Save, ArrowLeft } from "lucide-react"
+import { CalendarIcon, MapPin, Link, Save, ArrowLeft, Search } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
@@ -29,6 +29,7 @@ import {
   eventStatuses,
   hongKongDistricts,
 } from "@/types/event-types"
+import { Label } from "@/components/ui/label"
 
 // Define the form schema
 const eventFormSchema = z.object({
@@ -92,6 +93,7 @@ const eventFormSchema = z.object({
     name: z.string().optional(),
     phone: z.string().optional(),
   }).optional(),
+  participants: z.array(z.string()).optional(),
 })
 
 type EventFormValues = z.infer<typeof eventFormSchema>
@@ -112,6 +114,9 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
   const [loadingForms, setLoadingForms] = useState(true)
   const [shouldRemoveImage, setShouldRemoveImage] = useState(false)
   const [selectedFileInfo, setSelectedFileInfo] = useState<{ name: string; size: string } | null>(null)
+  const [availableUsers, setAvailableUsers] = useState<Array<{_id: string, firstName: string, lastName: string, email: string, role: string}>>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [loadingUsers, setLoadingUsers] = useState(false);
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -141,10 +146,35 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
     fetchForms()
   }, [toast])
 
+  // Fetch available users for participant selection
+  useEffect(() => {
+    const fetchAvailableUsers = async () => {
+      try {
+        setLoadingUsers(true);
+        // For new events, we'll need to fetch all users or implement a different approach
+        // For now, we'll only fetch users when editing existing events
+        if (eventId) {
+          const users = await eventService.getAvailableUsers(eventId);
+          setAvailableUsers(users);
+        } else {
+          // For new events, we could fetch all users or show a message
+          setAvailableUsers([]);
+        }
+      } catch (error) {
+        console.error("Error fetching available users:", error);
+        // Don't show error toast for this as it's not critical
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    fetchAvailableUsers();
+  }, [eventId]);
+
   // Initialize the form
   const form = useForm<EventFormValues>({
     resolver: zodResolver(eventFormSchema),
-    defaultValues: defaultValues || {
+    defaultValues: {
       title: "",
       description: "",
       category: "",
@@ -168,6 +198,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         name: "",
         phone: "",
       },
+      participants: [],
     },
   })
 
@@ -207,7 +238,8 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
             staffContact: eventData.staffContact || {
               name: "",
               phone: "",
-            }
+            },
+            participants: eventData.participants || [],
           }
 
           console.log('Event data from API:', eventData);
@@ -343,6 +375,13 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         if (data.staffContact.phone) {
           formData.append('staffContact[phone]', data.staffContact.phone)
         }
+      }
+
+      // Add participants
+      if (data.participants && data.participants.length > 0) {
+        data.participants.forEach(userId => {
+          formData.append('participants[]', userId)
+        })
       }
 
       console.log('Form data staff contact:', data.staffContact);
@@ -492,6 +531,22 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       fileInput.value = ''
     }
   }
+
+  // Helper function to get user display info
+  const getUserDisplayInfo = (userId: string) => {
+    const user = availableUsers.find(u => u._id === userId);
+    return user ? { name: `${user.firstName} ${user.lastName}`, email: user.email } : { name: userId, email: 'Unknown' };
+  };
+
+  // Filter users based on search query
+  const filteredUsers = availableUsers.filter(user => {
+    const searchLower = userSearchQuery.toLowerCase();
+    return (
+      user.firstName.toLowerCase().includes(searchLower) ||
+      user.lastName.toLowerCase().includes(searchLower) ||
+      user.email.toLowerCase().includes(searchLower)
+    );
+  });
 
   return (
     <div className="bg-white rounded-lg border shadow-sm p-6 w-full">
@@ -829,7 +884,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                       )}
                       
                       {previewImage && (
-                        <div className="relative aspect-video rounded-md overflow-hidden border">
+                        <div className="relative aspect-square rounded-md overflow-hidden border">
                           <img
                             src={previewImage}
                             alt="Event preview"
@@ -858,6 +913,10 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                       <span className="font-medium text-green-600">✅ Supported Formats:</span>
                       <span className="text-gray-600">JPEG, PNG, GIF, WebP</span>
                     </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium text-purple-600">📐 Recommended:</span>
+                      <span className="text-gray-600">Square images (1:1 ratio) work best</span>
+                    </div>
                   </div>
                 </FormItem>
 
@@ -884,6 +943,133 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                     </FormItem>
                   )}
                 />
+
+                {/* Participant Management for Private Events */}
+                {form.watch('isPrivate') && (
+                  <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
+                    <h3 className="text-lg font-medium">Participant Management</h3>
+                    <p className="text-sm text-gray-600">
+                      Select users who are authorized to view this private event.
+                    </p>
+
+                                             <div className="space-y-4">
+                           <div>
+                             <Label htmlFor="participants">Authorized Participants</Label>
+                             <FormDescription>
+                               Users who can view and register for this private event
+                               {!eventId && (
+                                 <span className="block mt-1 text-amber-600">
+                                   Note: Participants can be managed after the event is created
+                                 </span>
+                               )}
+                             </FormDescription>
+                        
+                        {/* Participant Count */}
+                        <div className="mt-1 text-sm text-gray-600">
+                          {form.getValues('participants')?.length || 0} participant(s) selected
+                        </div>
+
+                        {/* Participant Search and Selection */}
+                        <div className="mt-2 space-y-2">
+                          {/* Search Input */}
+                          <div className="relative">
+                            <Input
+                              placeholder="Search users by name or email..."
+                              value={userSearchQuery}
+                              onChange={(e) => setUserSearchQuery(e.target.value)}
+                              className="pr-8"
+                            />
+                            <Search className="absolute right-2 top-2.5 h-4 w-4 text-gray-400" />
+                          </div>
+                          
+                                                     <Select
+                             onValueChange={(value) => {
+                               const current = form.getValues('participants') || [];
+                               if (!current.includes(value)) {
+                                 form.setValue('participants', [...current, value]);
+                               }
+                             }}
+                             disabled={loadingUsers || availableUsers.length === 0}
+                           >
+                             <SelectTrigger>
+                               <SelectValue placeholder={
+                                 loadingUsers ? "Loading users..." : 
+                                 availableUsers.length === 0 ? "No users available" : 
+                                 "Select participants..."
+                               } />
+                             </SelectTrigger>
+                            <SelectContent>
+                              {filteredUsers.map((user) => {
+                                const isAlreadySelected = (form.getValues('participants') || []).includes(user._id);
+                                return (
+                                  <SelectItem 
+                                    key={user._id} 
+                                    value={user._id}
+                                    disabled={isAlreadySelected}
+                                  >
+                                    {user.firstName} {user.lastName} ({user.email})
+                                    {isAlreadySelected && " - Already selected"}
+                                  </SelectItem>
+                                );
+                              })}
+                              {filteredUsers.length === 0 && (
+                                <SelectItem value="" disabled>
+                                  {userSearchQuery ? "No users found matching your search" : "No users available"}
+                                </SelectItem>
+                              )}
+                            </SelectContent>
+                          </Select>
+                          
+                          {/* Display selected participants */}
+                          <div className="mt-2 space-y-2">
+                            {(form.getValues('participants') || []).map((userId, index) => {
+                              const userInfo = getUserDisplayInfo(userId);
+                              return (
+                                <div key={index} className="flex items-center justify-between p-3 bg-white rounded-lg border shadow-sm">
+                                  <div className="flex items-center space-x-3">
+                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                      <span className="text-blue-600 text-sm font-medium">
+                                        {userInfo.name.charAt(0).toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <p className="font-medium text-gray-900">{userInfo.name}</p>
+                                      <p className="text-sm text-gray-500">{userInfo.email}</p>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      const current = form.getValues('participants') || [];
+                                      form.setValue('participants', current.filter(id => id !== userId));
+                                    }}
+                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                  >
+                                    Remove
+                                  </Button>
+                                </div>
+                              );
+                            })}
+                            
+                                                                                      {(!form.getValues('participants') || (form.getValues('participants')?.length || 0) === 0) && (
+                               <div className="text-center py-4 text-gray-500">
+                                 <p>No participants selected yet</p>
+                                 <p className="text-sm">
+                                   {!eventId ? 
+                                     "Participants can be added after the event is created" : 
+                                     "Use the dropdown above to add participants"
+                                   }
+                                 </p>
+                               </div>
+                             )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <FormField
                   control={form.control}

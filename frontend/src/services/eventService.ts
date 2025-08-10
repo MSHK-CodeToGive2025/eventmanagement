@@ -65,6 +65,7 @@ export interface Event {
     name?: string;
     phone?: string;
   };
+  participants?: string[]; // Users authorized to view this private event
 }
 
 export interface EventFormData {
@@ -220,6 +221,34 @@ const eventService = {
       headers: authHeader(),
     });
     //console.log('[eventService] Response:', response.data);
+    return response.data;
+  },
+
+  // Add participants to private event
+  async addParticipants(eventId: string, participantIds: string[]): Promise<Event> {
+    const url = `${API_URL}/events/${eventId}/participants`;
+    const response = await axios.post(url, { participantIds }, {
+      headers: authHeader(),
+    });
+    return response.data;
+  },
+
+  // Remove participants from private event
+  async removeParticipants(eventId: string, participantIds: string[]): Promise<Event> {
+    const url = `${API_URL}/events/${eventId}/participants`;
+    const response = await axios.delete(url, {
+      headers: authHeader(),
+      data: { participantIds },
+    });
+    return response.data;
+  },
+
+  // Get available users for participant selection
+  async getAvailableUsers(eventId: string): Promise<{ _id: string; firstName: string; lastName: string; email: string; role: string }[]> {
+    const url = `${API_URL}/events/${eventId}/available-users`;
+    const response = await axios.get(url, {
+      headers: authHeader(),
+    });
     return response.data;
   },
 

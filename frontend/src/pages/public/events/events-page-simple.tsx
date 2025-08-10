@@ -77,7 +77,7 @@ export default function EventsPageSimple() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {events.map((event) => (
           <div key={event._id} className="bg-white p-6 rounded-lg shadow hover:shadow-md transition-shadow">
-            <div className="h-40 mb-4 overflow-hidden rounded-md bg-gray-100">
+            <div className="aspect-square mb-4 overflow-hidden rounded-md bg-gray-100">
               <img
                 src={eventService.getEventImageUrl(event._id, event) || "/placeholder.svg"}
                 alt={event.title}

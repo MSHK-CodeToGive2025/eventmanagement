@@ -221,7 +221,7 @@ export default function EventRemindersPage() {
           <CardContent>
             <div className="animate-pulse space-y-4">
               <div className="bg-gray-200 h-12 rounded"></div>
-              <div className="bg-gray-200 h-64 rounded"></div>
+              <div className="bg-gray-200 aspect-square rounded"></div>
             </div>
           </CardContent>
         </Card>

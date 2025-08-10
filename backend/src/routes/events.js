@@ -57,13 +57,37 @@ const coverImageUpload = multer({
   }
 });
 
-// Get all events
-router.get('/', async (req, res) => {
+// Get all events (requires auth - implements private event access control)
+router.get('/', auth, async (req, res) => {
   try {
-    const events = await Event.find()
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(403).json({ message: 'User not found' });
+    }
+
+    let query = {};
+    
+    // If user is not admin, implement access control for private events
+    if (user.role !== 'admin') {
+      query = {
+        $or: [
+          // Public events
+          { isPrivate: false },
+          // Private events created by the user (if they're staff)
+          { $and: [{ isPrivate: true }, { createdBy: req.user.userId }] },
+          // Private events where user is an authorized participant
+          { $and: [{ isPrivate: true }, { participants: req.user.userId }] }
+        ]
+      };
+    }
+    // Admin can see all events (no query filter needed)
+
+    const events = await Event.find(query)
       .populate('createdBy', 'firstName lastName email')
       .populate('updatedBy', 'firstName lastName email')
+      .populate('participants', 'firstName lastName email')
       .sort({ startDate: 1 });
+    
     res.json(events);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -110,15 +134,32 @@ router.get('/public-nonexpired', async (req, res) => {
   }
 });
 
-// Get single event
-router.get('/:id', async (req, res) => {
+// Get single event (requires auth - implements private event access control)
+router.get('/:id', auth, async (req, res) => {
   try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(403).json({ message: 'User not found' });
+    }
+
     const event = await Event.findById(req.params.id)
       .populate('createdBy', 'firstName lastName email')
-      .populate('updatedBy', 'firstName lastName email');
-    
+      .populate('updatedBy', 'firstName lastName email')
+      .populate('participants', 'firstName lastName email');
+
     if (!event) {
       return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Access control for private events
+    if (event.isPrivate) {
+      const isAdmin = user.role === 'admin';
+      const isCreator = event.createdBy._id.toString() === req.user.userId;
+      const isAuthorizedParticipant = event.participants.some(p => p._id.toString() === req.user.userId);
+
+      if (!isAdmin && !isCreator && !isAuthorizedParticipant) {
+        return res.status(403).json({ message: 'Not authorized to view this private event' });
+      }
     }
     
     res.json(event);
@@ -704,6 +745,111 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('[WhatsApp] Unexpected error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Add participants to private event (admin, staff, or event creator only)
+router.post('/:id/participants', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(403).json({ message: 'User not found' });
+    }
+
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Check authorization: admin, staff, or event creator
+    if (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Not authorized to manage participants for this event' });
+    }
+
+    const { participantIds } = req.body;
+    if (!Array.isArray(participantIds)) {
+      return res.status(400).json({ message: 'participantIds must be an array' });
+    }
+
+    // Add new participants (avoid duplicates)
+    const newParticipants = participantIds.filter(id =>
+      !event.participants.includes(id)
+    );
+
+    event.participants.push(...newParticipants);
+    await event.save();
+
+    const updatedEvent = await Event.findById(req.params.id)
+      .populate('createdBy', 'firstName lastName email')
+      .populate('participants', 'firstName lastName email');
+
+    res.json(updatedEvent);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Remove participants from private event (admin, staff, or event creator only)
+router.delete('/:id/participants', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(403).json({ message: 'User not found' });
+    }
+
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Check authorization: admin, staff, or event creator
+    if (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Not authorized to manage participants for this event' });
+    }
+
+    const { participantIds } = req.body;
+    if (!Array.isArray(participantIds)) {
+      return res.status(400).json({ message: 'participantIds must be an array' });
+    }
+
+    // Remove specified participants
+    event.participants = event.participants.filter(id => !participantIds.includes(id.toString()));
+    await event.save();
+
+    const updatedEvent = await Event.findById(req.params.id)
+      .populate('createdBy', 'firstName lastName email')
+      .populate('participants', 'firstName lastName email');
+
+    res.json(updatedEvent);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Get available users for participant selection (admin, staff, or event creator only)
+router.get('/:id/available-users', auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.userId);
+    if (!user) {
+      return res.status(403).json({ message: 'User not found' });
+    }
+
+    const event = await Event.findById(req.params.id);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Check authorization: admin, staff, or event creator
+    if (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId) {
+      return res.status(403).json({ message: 'Not authorized to manage participants for this event' });
+    }
+
+    // Get all users (admin can see all, staff/creator see limited info)
+    const users = await User.find({}, 'firstName lastName email role');
+    
+    res.json(users);
+  } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
