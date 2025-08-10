@@ -219,7 +219,12 @@ const eventSchema = new mongoose.Schema({
       required: false,
       trim: true
     }
-  }
+  },
+  // New fields added to Event schema
+  participants: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  }], // Users authorized to view this private event
 });
 
 // Virtual field for available spots

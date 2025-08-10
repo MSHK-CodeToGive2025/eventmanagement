@@ -96,7 +96,9 @@ export default function EnhancedEventsPage() {
           updatedBy: event.updatedBy,
           updatedAt: event.updatedAt ? new Date(event.updatedAt) : undefined,
           tags: event.tags,
-          registeredCount: event.registeredCount
+          registeredCount: event.registeredCount,
+          assignedParticipants: event.assignedParticipants,
+          invitedParticipants: event.invitedParticipants
         }))
         
         setEvents(transformedEvents)

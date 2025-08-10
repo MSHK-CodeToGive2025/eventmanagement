@@ -65,6 +65,12 @@ export interface ZubinEvent {
   reminderTimes?: number[]; // Array of hours before event start for reminders (e.g., [48, 24, 3])
   remindersSent?: number[]; // Array of hours for which reminders have already been sent
   staffContact?: StaffContact; // Staff contact information for the event
+  participants?: {
+    _id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  }[]; // Users authorized to view this private event
 }
 
 // Event categories
