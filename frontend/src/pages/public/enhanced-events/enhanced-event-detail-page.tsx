@@ -716,9 +716,9 @@ export default function EnhancedEventDetailPage() {
         <div className="animate-pulse space-y-6">
           <div className="h-8 bg-gray-200 rounded w-3/4"></div>
           <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
-              <div className="bg-gray-200 aspect-square rounded-lg"></div>
+              <div className="bg-gray-200 w-64 h-64 mx-auto rounded-lg"></div>
               <div className="space-y-2">
                 <div className="h-4 bg-gray-200 rounded w-full"></div>
                 <div className="h-4 bg-gray-200 rounded w-full"></div>
@@ -726,8 +726,8 @@ export default function EnhancedEventDetailPage() {
               </div>
             </div>
             <div className="space-y-4">
-              <div className="bg-gray-200 aspect-square rounded-lg"></div>
-              <div className="bg-gray-200 aspect-square rounded-lg"></div>
+              <div className="bg-gray-200 h-32 rounded-lg"></div>
+              <div className="bg-gray-200 h-32 rounded-lg"></div>
             </div>
           </div>
         </div>
@@ -761,11 +761,11 @@ export default function EnhancedEventDetailPage() {
       </Button>
 
       {/* Event Header */}
-      <div className="mb-8">
-        <div className="flex items-start justify-between mb-4">
+      <div className="mb-6">
+        <div className="flex items-start justify-between mb-3">
           <div className="flex-1">
-            <h1 className="text-3xl font-bold mb-2">{event.title}</h1>
-            <div className="flex flex-wrap gap-4 text-gray-600 mb-4">
+            <h1 className="text-2xl font-bold mb-2">{event.title}</h1>
+            <div className="flex flex-wrap gap-4 text-gray-600 mb-3">
               <div className="flex items-center">
                 <Calendar className="h-5 w-5 mr-2" />
                 <span>
@@ -791,7 +791,7 @@ export default function EnhancedEventDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
           {/* Registration Started Notification */}
           {showRegistrationStarted && (
@@ -803,10 +803,10 @@ export default function EnhancedEventDetailPage() {
             </Alert>
           )}
 
-          <Card className="mb-8">
+          <Card className="mb-6">
             <CardContent className="p-0">
               {event.coverImage && (
-                <div className="relative w-full aspect-square">
+                <div className="relative w-full max-w-md mx-auto aspect-square">
                   <img
                     src={eventService.getEventImageUrl(event._id, event)}
                     alt={event.title}
@@ -814,10 +814,10 @@ export default function EnhancedEventDetailPage() {
                   />
                 </div>
               )}
-              <div className="p-6">
-                <div className="space-y-6">
+              <div className="p-5">
+                <div className="space-y-4">
                   <div>
-                    <h2 className="text-xl font-semibold mb-4">About This Event</h2>
+                    <h2 className="text-lg font-semibold mb-3">About This Event</h2>
                     <RichTextDisplay 
                       content={event.description} 
                       className="text-gray-700"
@@ -828,16 +828,16 @@ export default function EnhancedEventDetailPage() {
                   <Separator />
 
                   <div>
-                    <h2 className="text-xl font-semibold mb-4">Event Sessions</h2>
-                    <div className="space-y-4">
+                    <h2 className="text-lg font-semibold mb-3">Event Sessions</h2>
+                    <div className="space-y-3">
                       {event.sessions.map((session) => (
                         <Card key={session._id} className="hover:shadow-md transition-shadow">
-                          <CardContent className="p-4">
+                          <CardContent className="p-3">
                             <div className="flex items-start">
                               <div className="flex-1">
-                                <h3 className="font-semibold mb-2">{session.title}</h3>
+                                <h3 className="font-semibold mb-1">{session.title}</h3>
                                 {session.description && (
-                                  <p className="text-gray-600 mb-2">{session.description}</p>
+                                  <p className="text-gray-600 mb-2 text-sm">{session.description}</p>
                                 )}
                                 <div className="flex items-center text-sm text-gray-500">
                                   <Calendar className="h-4 w-4 mr-2" />
@@ -869,45 +869,45 @@ export default function EnhancedEventDetailPage() {
           {renderRegistrationForm()}
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Registration Status - Now Prominent */}
           {renderRegistrationStatus()}
 
           <Card>
-            <CardHeader>
-              <CardTitle>Event Details</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Event Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
+            <CardContent className="space-y-3">
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Date:</span>
                 <span className="font-medium">
                   {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
                 </span>
               </div>
               <Separator />
-              <div className="flex justify-between">
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Location:</span>
                 <span className="font-medium">{event.location.venue}</span>
               </div>
               <Separator />
-              <div className="flex justify-between">
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Category:</span>
                 <span className="font-medium">{event.category}</span>
               </div>
               <Separator />
-              <div className="flex justify-between">
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Target Group:</span>
                 <span className="font-medium">{event.targetGroup}</span>
               </div>
               <Separator />
-              <div className="flex justify-between">
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Sessions:</span>
                 <span className="font-medium">{event.sessions.length} sessions</span>
               </div>
               {event.capacity && (
                 <>
                   <Separator />
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Capacity:</span>
                     <span className="font-medium">
                       {event.registeredCount || 0}/{event.capacity} registered
@@ -919,18 +919,18 @@ export default function EnhancedEventDetailPage() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Location</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Location</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between">
+            <CardContent className="space-y-3">
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Venue:</span>
                 <span className="font-medium">{event.location.venue}</span>
               </div>
               <Separator />
               {event.location.address && (
                 <>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Address:</span>
                     <span className="font-medium">{event.location.address}</span>
                   </div>
@@ -939,21 +939,21 @@ export default function EnhancedEventDetailPage() {
               )}
               {event.location.district && (
                 <>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-gray-600">District:</span>
                     <span className="font-medium">{event.location.district}</span>
                   </div>
                   <Separator />
                 </>
               )}
-              <div className="flex justify-between">
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Type:</span>
                 <span className="font-medium">{event.location.onlineEvent ? "Online Event" : "In-person Event"}</span>
               </div>
               {event.location.onlineEvent && event.location.meetingLink && (
                 <>
                   <Separator />
-                  <div className="flex justify-between">
+                  <div className="flex justify-between text-sm">
                     <span className="text-gray-600">Meeting Link:</span>
                     <a 
                       href={event.location.meetingLink} 
