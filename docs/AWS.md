@@ -28,12 +28,12 @@
 
 ### Backend Service
 - **Service Name:** zubin-eventmanagement-backend-service
-- **Task Definition:** zubin-eventmanagement-backend-task
+- **Task Definition:** zubin-eventmanagement-backend-task:7
 - **Launch Type:** FARGATE
 - **Container Port:** 3001
 - **CPU:** 0.5 vCPU (512 CPU units)
 - **Memory:** 1 GB
-- **Desired Count:** 2
+- **Desired Count:** 1
 - **Minimum Count:** 1
 - **Maximum Count:** 4
 - **Health Check Grace Period:** 60 seconds
@@ -42,14 +42,50 @@
   - **Minimum Healthy Percent:** 100%
   - **Deployment Circuit Breaker:** Enabled
 
+#### Backend Environment Variables
+```json
+[
+  {
+    "name": "TWILIO_WHATSAPP_NUMBER",
+    "value": "+15557515340"
+  },
+  {
+    "name": "NODE_ENV",
+    "value": "production"
+  },
+  {
+    "name": "TWILIO_ACCOUNT_SID",
+    "value": "AC79f51b2735ded76d2388685be5cfeaca"
+  }
+]
+```
+
+#### Backend Secrets (AWS Systems Manager Parameter Store)
+```json
+[
+  {
+    "name": "JWT_SECRET",
+    "valueFrom": "/prod/eventmanagement/backend/JWT_SECRET"
+  },
+  {
+    "name": "MONGODB_URI",
+    "valueFrom": "/prod/eventmanagement/backend/MONGODB_URI"
+  },
+  {
+    "name": "TWILIO_AUTH_TOKEN",
+    "valueFrom": "/prod/eventmanagement/backend/TWILIO_AUTH_TOKEN"
+  }
+]
+```
+
 ### Frontend Service
 - **Service Name:** zubin-eventmanagement-frontend-service
-- **Task Definition:** zubin-eventmanagement-frontend-task
+- **Task Definition:** zubin-eventmanagement-frontend-task:3
 - **Launch Type:** FARGATE
 - **Container Port:** 80 (nginx)
 - **CPU:** 0.25 vCPU (256 CPU units)
 - **Memory:** 0.5 GB
-- **Desired Count:** 2
+- **Desired Count:** 1
 - **Minimum Count:** 1
 - **Maximum Count:** 4
 - **Health Check Grace Period:** 60 seconds
@@ -57,6 +93,17 @@
   - **Maximum Percent:** 200%
   - **Minimum Healthy Percent:** 100%
   - **Deployment Circuit Breaker:** Enabled
+
+#### Frontend Environment Variables
+```json
+[
+  {
+    "name": "VITE_API_URL",
+    "value": "http://zubin-emb-alb-1568046412.ap-east-1.elb.amazonaws.com"
+  }
+]
+```
+**Note:** This environment variable needs to be updated to use HTTPS: `https://api.events.opportunitybankhk.org/api`
 
 ---
 
@@ -207,9 +254,53 @@
 ## Frontend Access
 
 - **HTTP URL:** http://zubin-events-alb-1307450074.ap-east-1.elb.amazonaws.com
-- **HTTPS URL:** https://your-domain.com (after SSL certificate configuration)
+- **HTTPS URL:** https://events.opportunitybankhk.org ✅ **ENABLED**
 - **Container Port:** 80 (nginx)
 - **Health Check Path:** /
+
+## Backend Access
+
+- **HTTP URL:** http://zubin-emb-alb-1568046412.ap-east-1.elb.amazonaws.com
+- **HTTPS URL:** https://api.events.opportunitybankhk.org ✅ **ENABLED**
+- **Container Port:** 3001
+- **Health Check Path:** /api/health
+
+## HTTPS Configuration Status
+
+### ✅ **Frontend HTTPS - COMPLETED**
+- **Domain:** `events.opportunitybankhk.org`
+- **SSL Certificate:** Issued and valid
+- **ALB Listener:** HTTPS (443) configured
+- **HTTP Redirect:** HTTP (80) → HTTPS (443)
+
+### ✅ **Backend HTTPS - COMPLETED**
+- **Domain:** `api.events.opportunitybankhk.org`
+- **SSL Certificate:** Issued and valid
+- **ALB Listener:** HTTPS (443) configured
+- **HTTP Redirect:** HTTP (3001) → HTTPS (443)
+
+### ⚠️ **Required Action - Frontend Environment Variable Update**
+The frontend service currently has this environment variable:
+```json
+{
+  "name": "VITE_API_URL",
+  "value": "http://zubin-emb-alb-1568046412.ap-east-1.elb.amazonaws.com"
+}
+```
+
+**This needs to be updated to:**
+```json
+{
+  "name": "VITE_API_URL",
+  "value": "https://api.events.opportunitybankhk.org/api"
+}
+```
+
+**Why this change is needed:**
+- Frontend is now served over HTTPS (`https://events.opportunitybankhk.org`)
+- Backend API calls are still using HTTP URLs
+- Browsers block mixed content (HTTPS page making HTTP requests)
+- This causes API calls to fail with "Mixed Content" errors
 
 ---
 
