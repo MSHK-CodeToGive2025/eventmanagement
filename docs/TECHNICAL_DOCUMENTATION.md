@@ -1232,7 +1232,7 @@ npm run dev
 ```env
 # Backend (.env)
 NODE_ENV=development
-PORT=5000
+PORT=3001
 MONGODB_URI=mongodb://localhost:27017/zubin_events
 JWT_SECRET=your_secret_here
 TWILIO_ACCOUNT_SID=your_twilio_sid
@@ -1242,6 +1242,11 @@ TWILIO_AUTH_TOKEN=your_twilio_token
 VITE_API_BASE_URL=http://localhost:3001/api
 VITE_APP_NAME=Zubin Foundation Events
 ```
+
+### Local Development Ports
+- **Frontend Development Server:** Port 3000 (http://localhost:3000)
+- **Backend API Server:** Port 3001 (http://localhost:3001)
+- **MongoDB Database:** Port 27017 (mongodb://localhost:27017)
 
 ## Deployment to AWS
 
