@@ -10,8 +10,8 @@ set -e
 DOMAIN="events.opportunitybankhk.org"
 PARENT_DOMAIN="opportunitybankhk.org"
 REGION="ap-east-1"
-FRONTEND_ALB_NAME="zubin-emb-frontend-alb"
-FRONTEND_TARGET_GROUP="zubin-emb-frontend-tg"
+FRONTEND_ALB_NAME="zubin-events-alb"
+FRONTEND_TARGET_GROUP="frontend-tg"
 
 # Colors for output
 RED='\033[0;31m'
@@ -157,6 +157,9 @@ create_dns_records() {
     
     print_status "Creating A record for $DOMAIN pointing to ALB..."
     
+    # Get the correct hosted zone ID for the ALB
+    ALB_HOSTED_ZONE_ID=$(aws elbv2 describe-load-balancers --names "$FRONTEND_ALB_NAME" --region "$REGION" --query 'LoadBalancers[0].CanonicalHostedZoneId' --output text)
+    
     # Create A record alias
     cat > "route53-change-batch.json" << EOF
 {
@@ -167,7 +170,7 @@ create_dns_records() {
                 "Name": "$DOMAIN",
                 "Type": "A",
                 "AliasTarget": {
-                    "HostedZoneId": "Z3DX6H3XTTK2K4",
+                    "HostedZoneId": "$ALB_HOSTED_ZONE_ID",
                     "DNSName": "$(aws elbv2 describe-load-balancers --names "$FRONTEND_ALB_NAME" --region "$REGION" --query 'LoadBalancers[0].DNSName' --output text)",
                     "EvaluateTargetHealth": true
                 }
