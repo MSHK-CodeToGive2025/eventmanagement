@@ -13,6 +13,9 @@ const getCorsOrigins = () => {
       // Alternative frontend ALB (if different)
       'http://zubin-events-alb-1307450074.ap-east-1.elb.amazonaws.com',
       'https://zubin-events-alb-1307450074.ap-east-1.elb.amazonaws.com',
+      // Custom HTTPS domains
+      'https://events.opportunitybankhk.org',
+      'https://api.events.opportunitybankhk.org',
       // Custom domain (if you have one)
       process.env.CORS_ORIGIN,
       // Additional production domains
