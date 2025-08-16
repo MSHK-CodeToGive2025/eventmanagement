@@ -60,6 +60,7 @@ export interface Event {
   tags?: string[];
   registeredCount?: number;
   reminderTimes?: number[];
+  defaultReminderMode?: 'template' | 'custom';
   remindersSent?: number[];
   staffContact?: {
     name?: string;
@@ -100,6 +101,7 @@ export interface EventFormData {
   capacity?: number;
   tags?: string[];
   reminderTimes?: number[];
+  defaultReminderMode?: 'template' | 'custom';
   staffContact?: {
     name?: string;
     phone?: string;

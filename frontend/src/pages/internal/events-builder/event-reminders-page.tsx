@@ -9,6 +9,8 @@ import { format, parseISO } from "date-fns"
 import RouteGuard from "@/components/route-guard"
 import { useToast } from "@/hooks/use-toast"
 import axios from "axios"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -108,14 +110,16 @@ const generateMockRegisteredUsers = (eventId: string, count: number) => {
 /**
  * Sends a WhatsApp message to a specified phone number
  * @param phoneNumber - The recipient's phone number
- * @param message - The message content to send
+ * @param message - The message content to send (ignored if using template)
+ * @param useTemplate - Whether to use template or custom message
  * @returns Promise with the API response
  */
-const sendWhatsAppMessage = async (phoneNumber: string, message: string) => {
+const sendWhatsAppMessage = async (phoneNumber: string, message: string, useTemplate: boolean = true) => {
   try {
     const response = await axios.post(`${API_URL}/events/send-whatsapp-reminder`, {
       to: phoneNumber,
-      message: message
+      message: message,
+      useTemplate: useTemplate
     });
     return response.data;
   } catch (error) {
@@ -132,8 +136,9 @@ export default function EventRemindersPage() {
   const [registeredUsers, setRegisteredUsers] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [sending, setSending] = useState(false)
-  const [currentIndex, setCurrentIndex] = useState(-1)
   const [allSent, setAllSent] = useState(false)
+  const [currentIndex, setCurrentIndex] = useState(-1)
+  const [useTemplate, setUseTemplate] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -173,9 +178,15 @@ export default function EventRemindersPage() {
       const user = registeredUsers[i]
 
       try {
-        // Send WhatsApp message to the user
-        const message = `Reminder: You are registered for the event "${event.title}" on ${format(parseISO(event.date), "MMMM d, yyyy")} at ${event.startTime}. Location: ${event.location}`;
-        await sendWhatsAppMessage(user.phone, message);
+        // Send WhatsApp message to the user based on selected mode
+        if (useTemplate) {
+          // Send template message (no custom message needed)
+          await sendWhatsAppMessage(user.phone, "", true);
+        } else {
+          // Send custom message
+          const message = `Reminder: You are registered for the event "${event.title}" on ${format(parseISO(event.date), "MMMM d, yyyy")} at ${event.startTime}. Location: ${event.location}`;
+          await sendWhatsAppMessage(user.phone, message, false);
+        }
 
         // Update the current user's reminder status
         setRegisteredUsers((prev) =>
@@ -253,13 +264,58 @@ export default function EventRemindersPage() {
   return (
     <RouteGuard requiredRoles={["admin", "staff"]}>
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center space-x-2 mb-6">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Event Reminders</h1>
+            <p className="text-gray-600 mt-2">
+              Send WhatsApp reminders to registered participants for "{event.title}"
+            </p>
+          </div>
           <Button variant="outline" size="sm" onClick={handleBack}>
             <ArrowLeft className="h-4 w-4 mr-2" /> Back to Events
           </Button>
         </div>
 
-        <h1 className="text-3xl font-bold mb-6">WhatsApp Reminders</h1>
+        {/* Template Toggle */}
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-lg">WhatsApp Message Mode</CardTitle>
+            <CardDescription>
+              Choose between template messages (cheaper, compliant) or custom messages (more expensive, flexible)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="space-y-1">
+                <Label className="text-base font-medium">Use WhatsApp Template</Label>
+                <p className="text-sm text-gray-500">
+                  {useTemplate 
+                    ? "Send using pre-approved template (cheaper, compliant)" 
+                    : "Send custom message (more expensive, flexible)"
+                  }
+                </p>
+              </div>
+              <Switch
+                checked={useTemplate}
+                onCheckedChange={setUseTemplate}
+                disabled={sending}
+              />
+            </div>
+            
+            {useTemplate && (
+              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <h3 className="text-sm font-medium text-blue-900 mb-2">Template Information</h3>
+                <p className="text-sm text-blue-700 mb-2">
+                  Messages will use a pre-approved WhatsApp template with:
+                </p>
+                <ul className="text-sm text-blue-700 list-disc list-inside space-y-1">
+                  <li><strong>Variable 1:</strong> Event date (MM/DD/YYYY format)</li>
+                  <li><strong>Variable 2:</strong> Event time (HH:MM AM/PM format)</li>
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Event Details Card */}
         <Card className="mb-6">

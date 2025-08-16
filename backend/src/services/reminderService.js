@@ -217,9 +217,15 @@ class ReminderService {
   }
 
   // Send reminder for a specific event
-  async sendEventReminder(event, reminderHours, eventType, startDateTime) {
+  async sendEventReminder(event, reminderHours, eventType, startDateTime, useTemplate = null) {
     try {
+      // If useTemplate is not specified, use the event's default setting
+      if (useTemplate === null) {
+        useTemplate = event.defaultReminderMode === 'template';
+      }
+      
       console.log(`[REMINDER SERVICE] 📤 Starting to send ${reminderHours}h reminder for ${eventType}: ${event.title}`);
+      console.log(`[REMINDER SERVICE] Using template: ${useTemplate ? 'Yes' : 'No'} (${event.defaultReminderMode} default)`);
       
       // Get all registered participants for this event
       const registrations = await EventRegistration.find({
@@ -243,18 +249,47 @@ class ReminderService {
       for (const registration of registrations) {
         if (registration.attendee && registration.attendee.phone) {
           try {
-            const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
-            
             // Format phone number for Twilio WhatsApp compliance
             const formattedNumber = formatForWhatsApp(registration.attendee.phone);
 
             console.log(`[REMINDER SERVICE] 📱 Sending reminder to ${formattedNumber} for ${eventType}`);
 
-            await twilioClient.messages.create({
-              body: message,
-              from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-              to: `whatsapp:${formattedNumber}`
-            });
+            if (useTemplate) {
+              // Use template system
+              const eventStartTime = startDateTime;
+              const formattedDate = eventStartTime.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+              });
+              const formattedTime = eventStartTime.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              });
+
+              // Create content variables for template (variable 1: date, variable 2: time)
+              const contentVariables = JSON.stringify({
+                "1": formattedDate,
+                "2": formattedTime
+              });
+
+              await twilioClient.messages.create({
+                from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+                contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
+                contentVariables: contentVariables,
+                to: `whatsapp:${formattedNumber}`
+              });
+            } else {
+              // Use custom message system
+              const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
+              
+              await twilioClient.messages.create({
+                body: message,
+                from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+                to: `whatsapp:${formattedNumber}`
+              });
+            }
 
             console.log(`[REMINDER SERVICE] ✅ Successfully sent ${reminderHours}h reminder to ${formattedNumber}`);
             successfulNumbers.push(formattedNumber);
