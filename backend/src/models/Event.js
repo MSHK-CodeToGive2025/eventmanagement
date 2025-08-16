@@ -204,7 +204,7 @@ const eventSchema = new mongoose.Schema({
     }
   },
   remindersSent: {
-    type: [Number], // Array of hours for which reminders have already been sent
+    type: [String], // Array of reminder keys (e.g., "main_24", "session_Session 1_24")
     default: []
   },
   // Staff contact information for notifications
