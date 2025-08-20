@@ -30,7 +30,7 @@ const EventAdminForm: React.FC = () => {
     capacity: undefined,
     tags: [],
     reminderTimes: [24],
-    defaultReminderMode: 'custom',
+    defaultReminderMode: 'template',
     staffContact: {
       name: '',
       phone: ''

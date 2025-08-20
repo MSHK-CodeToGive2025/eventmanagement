@@ -268,11 +268,8 @@ class ReminderService {
                 hour12: true
               });
 
-              // Create content variables for template (variable 1: date, variable 2: time)
-              const contentVariables = JSON.stringify({
-                "1": formattedDate,
-                "2": formattedTime
-              });
+              // Create content variables for template with 8 variables
+              const contentVariables = this.createTemplateVariables(event, reminderHours, eventType, startDateTime);
 
               await twilioClient.messages.create({
                 from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
@@ -378,6 +375,79 @@ class ReminderService {
     message += `\n\nWe look forward to seeing you!`;
     
     return message;
+  }
+
+  // Create template variables for WhatsApp template
+  createTemplateVariables(event, reminderHours, eventType, startDateTime) {
+    const eventStartTime = startDateTime;
+    const formattedDate = eventStartTime.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const formattedTime = eventStartTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    let timeText;
+    if (reminderHours >= 24) {
+      const days = Math.floor(reminderHours / 24);
+      timeText = `${days} day${days > 1 ? 's' : ''}`;
+    } else {
+      timeText = `${reminderHours} hour${reminderHours > 1 ? 's' : ''}`;
+    }
+
+    // Determine if this is a session or main event
+    const isSession = eventType.startsWith('session:');
+    const sessionTitle = isSession ? eventType.replace('session: ', '') : null;
+
+    // Variable 1: Event title
+    const eventTitle = event.title;
+    
+    // Variable 2: Session title (or empty if main event)
+    const sessionTitleText = isSession ? sessionTitle : '';
+    
+    // Variable 3: Time until event
+    const timeUntilEvent = timeText;
+    
+    // Variable 4: Date
+    const dateText = formattedDate;
+    
+    // Variable 5: Time
+    const timeText2 = formattedTime;
+    
+    // Variable 6: Location
+    let locationText = '';
+    if (isSession) {
+      // For sessions, use session location if available, otherwise fall back to event location
+      const session = event.sessions.find(s => s.title === sessionTitle);
+      if (session && session.location && session.location.venue) {
+        locationText = session.location.venue;
+      } else {
+        locationText = `${event.location.venue}, ${event.location.district}`;
+      }
+    } else {
+      locationText = `${event.location.venue}, ${event.location.district}`;
+    }
+    
+    // Variable 7: Contact name
+    const contactName = event.staffContact && event.staffContact.name ? event.staffContact.name : '';
+    
+    // Variable 8: Contact phone
+    const contactPhone = event.staffContact && event.staffContact.phone ? event.staffContact.phone : '';
+
+    return JSON.stringify({
+      "1": eventTitle,
+      "2": sessionTitleText,
+      "3": timeUntilEvent,
+      "4": dateText,
+      "5": timeText2,
+      "6": locationText,
+      "7": contactName,
+      "8": contactPhone
+    });
   }
 
   // Mark reminder as sent
