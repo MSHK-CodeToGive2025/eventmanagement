@@ -35,6 +35,8 @@ class ReminderService {
       return;
     }
 
+
+
     // Schedule job to run every hour
     cron.schedule('0 * * * *', () => {
       this.processReminders();
@@ -268,13 +270,12 @@ class ReminderService {
                 hour12: true
               });
 
-              // Create content variables for template with 8 variables
-              const contentVariables = this.createTemplateVariables(event, reminderHours, eventType, startDateTime);
-
+              // Use custom message system (template mode disabled)
+              const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
+              
               await twilioClient.messages.create({
+                body: message,
                 from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-                contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
-                contentVariables: contentVariables,
                 to: `whatsapp:${formattedNumber}`
               });
             } else {
@@ -290,10 +291,11 @@ class ReminderService {
 
             console.log(`[REMINDER SERVICE] ✅ Successfully sent ${reminderHours}h reminder to ${formattedNumber}`);
             successfulNumbers.push(formattedNumber);
-          } catch (error) {
-            console.error(`[REMINDER SERVICE] ❌ Failed to send reminder to ${registration.attendee.phone}:`, error.message);
-            failedNumbers.push(registration.attendee.phone);
-          }
+                      } catch (error) {
+              console.error(`[REMINDER SERVICE] ❌ Failed to send reminder to ${registration.attendee.phone}:`, error.message);
+              console.error(`[REMINDER SERVICE] Error details:`, error);
+              failedNumbers.push(registration.attendee.phone);
+            }
         } else {
           console.log(`[REMINDER SERVICE] ⚠️ Skipping participant - no phone number`);
         }

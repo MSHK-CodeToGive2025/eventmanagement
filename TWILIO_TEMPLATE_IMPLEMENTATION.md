@@ -11,8 +11,10 @@ This implementation supports **both** Twilio's WhatsApp Business API template sy
    - Requires compliance with WhatsApp content policies
 
 2. **Template Mode**: 
-   - Uses your approved WhatsApp template
-   - Variable 1 = Event date (MM/DD/YYYY), Variable 2 = Event time (HH:MM AM/PM)
+   - Uses your approved WhatsApp template with 8 variables
+   - Variable 1 = Event title, Variable 2 = Session title, Variable 3 = Time until event
+   - Variable 4 = Date, Variable 5 = Time, Variable 6 = Location
+   - Variable 7 = Contact name, Variable 8 = Contact phone
    - Significantly cheaper than custom messages
    - Fully compliant with WhatsApp Business API policies
 
@@ -24,15 +26,21 @@ Add the following variables to your `.env` file:
 
 ```bash
 # Twilio WhatsApp Template Configuration
-TWILIO_WHATSAPP_TEMPLATE_SID=HXb5b62575e6e4ff6129ad7c8efe1f983e
+TWILIO_WHATSAPP_TEMPLATE_SID=HX3fda9fb1cf05b0d58674a422302bfe90
 TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
 ```
 
 ### Template Variables
 
-The template uses two variables:
-- **Variable 1**: Event date (MM/DD/YYYY format)
-- **Variable 2**: Event time (HH:MM AM/PM format)
+The template uses eight variables:
+- **Variable 1**: Event title
+- **Variable 2**: Session title (empty for main events)
+- **Variable 3**: Time until event (e.g., "2 hours", "1 day")
+- **Variable 4**: Date (formatted as "Monday, January 15, 2024")
+- **Variable 5**: Time (formatted as "2:30 PM")
+- **Variable 6**: Location (venue and district)
+- **Variable 7**: Contact name
+- **Variable 8**: Contact phone
 
 ## Implementation Details
 

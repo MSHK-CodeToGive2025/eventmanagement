@@ -206,7 +206,7 @@ const eventSchema = new mongoose.Schema({
   defaultReminderMode: {
     type: String,
     enum: ['template', 'custom'],
-    default: 'template',
+    default: 'custom',
     required: true
   },
   remindersSent: {

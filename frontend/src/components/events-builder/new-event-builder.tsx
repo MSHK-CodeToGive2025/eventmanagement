@@ -89,7 +89,7 @@ const eventFormSchema = z.object({
   capacity: z.number().optional(),
   tags: z.array(z.string()).optional(),
   reminderTimes: z.array(z.number()).optional(),
-      defaultReminderMode: z.enum(['template', 'custom']).default('template'),
+      defaultReminderMode: z.enum(['template', 'custom']).default('custom'),
   staffContact: z.object({
     name: z.string().optional(),
     phone: z.string().optional(),
@@ -195,7 +195,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       capacity: undefined,
       tags: [],
       reminderTimes: [24], // Default to 24 hours before event
-      defaultReminderMode: 'template',
+              defaultReminderMode: 'custom',
       staffContact: {
         name: "",
         phone: "",
