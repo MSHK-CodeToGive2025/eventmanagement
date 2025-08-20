@@ -622,10 +622,11 @@ router.delete('/:id/cover-image', auth, async (req, res) => {
 // Send WhatsApp message to registered participant (requires auth)
 router.post('/send-whatsapp-reminder', async (req, res) => {
   try {
-    const { to, message } = req.body;
+    const { to, message, useTemplate } = req.body;
     
     // Log the attempt (without sensitive data)
     console.log(`Attempting to send WhatsApp message to: ${to}`);
+    console.log(`Using template: ${useTemplate ? 'Yes' : 'No'}`);
     
     if (!twilioClient) {
       console.error('Twilio client not initialized, cannot send WhatsApp message');
@@ -636,14 +637,46 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
       });
     }
     
-    const result = await twilioClient.messages.create({
-      body: message,
-      from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-      to: `whatsapp:${to}`
-    });
-    
-    console.log('WhatsApp message sent successfully:', result.sid);
-    res.json({ success: true, sid: result.sid });
+    if (useTemplate) {
+      // Use template system
+      const result = await twilioClient.messages.create({
+        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+        contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
+        contentVariables: JSON.stringify({
+          "1": new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+          }),
+          "2": new Date().toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          })
+        }),
+        to: `whatsapp:${to}`
+      });
+      
+      console.log('WhatsApp template message sent successfully:', result.sid);
+      res.json({ success: true, sid: result.sid, method: 'template' });
+    } else {
+      // Use custom message system
+      if (!message) {
+        return res.status(400).json({ 
+          success: false, 
+          error: 'Message content required when not using template'
+        });
+      }
+      
+      const result = await twilioClient.messages.create({
+        body: message,
+        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+        to: `whatsapp:${to}`
+      });
+      
+      console.log('WhatsApp custom message sent successfully:', result.sid);
+      res.json({ success: true, sid: result.sid, method: 'custom' });
+    }
   } catch (error) {
     console.error('Error sending WhatsApp message:', error);
     res.status(500).json({ 
@@ -678,10 +711,10 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only admin, staff, or event creator can send WhatsApp messages' });
     }
 
-    const { title, message } = req.body;
-    if (!message) {
-      console.error('[WhatsApp] Message content is required');
-      return res.status(400).json({ message: 'Message content is required' });
+    const { title, message, useTemplate } = req.body;
+    if (!message && !useTemplate) {
+      console.error('[WhatsApp] Message content is required when not using template');
+      return res.status(400).json({ message: 'Message content is required when not using template' });
     }
 
     // Use provided title as subtitle (optional)
@@ -694,7 +727,10 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
     });
 
     console.log(`[WhatsApp] Starting message send for event: ${event.title} (${event._id})`);
-    console.log(`[WhatsApp] Message content: ${message}`);
+    console.log(`[WhatsApp] Using template: ${useTemplate ? 'Yes' : 'No'}`);
+    if (!useTemplate) {
+      console.log(`[WhatsApp] Message content: ${message}`);
+    }
     console.log(`[WhatsApp] Number of registered participants: ${registrations.length}`);
 
     const failedNumbers = [];
@@ -715,11 +751,33 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
             continue;
           }
           
-          await twilioClient.messages.create({
-            body: `Zubin Event Notification: ${event.title}${messageSubtitle ? `\n${messageSubtitle}` : ''}\n\n${message}`,
-            from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-            to: `whatsapp:${formattedNumber}`
-          });
+          if (useTemplate) {
+            // Use template system
+            await twilioClient.messages.create({
+              from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+              contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
+              contentVariables: JSON.stringify({
+                "1": new Date().toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit'
+                }),
+                "2": new Date().toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  hour12: true
+                })
+              }),
+              to: `whatsapp:${formattedNumber}`
+            });
+          } else {
+            // Use custom message system
+            await twilioClient.messages.create({
+              body: `Zubin Event Notification: ${event.title}${messageSubtitle ? `\n${messageSubtitle}` : ''}\n\n${message}`,
+              from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+              to: `whatsapp:${formattedNumber}`
+            });
+          }
           
           console.log(`[WhatsApp] Successfully sent to ${formattedNumber}`);
           successfulNumbers.push(formattedNumber);

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import eventService, { authHeader } from '../../services/eventService';
 import { Event, EventFormData } from '../../services/eventService';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const EventAdminForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -10,20 +12,39 @@ const EventAdminForm: React.FC = () => {
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
     description: '',
-    date: '',
-    startTime: '',
-    endTime: '',
-    location: '',
     category: '',
-    capacity: 0,
+    targetGroup: '',
+    location: {
+      venue: '',
+      address: '',
+      district: '',
+      onlineEvent: false,
+      meetingLink: ''
+    },
+    startDate: '',
+    endDate: '',
+    isPrivate: false,
+    status: 'Draft',
+    registrationFormId: '',
+    sessions: [],
+    capacity: undefined,
+    tags: [],
+    reminderTimes: [24],
+    defaultReminderMode: 'custom',
+    staffContact: {
+      name: '',
+      phone: ''
+    },
+    participants: []
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [whatsappMessage, setWhatsappMessage] = useState('');
   const [whatsappLoading, setWhatsappLoading] = useState(false);
   const [whatsappError, setWhatsappError] = useState<string | null>(null);
   const [whatsappSuccess, setWhatsappSuccess] = useState<string | null>(null);
+  const [isTemplateMode, setIsTemplateMode] = useState(true);
+  const [whatsappMessage, setWhatsappMessage] = useState('');
 
   useEffect(() => {
     const fetchEvent = async () => {
@@ -60,24 +81,6 @@ const EventAdminForm: React.FC = () => {
     }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccess(null);
-
-    try {
-      if (id) {
-        await eventService.updateEvent(id, formData);
-        setSuccess('Event updated successfully');
-        // Refresh event data
-        const updatedEvent = await eventService.getEvent(id);
-        setEvent(updatedEvent);
-      }
-    } catch (err) {
-      setError('Failed to update event');
-    }
-  };
-
   const handleWhatsappSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setWhatsappError(null);
@@ -92,7 +95,11 @@ const EventAdminForm: React.FC = () => {
             'Content-Type': 'application/json',
             ...authHeader(),
           },
-          body: JSON.stringify({ message: whatsappMessage }),
+          body: JSON.stringify({ 
+            title: "", 
+            message: isTemplateMode ? "" : whatsappMessage,
+            useTemplate: isTemplateMode
+          }),
         });
 
         const data = await response.json();
@@ -101,13 +108,52 @@ const EventAdminForm: React.FC = () => {
           throw new Error(data.message || 'Failed to send WhatsApp message');
         }
 
-        setWhatsappSuccess(`Message sent successfully to ${data.successful} participants. ${data.failed > 0 ? `${data.failed} failed.` : ''}`);
-        setWhatsappMessage('');
+        const messageType = isTemplateMode ? 'Template' : 'Custom';
+        setWhatsappSuccess(`${messageType} message sent successfully to ${data.successful} participants. ${data.failed > 0 ? `${data.failed} failed.` : ''}`);
+        
+        // Clear custom message if using template mode
+        if (isTemplateMode) {
+          setWhatsappMessage('');
+        }
       }
     } catch (err) {
       setWhatsappError(err instanceof Error ? err.message : 'Failed to send WhatsApp message');
     } finally {
       setWhatsappLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+
+    try {
+      if (id) {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/events/${id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeader(),
+          },
+          body: JSON.stringify({
+            ...formData,
+            defaultReminderMode: formData.defaultReminderMode || 'template'
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Failed to update event');
+        }
+
+        setSuccess('Event updated successfully!');
+        setLoading(false);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update event');
+      setLoading(false);
     }
   };
 
@@ -164,6 +210,22 @@ const EventAdminForm: React.FC = () => {
               <option value="conference">Conference</option>
               <option value="social">Social</option>
             </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Default WhatsApp Reminder Mode</label>
+            <select
+              name="defaultReminderMode"
+              value={formData.defaultReminderMode || 'template'}
+              onChange={handleChange}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="template">Template Messages (Cheaper, Compliant)</option>
+              <option value="custom">Custom Messages (More Expensive, Flexible)</option>
+            </select>
+            <p className="mt-1 text-sm text-gray-500">
+              Choose the default mode for WhatsApp reminders. Template messages use pre-approved content with date/time variables.
+            </p>
           </div>
 
           <div>
@@ -330,28 +392,64 @@ const EventAdminForm: React.FC = () => {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Message</label>
-            <textarea
-              value={whatsappMessage}
-              onChange={(e) => setWhatsappMessage(e.target.value)}
-              rows={4}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-              placeholder="Enter your message here..."
-              required
+          {/* Template Toggle */}
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="space-y-1">
+              <Label className="text-base font-medium">Use WhatsApp Template</Label>
+              <p className="text-sm text-gray-500">
+                {isTemplateMode 
+                  ? "Send using pre-approved template (cheaper, compliant)" 
+                  : "Send custom message (more expensive, flexible)"
+                }
+              </p>
+            </div>
+            <Switch
+              checked={isTemplateMode}
+              onCheckedChange={setIsTemplateMode}
+              disabled={whatsappLoading}
             />
-            <p className="mt-1 text-sm text-gray-500">
-              This message will be sent to all registered participants with phone numbers.
-            </p>
           </div>
+
+          {isTemplateMode ? (
+            /* Template Info */
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-blue-900 mb-2">Using Twilio WhatsApp Template</h3>
+              <p className="text-sm text-blue-700 mb-3">
+                Messages will be sent using a pre-approved WhatsApp template with the following variables:
+              </p>
+              <ul className="text-sm text-blue-700 list-disc list-inside space-y-1">
+                <li><strong>Variable 1:</strong> Event date (MM/DD/YYYY format)</li>
+                <li><strong>Variable 2:</strong> Event time (HH:MM AM/PM format)</li>
+              </ul>
+              <p className="text-sm text-blue-600 mt-3">
+                This approach ensures compliance with WhatsApp Business API policies and reduces messaging costs.
+              </p>
+            </div>
+          ) : (
+            /* Custom Message Input */
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Message</label>
+              <textarea
+                value={whatsappMessage}
+                onChange={(e) => setWhatsappMessage(e.target.value)}
+                rows={4}
+                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                placeholder="Enter your message here..."
+                required
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                This message will be sent to all registered participants with phone numbers. Custom messages cost more but allow full control over content.
+              </p>
+            </div>
+          )}
 
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={whatsappLoading}
+              disabled={whatsappLoading || (!isTemplateMode && !whatsappMessage.trim())}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
             >
-              {whatsappLoading ? 'Sending...' : 'Send Message'}
+              {whatsappLoading ? 'Sending...' : `Send ${isTemplateMode ? 'Template' : 'Custom'} Message`}
             </button>
           </div>
         </form>

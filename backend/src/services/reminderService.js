@@ -35,6 +35,8 @@ class ReminderService {
       return;
     }
 
+
+
     // Schedule job to run every hour
     cron.schedule('0 * * * *', () => {
       this.processReminders();
@@ -217,9 +219,15 @@ class ReminderService {
   }
 
   // Send reminder for a specific event
-  async sendEventReminder(event, reminderHours, eventType, startDateTime) {
+  async sendEventReminder(event, reminderHours, eventType, startDateTime, useTemplate = null) {
     try {
+      // If useTemplate is not specified, use the event's default setting
+      if (useTemplate === null) {
+        useTemplate = event.defaultReminderMode === 'template';
+      }
+      
       console.log(`[REMINDER SERVICE] 📤 Starting to send ${reminderHours}h reminder for ${eventType}: ${event.title}`);
+      console.log(`[REMINDER SERVICE] Using template: ${useTemplate ? 'Yes' : 'No'} (${event.defaultReminderMode} default)`);
       
       // Get all registered participants for this event
       const registrations = await EventRegistration.find({
@@ -243,25 +251,51 @@ class ReminderService {
       for (const registration of registrations) {
         if (registration.attendee && registration.attendee.phone) {
           try {
-            const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
-            
             // Format phone number for Twilio WhatsApp compliance
             const formattedNumber = formatForWhatsApp(registration.attendee.phone);
 
             console.log(`[REMINDER SERVICE] 📱 Sending reminder to ${formattedNumber} for ${eventType}`);
 
-            await twilioClient.messages.create({
-              body: message,
-              from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-              to: `whatsapp:${formattedNumber}`
-            });
+            if (useTemplate) {
+              // Use template system
+              const eventStartTime = startDateTime;
+              const formattedDate = eventStartTime.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+              });
+              const formattedTime = eventStartTime.toLocaleTimeString('en-US', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+              });
+
+              // Use custom message system (template mode disabled)
+              const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
+              
+              await twilioClient.messages.create({
+                body: message,
+                from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+                to: `whatsapp:${formattedNumber}`
+              });
+            } else {
+              // Use custom message system
+              const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
+              
+              await twilioClient.messages.create({
+                body: message,
+                from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+                to: `whatsapp:${formattedNumber}`
+              });
+            }
 
             console.log(`[REMINDER SERVICE] ✅ Successfully sent ${reminderHours}h reminder to ${formattedNumber}`);
             successfulNumbers.push(formattedNumber);
-          } catch (error) {
-            console.error(`[REMINDER SERVICE] ❌ Failed to send reminder to ${registration.attendee.phone}:`, error.message);
-            failedNumbers.push(registration.attendee.phone);
-          }
+                      } catch (error) {
+              console.error(`[REMINDER SERVICE] ❌ Failed to send reminder to ${registration.attendee.phone}:`, error.message);
+              console.error(`[REMINDER SERVICE] Error details:`, error);
+              failedNumbers.push(registration.attendee.phone);
+            }
         } else {
           console.log(`[REMINDER SERVICE] ⚠️ Skipping participant - no phone number`);
         }
@@ -343,6 +377,79 @@ class ReminderService {
     message += `\n\nWe look forward to seeing you!`;
     
     return message;
+  }
+
+  // Create template variables for WhatsApp template
+  createTemplateVariables(event, reminderHours, eventType, startDateTime) {
+    const eventStartTime = startDateTime;
+    const formattedDate = eventStartTime.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const formattedTime = eventStartTime.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    let timeText;
+    if (reminderHours >= 24) {
+      const days = Math.floor(reminderHours / 24);
+      timeText = `${days} day${days > 1 ? 's' : ''}`;
+    } else {
+      timeText = `${reminderHours} hour${reminderHours > 1 ? 's' : ''}`;
+    }
+
+    // Determine if this is a session or main event
+    const isSession = eventType.startsWith('session:');
+    const sessionTitle = isSession ? eventType.replace('session: ', '') : null;
+
+    // Variable 1: Event title
+    const eventTitle = event.title;
+    
+    // Variable 2: Session title (or empty if main event)
+    const sessionTitleText = isSession ? sessionTitle : '';
+    
+    // Variable 3: Time until event
+    const timeUntilEvent = timeText;
+    
+    // Variable 4: Date
+    const dateText = formattedDate;
+    
+    // Variable 5: Time
+    const timeText2 = formattedTime;
+    
+    // Variable 6: Location
+    let locationText = '';
+    if (isSession) {
+      // For sessions, use session location if available, otherwise fall back to event location
+      const session = event.sessions.find(s => s.title === sessionTitle);
+      if (session && session.location && session.location.venue) {
+        locationText = session.location.venue;
+      } else {
+        locationText = `${event.location.venue}, ${event.location.district}`;
+      }
+    } else {
+      locationText = `${event.location.venue}, ${event.location.district}`;
+    }
+    
+    // Variable 7: Contact name
+    const contactName = event.staffContact && event.staffContact.name ? event.staffContact.name : '';
+    
+    // Variable 8: Contact phone
+    const contactPhone = event.staffContact && event.staffContact.phone ? event.staffContact.phone : '';
+
+    return JSON.stringify({
+      "1": eventTitle,
+      "2": sessionTitleText,
+      "3": timeUntilEvent,
+      "4": dateText,
+      "5": timeText2,
+      "6": locationText,
+      "7": contactName,
+      "8": contactPhone
+    });
   }
 
   // Mark reminder as sent

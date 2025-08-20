@@ -89,6 +89,7 @@ const eventFormSchema = z.object({
   capacity: z.number().optional(),
   tags: z.array(z.string()).optional(),
   reminderTimes: z.array(z.number()).optional(),
+      defaultReminderMode: z.enum(['template', 'custom']).default('custom'),
   staffContact: z.object({
     name: z.string().optional(),
     phone: z.string().optional(),
@@ -194,6 +195,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       capacity: undefined,
       tags: [],
       reminderTimes: [24], // Default to 24 hours before event
+              defaultReminderMode: 'custom',
       staffContact: {
         name: "",
         phone: "",
@@ -235,6 +237,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
             capacity: eventData.capacity,
             tags: eventData.tags || [],
             reminderTimes: eventData.reminderTimes || [24],
+            defaultReminderMode: eventData.defaultReminderMode || 'template',
             staffContact: eventData.staffContact || {
               name: "",
               phone: "",
@@ -366,6 +369,9 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
           formData.append('reminderTimes[]', time.toString())
         })
       }
+
+      // Add default reminder mode
+      formData.append('defaultReminderMode', data.defaultReminderMode);
 
       // Add staff contact information
       if (data.staffContact) {
@@ -1171,6 +1177,41 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                           disabled={isSubmitting}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="defaultReminderMode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-medium">Default WhatsApp Reminder Mode</FormLabel>
+                      <FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className="h-12">
+                            <SelectValue placeholder="Select reminder mode" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="template">
+                              <div className="flex flex-col">
+                                <span className="font-medium">Template Messages</span>
+                                <span className="text-sm text-gray-500">Cheaper, compliant, standardized</span>
+                              </div>
+                            </SelectItem>
+                            <SelectItem value="custom">
+                              <div className="flex flex-col">
+                                <span className="font-medium">Custom Messages</span>
+                                <span className="text-sm text-gray-500">More expensive, flexible content</span>
+                              </div>
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormDescription>
+                        Choose the default mode for WhatsApp reminders. Template messages use pre-approved content with date/time variables, while custom messages allow full control over content.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

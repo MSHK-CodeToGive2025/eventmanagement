@@ -203,8 +203,14 @@ const eventSchema = new mongoose.Schema({
       message: 'Reminder times must be positive numbers (hours before event)'
     }
   },
+  defaultReminderMode: {
+    type: String,
+    enum: ['template', 'custom'],
+    default: 'custom',
+    required: true
+  },
   remindersSent: {
-    type: [Number], // Array of hours for which reminders have already been sent
+    type: [String], // Array of reminder keys (e.g., "main_24", "session_Session 1_24")
     default: []
   },
   // Staff contact information for notifications
