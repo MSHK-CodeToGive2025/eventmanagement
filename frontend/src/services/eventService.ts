@@ -292,6 +292,71 @@ const eventService = {
     );
     //console.log('[eventService] WhatsApp Response:', response.data);
     return response.data;
+  },
+
+  // Assign participants to private event
+  async assignParticipants(eventId: string, participantIds: string[]): Promise<{
+    message: string;
+    results: Array<{
+      participantId: string;
+      status: 'assigned' | 'already_registered';
+      registrationId: string;
+      user: {
+        firstName: string;
+        lastName: string;
+        email: string;
+      };
+    }>;
+    errors: Array<{
+      participantId: string;
+      error: string;
+    }>;
+    summary: {
+      total: number;
+      assigned: number;
+      alreadyRegistered: number;
+      errors: number;
+    };
+  }> {
+    const url = `${API_URL}/event-registrations/event/${eventId}/assign-participants`;
+    const response = await axios.post(
+      url,
+      { participantIds },
+      { headers: authHeader() }
+    );
+    return response.data;
+  },
+
+  // Remove participants from private event (new method for registration removal)
+  async removeParticipantRegistrations(eventId: string, participantIds: string[]): Promise<{
+    message: string;
+    results: Array<{
+      participantId: string;
+      status: 'removed' | 'not_found';
+      user: {
+        firstName: string;
+        lastName: string;
+        email: string;
+      };
+    }>;
+    errors: Array<{
+      participantId: string;
+      error: string;
+    }>;
+    summary: {
+      total: number;
+      removed: number;
+      notFound: number;
+      errors: number;
+    };
+  }> {
+    const url = `${API_URL}/event-registrations/event/${eventId}/remove-participants`;
+    const response = await axios.post(
+      url,
+      { participantIds },
+      { headers: authHeader() }
+    );
+    return response.data;
   }
 };
 

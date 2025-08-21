@@ -217,4 +217,233 @@ router.get('/my-registrations', auth, async (req, res) => {
   }
 });
 
+// Assign participants to private event (admin/staff only)
+router.post('/event/:eventId/assign-participants', auth, async (req, res) => {
+  try {
+    console.log('[ASSIGN PARTICIPANTS] Starting assignment process for event:', req.params.eventId);
+    
+    const user = await User.findById(req.user.userId);
+    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
+      return res.status(403).json({ message: 'Not authorized to assign participants' });
+    }
+
+    const event = await Event.findById(req.params.eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Check if user is event creator or admin/staff
+    if (event.createdBy.toString() !== req.user.userId && user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to assign participants to this event' });
+    }
+
+    const { participantIds } = req.body;
+    if (!Array.isArray(participantIds)) {
+      return res.status(400).json({ message: 'participantIds must be an array' });
+    }
+
+    console.log('[ASSIGN PARTICIPANTS] Assigning participants:', participantIds);
+
+    const results = [];
+    const errors = [];
+
+    for (const participantId of participantIds) {
+      try {
+        // Check if user exists
+        const participantUser = await User.findById(participantId);
+        if (!participantUser) {
+          errors.push({ participantId, error: 'User not found' });
+          continue;
+        }
+
+        // Check if already registered
+        const existingRegistration = await EventRegistration.findOne({
+          eventId: req.params.eventId,
+          userId: participantId,
+          status: 'registered'
+        });
+
+        if (existingRegistration) {
+          results.push({ 
+            participantId, 
+            status: 'already_registered', 
+            registrationId: existingRegistration._id,
+            user: {
+              firstName: participantUser.firstName,
+              lastName: participantUser.lastName,
+              email: participantUser.email
+            }
+          });
+          continue;
+        }
+
+        // Create registration
+        const registration = new EventRegistration({
+          eventId: req.params.eventId,
+          userId: participantId,
+          attendee: {
+            firstName: participantUser.firstName,
+            lastName: participantUser.lastName,
+            phone: participantUser.mobile,
+            email: participantUser.email
+          },
+          sessions: event.sessions.map(session => session._id.toString()), // Register for all sessions
+          formResponses: [], // Empty form responses for admin-assigned participants
+          status: 'registered'
+        });
+
+        await registration.save();
+
+        // Update event registered count
+        await Event.findByIdAndUpdate(req.params.eventId, {
+          $inc: { registeredCount: 1 }
+        });
+
+        results.push({ 
+          participantId, 
+          status: 'assigned', 
+          registrationId: registration._id,
+          user: {
+            firstName: participantUser.firstName,
+            lastName: participantUser.lastName,
+            email: participantUser.email
+          }
+        });
+
+        console.log('[ASSIGN PARTICIPANTS] Successfully assigned participant:', participantId);
+
+      } catch (error) {
+        console.error('[ASSIGN PARTICIPANTS] Error assigning participant:', participantId, error);
+        errors.push({ participantId, error: error.message });
+      }
+    }
+
+    // Update event participants list (for visibility control)
+    await Event.findByIdAndUpdate(req.params.eventId, {
+      $addToSet: { participants: { $each: participantIds } }
+    });
+
+    res.json({
+      message: 'Participant assignment completed',
+      results,
+      errors,
+      summary: {
+        total: participantIds.length,
+        assigned: results.filter(r => r.status === 'assigned').length,
+        alreadyRegistered: results.filter(r => r.status === 'already_registered').length,
+        errors: errors.length
+      }
+    });
+
+  } catch (error) {
+    console.error('[ASSIGN PARTICIPANTS] Error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Remove participants from private event (admin/staff only)
+router.post('/event/:eventId/remove-participants', auth, async (req, res) => {
+  try {
+    console.log('[REMOVE PARTICIPANTS] Starting removal process for event:', req.params.eventId);
+    
+    const user = await User.findById(req.user.userId);
+    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
+      return res.status(403).json({ message: 'Not authorized to remove participants' });
+    }
+
+    const event = await Event.findById(req.params.eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    // Check if user is event creator or admin/staff
+    if (event.createdBy.toString() !== req.user.userId && user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to remove participants from this event' });
+    }
+
+    const { participantIds } = req.body;
+    if (!Array.isArray(participantIds)) {
+      return res.status(400).json({ message: 'participantIds must be an array' });
+    }
+
+    console.log('[REMOVE PARTICIPANTS] Removing participants:', participantIds);
+
+    const results = [];
+    const errors = [];
+
+    for (const participantId of participantIds) {
+      try {
+        // Check if user exists
+        const participantUser = await User.findById(participantId);
+        if (!participantUser) {
+          errors.push({ participantId, error: 'User not found' });
+          continue;
+        }
+
+        // Find and remove registration
+        const registration = await EventRegistration.findOneAndDelete({
+          eventId: req.params.eventId,
+          userId: participantId,
+          status: 'registered'
+        });
+
+        if (!registration) {
+          results.push({ 
+            participantId, 
+            status: 'not_found', 
+            user: {
+              firstName: participantUser.firstName,
+              lastName: participantUser.lastName,
+              email: participantUser.email
+            }
+          });
+          continue;
+        }
+
+        // Update event registered count
+        await Event.findByIdAndUpdate(req.params.eventId, {
+          $inc: { registeredCount: -1 }
+        });
+
+        results.push({ 
+          participantId, 
+          status: 'removed', 
+          user: {
+            firstName: participantUser.firstName,
+            lastName: participantUser.lastName,
+            email: participantUser.email
+          }
+        });
+
+        console.log('[REMOVE PARTICIPANTS] Successfully removed participant:', participantId);
+
+      } catch (error) {
+        console.error('[REMOVE PARTICIPANTS] Error removing participant:', participantId, error);
+        errors.push({ participantId, error: error.message });
+      }
+    }
+
+    // Update event participants list (for visibility control)
+    await Event.findByIdAndUpdate(req.params.eventId, {
+      $pull: { participants: { $in: participantIds } }
+    });
+
+    res.json({
+      message: 'Participant removal completed',
+      results,
+      errors,
+      summary: {
+        total: participantIds.length,
+        removed: results.filter(r => r.status === 'removed').length,
+        notFound: results.filter(r => r.status === 'not_found').length,
+        errors: errors.length
+      }
+    });
+
+  } catch (error) {
+    console.error('[REMOVE PARTICIPANTS] Error:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 export default router; 

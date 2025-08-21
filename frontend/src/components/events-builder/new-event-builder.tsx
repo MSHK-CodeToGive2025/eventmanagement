@@ -22,6 +22,7 @@ import EventSessions from "./event-sessions"
 import ReminderTimeConfig from "./reminder-time-config"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
+import { UserService } from "@/services/user-service"
 import {
   ZubinEvent,
   eventCategories,
@@ -152,18 +153,29 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
     const fetchAvailableUsers = async () => {
       try {
         setLoadingUsers(true);
-        // For new events, we'll need to fetch all users or implement a different approach
-        // For now, we'll only fetch users when editing existing events
+        const userService = UserService.getInstance();
+        
         if (eventId) {
+          // For existing events, use the event-specific endpoint
           const users = await eventService.getAvailableUsers(eventId);
           setAvailableUsers(users);
         } else {
-          // For new events, we could fetch all users or show a message
-          setAvailableUsers([]);
+          // For new events, fetch all users using the user service
+          const allUsers = await userService.getAllUsers();
+          // Transform to match the expected format
+          const transformedUsers = allUsers.map(user => ({
+            _id: user._id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            role: user.role
+          }));
+          setAvailableUsers(transformedUsers);
         }
       } catch (error) {
         console.error("Error fetching available users:", error);
         // Don't show error toast for this as it's not critical
+        setAvailableUsers([]);
       } finally {
         setLoadingUsers(false);
       }
@@ -242,7 +254,9 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
               name: "",
               phone: "",
             },
-            participants: eventData.participants || [],
+            participants: Array.isArray(eventData.participants) 
+              ? eventData.participants.map((p: any) => typeof p === 'string' ? p : p._id || p.id || p)
+              : [],
           }
 
           console.log('Event data from API:', eventData);
@@ -442,6 +456,48 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       // Reset image removal flag after successful save
       setShouldRemoveImage(false)
       
+      // If this is a private event with participants, assign them
+      if (savedEvent.isPrivate && data.participants && data.participants.length > 0) {
+        try {
+          console.log('Assigning participants to private event:', data.participants);
+          const assignmentResult = await eventService.assignParticipants(savedEvent._id, data.participants);
+          
+          console.log('Participant assignment result:', assignmentResult);
+          
+          // Show success message with assignment summary
+          if (assignmentResult.summary.assigned > 0) {
+            toast({
+              title: "Participants Assigned Successfully",
+              description: `Successfully assigned ${assignmentResult.summary.assigned} participant(s) to the event.`,
+              variant: "default"
+            });
+          }
+          
+          if (assignmentResult.summary.alreadyRegistered > 0) {
+            toast({
+              title: "Some Participants Already Registered",
+              description: `${assignmentResult.summary.alreadyRegistered} participant(s) were already registered for this event.`,
+              variant: "default"
+            });
+          }
+          
+          if (assignmentResult.summary.errors > 0) {
+            toast({
+              title: "Some Assignments Failed",
+              description: `${assignmentResult.summary.errors} participant(s) could not be assigned. Please check the details.`,
+              variant: "destructive"
+            });
+          }
+        } catch (error) {
+          console.error('Error assigning participants:', error);
+          toast({
+            title: "Participant Assignment Failed",
+            description: "The event was created but there was an error assigning participants. You can assign them later.",
+            variant: "destructive"
+          });
+        }
+      }
+      
       // Call the onSave callback with the saved event
       onSave(savedEvent)
     } catch (error: any) {
@@ -544,7 +600,19 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
   // Helper function to get user display info
   const getUserDisplayInfo = (userId: string) => {
     const user = availableUsers.find(u => u._id === userId);
-    return user ? { name: `${user.firstName} ${user.lastName}`, email: user.email } : { name: userId, email: 'Unknown' };
+    if (!user) {
+      return { name: userId, email: 'Unknown' };
+    }
+    
+    // Safely handle potentially undefined firstName/lastName
+    const firstName = user.firstName || '';
+    const lastName = user.lastName || '';
+    const name = `${firstName} ${lastName}`.trim() || 'Unknown User';
+    
+    return { 
+      name: name, 
+      email: user.email || 'No email' 
+    };
   };
 
   // Filter users based on search query
@@ -956,16 +1024,16 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                 {/* Participant Management for Private Events */}
                 {form.watch('isPrivate') && (
                   <div className="space-y-4 p-4 border rounded-lg bg-gray-50">
-                    <h3 className="text-lg font-medium">Participant Management</h3>
+                    <h3 className="text-lg font-medium">Participant Assignment</h3>
                     <p className="text-sm text-gray-600">
-                      Select users who are authorized to view this private event.
+                      Select users to assign as participants to this private event. These users will be automatically registered and can view the event.
                     </p>
 
                                              <div className="space-y-4">
                            <div>
-                             <Label htmlFor="participants">Authorized Participants</Label>
+                             <Label htmlFor="participants">Assigned Participants</Label>
                              <FormDescription>
-                               Users who can view and register for this private event
+                               Users who will be automatically registered and can view this private event
                                {!eventId && (
                                  <span className="block mt-1 text-amber-600">
                                    Note: Participants can be managed after the event is created
@@ -1038,7 +1106,9 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                                   <div className="flex items-center space-x-3">
                                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                                       <span className="text-blue-600 text-sm font-medium">
-                                        {userInfo.name.charAt(0).toUpperCase()}
+                                        {typeof userInfo.name === 'string' && userInfo.name.length > 0 
+                                          ? userInfo.name.charAt(0).toUpperCase() 
+                                          : '?'}
                                       </span>
                                     </div>
                                     <div>
@@ -1050,9 +1120,41 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                                     type="button"
                                     variant="ghost"
                                     size="sm"
-                                    onClick={() => {
-                                      const current = form.getValues('participants') || [];
-                                      form.setValue('participants', current.filter(id => id !== userId));
+                                    onClick={async () => {
+                                      try {
+                                        // Only call backend if this is an existing event
+                                        if (eventId) {
+                                          const result = await eventService.removeParticipantRegistrations(eventId, [userId]);
+                                          console.log('Participant removal result:', result);
+                                          
+                                          if (result.summary.removed > 0) {
+                                            toast({
+                                              title: "Participant Removed",
+                                              description: `Successfully removed ${result.summary.removed} participant(s) from the event.`,
+                                              variant: "default"
+                                            });
+                                          }
+                                          
+                                          if (result.summary.errors > 0) {
+                                            toast({
+                                              title: "Some Removals Failed",
+                                              description: `${result.summary.errors} participant(s) could not be removed. Please check the details.`,
+                                              variant: "destructive"
+                                            });
+                                          }
+                                        }
+                                        
+                                        // Update the UI immediately
+                                        const current = form.getValues('participants') || [];
+                                        form.setValue('participants', current.filter(id => id !== userId));
+                                      } catch (error) {
+                                        console.error('Error removing participant:', error);
+                                        toast({
+                                          title: "Removal Failed",
+                                          description: "Failed to remove participant from the event. Please try again.",
+                                          variant: "destructive"
+                                        });
+                                      }
                                     }}
                                     className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                   >
