@@ -388,6 +388,9 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         data.participants.forEach(userId => {
           formData.append('participants[]', userId)
         })
+      } else if (data.isPrivate) {
+        // For private events, always send an empty participants array to ensure proper handling
+        formData.append('participants[]', '')
       }
 
       console.log('Form data staff contact:', data.staffContact);
@@ -1019,7 +1022,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                                 );
                               })}
                               {filteredUsers.length === 0 && (
-                                <SelectItem value="" disabled>
+                                <SelectItem value="no-users" disabled>
                                   {userSearchQuery ? "No users found matching your search" : "No users available"}
                                 </SelectItem>
                               )}

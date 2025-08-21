@@ -182,6 +182,7 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     console.log('[EVENTS] Reminder times in request body:', req.body['reminderTimes[]']);
     console.log('[EVENTS] All request body keys:', Object.keys(req.body));
     console.log('[EVENTS] Staff contact in request body:', req.body['staffContact[name]'], req.body['staffContact[phone]']);
+    console.log('[EVENTS] Participants in request body:', req.body['participants[]']);
     
     // Handle staff contact information
     if (req.body['staffContact[name]'] || req.body['staffContact[phone]']) {
@@ -189,6 +190,18 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
         name: req.body['staffContact[name]'] || "",
         phone: req.body['staffContact[phone]'] || ""
       };
+    }
+    
+    // Handle participants array for private events
+    if (req.body['participants[]']) {
+      eventData.participants = Array.isArray(req.body['participants[]']) 
+        ? req.body['participants[]']
+        : [req.body['participants[]']];
+      console.log('[EVENTS] Set participants to:', eventData.participants);
+    } else if (eventData.isPrivate) {
+      // For private events, if no participants are specified, default to empty array
+      eventData.participants = [];
+      console.log('[EVENTS] Private event with no participants specified, setting empty array');
     }
     
     if (req.body['reminderTimes[]']) {
@@ -278,6 +291,7 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
     // Handle reminder times array
     console.log('[EVENTS] Update - Reminder times in request body:', req.body['reminderTimes[]']);
     console.log('[EVENTS] Update - Staff contact in request body:', req.body['staffContact[name]'], req.body['staffContact[phone]']);
+    console.log('[EVENTS] Update - Participants in request body:', req.body['participants[]']);
     
     // Handle staff contact information
     if (req.body['staffContact[name]'] || req.body['staffContact[phone]']) {
@@ -285,6 +299,18 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
         name: req.body['staffContact[name]'] || "",
         phone: req.body['staffContact[phone]'] || ""
       };
+    }
+    
+    // Handle participants array for private events
+    if (req.body['participants[]']) {
+      updateData.participants = Array.isArray(req.body['participants[]']) 
+        ? req.body['participants[]']
+        : [req.body['participants[]']];
+      console.log('[EVENTS] Update - Set participants to:', updateData.participants);
+    } else if (updateData.isPrivate) {
+      // For private events, if no participants are specified, default to empty array
+      updateData.participants = [];
+      console.log('[EVENTS] Update - Private event with no participants specified, setting empty array');
     }
     
     if (req.body['reminderTimes[]']) {
