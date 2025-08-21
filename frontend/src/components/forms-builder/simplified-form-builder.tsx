@@ -24,7 +24,6 @@ import { useToast } from "@/hooks/use-toast"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
 import { FormFieldRenderer } from "./form-field-renderer"
-import { ReactQuillEditor } from "@/components/ui/react-quill-editor"
 
 // --- Types and constants ---
 const formBuilderSchema = z.object({
@@ -253,11 +252,10 @@ export default function SimplifiedFormBuilder({
             <FormItem>
               <FormLabel>Description</FormLabel>
               <FormControl>
-                <ReactQuillEditor
-                  value={field.value || ""}
-                  onChange={field.onChange}
+                <Textarea
                   placeholder="Describe what this form is for..."
-                  minHeight="150px"
+                  className="min-h-[150px]"
+                  {...field}
                 />
               </FormControl>
               <FormMessage />
@@ -287,11 +285,11 @@ export default function SimplifiedFormBuilder({
                       className="font-medium"
                     />
                             <div className="mt-2">
-          <ReactQuillEditor
+          <Textarea
             value={section.description || ""}
-            onChange={(value) => updateSection(section.id, { description: value })}
+            onChange={(e) => updateSection(section.id, { description: e.target.value })}
             placeholder="Section description (optional)"
-            minHeight="100px"
+            className="min-h-[100px]"
           />
         </div>
                   </div>
