@@ -546,5 +546,96 @@ describe('Events Routes', () => {
         expect(response.body).toHaveProperty('message', 'No cover image found for this event');
       });
     });
+
+    describe('Private Event Creation', () => {
+      it('should create a private event with participants', async () => {
+        const privateEventData = {
+          title: 'Private Test Event',
+          description: 'Private Event Description',
+          category: 'Education & Training',
+          targetGroup: 'All Hong Kong Residents',
+          location: {
+            venue: 'Test Venue',
+            address: 'Test Address',
+            district: 'Central and Western',
+            onlineEvent: false
+          },
+          startDate: new Date(Date.now() + 86400000), // Tomorrow
+          endDate: new Date(Date.now() + 172800000), // Day after tomorrow
+          isPrivate: true,
+          status: 'Draft',
+          registrationFormId: testRegistrationForm._id.toString(),
+          'participants[]': [regularUser._id.toString()]
+        };
+
+        const response = await request(app)
+          .post('/api/events')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .field('title', privateEventData.title)
+          .field('description', privateEventData.description)
+          .field('category', privateEventData.category)
+          .field('targetGroup', privateEventData.targetGroup)
+          .field('location[venue]', privateEventData.location.venue)
+          .field('location[address]', privateEventData.location.address)
+          .field('location[district]', privateEventData.location.district)
+          .field('location[onlineEvent]', privateEventData.location.onlineEvent.toString())
+          .field('startDate', privateEventData.startDate.toISOString())
+          .field('endDate', privateEventData.endDate.toISOString())
+          .field('isPrivate', privateEventData.isPrivate.toString())
+          .field('status', privateEventData.status)
+          .field('registrationFormId', privateEventData.registrationFormId)
+          .field('participants[]', privateEventData['participants[]'][0]);
+
+        expect(response.status).toBe(201);
+        expect(response.body).toHaveProperty('title', 'Private Test Event');
+        expect(response.body).toHaveProperty('isPrivate', true);
+        expect(response.body).toHaveProperty('participants');
+        expect(response.body.participants).toHaveLength(1);
+        expect(response.body.participants[0]).toBe(regularUser._id.toString());
+      });
+
+      it('should create a private event without participants', async () => {
+        const privateEventData = {
+          title: 'Private Event No Participants',
+          description: 'Private Event Description',
+          category: 'Education & Training',
+          targetGroup: 'All Hong Kong Residents',
+          location: {
+            venue: 'Test Venue',
+            address: 'Test Address',
+            district: 'Central and Western',
+            onlineEvent: false
+          },
+          startDate: new Date(Date.now() + 86400000), // Tomorrow
+          endDate: new Date(Date.now() + 172800000), // Day after tomorrow
+          isPrivate: true,
+          status: 'Draft',
+          registrationFormId: testRegistrationForm._id.toString()
+        };
+
+        const response = await request(app)
+          .post('/api/events')
+          .set('Authorization', `Bearer ${adminToken}`)
+          .field('title', privateEventData.title)
+          .field('description', privateEventData.description)
+          .field('category', privateEventData.category)
+          .field('targetGroup', privateEventData.targetGroup)
+          .field('location[venue]', privateEventData.location.venue)
+          .field('location[address]', privateEventData.location.address)
+          .field('location[district]', privateEventData.location.district)
+          .field('location[onlineEvent]', privateEventData.location.onlineEvent.toString())
+          .field('startDate', privateEventData.startDate.toISOString())
+          .field('endDate', privateEventData.endDate.toISOString())
+          .field('isPrivate', privateEventData.isPrivate.toString())
+          .field('status', privateEventData.status)
+          .field('registrationFormId', privateEventData.registrationFormId);
+
+        expect(response.status).toBe(201);
+        expect(response.body).toHaveProperty('title', 'Private Event No Participants');
+        expect(response.body).toHaveProperty('isPrivate', true);
+        expect(response.body).toHaveProperty('participants');
+        expect(response.body.participants).toHaveLength(0);
+      });
+    });
   });
 }); 
