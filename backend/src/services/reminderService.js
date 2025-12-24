@@ -256,26 +256,17 @@ class ReminderService {
 
             console.log(`[REMINDER SERVICE] 📱 Sending reminder to ${formattedNumber} for ${eventType}`);
 
-            if (useTemplate) {
+            if (useTemplate && process.env.TWILIO_WHATSAPP_TEMPLATE_SID) {
               // Use template system
-              const eventStartTime = startDateTime;
-              const formattedDate = eventStartTime.toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit'
-              });
-              const formattedTime = eventStartTime.toLocaleTimeString('en-US', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-              });
-
-              // Use custom message system (template mode disabled)
-              const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
+              const templateVariables = this.createTemplateVariables(event, reminderHours, eventType, startDateTime);
+              
+              console.log(`[REMINDER SERVICE] Using template mode with SID: ${process.env.TWILIO_WHATSAPP_TEMPLATE_SID}`);
+              console.log(`[REMINDER SERVICE] Template variables:`, templateVariables);
               
               await twilioClient.messages.create({
-                body: message,
                 from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+                contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
+                contentVariables: templateVariables, // Object, not JSON string
                 to: `whatsapp:${formattedNumber}`
               });
             } else {
@@ -380,6 +371,15 @@ class ReminderService {
   }
 
   // Create template variables for WhatsApp template
+  // Template structure:
+  // 🔔 Event Reminder: {{1}}
+  // 📋 Session: {{2}}
+  // ⏰ The session will start in {{3}}
+  // 📅 Date: {{4}}
+  // 🕐 Time: {{5}}
+  // 📍 Location: {{6}}
+  // 👤 Contact: {{7}}
+  // 📞 Phone: {{8}}
   createTemplateVariables(event, reminderHours, eventType, startDateTime) {
     const eventStartTime = startDateTime;
     const formattedDate = eventStartTime.toLocaleDateString('en-US', {
@@ -390,7 +390,8 @@ class ReminderService {
     });
     const formattedTime = eventStartTime.toLocaleTimeString('en-US', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     });
 
     let timeText;
@@ -408,7 +409,8 @@ class ReminderService {
     // Variable 1: Event title
     const eventTitle = event.title;
     
-    // Variable 2: Session title (or empty if main event)
+    // Variable 2: Session title (empty for main event, or session name for sessions)
+    // Note: Template shows "📋 Session: {{2}}" - if empty, it will show "📋 Session: "
     const sessionTitleText = isSession ? sessionTitle : '';
     
     // Variable 3: Time until event
@@ -440,7 +442,8 @@ class ReminderService {
     // Variable 8: Contact phone
     const contactPhone = event.staffContact && event.staffContact.phone ? event.staffContact.phone : '';
 
-    return JSON.stringify({
+    // Return as object (Twilio Content API expects object, not JSON string)
+    return {
       "1": eventTitle,
       "2": sessionTitleText,
       "3": timeUntilEvent,
@@ -449,7 +452,7 @@ class ReminderService {
       "6": locationText,
       "7": contactName,
       "8": contactPhone
-    });
+    };
   }
 
   // Mark reminder as sent

@@ -665,10 +665,11 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
     
     if (useTemplate) {
       // Use template system
+      // Note: contentVariables must be an object, not a JSON string
       const result = await twilioClient.messages.create({
         from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
         contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
-        contentVariables: JSON.stringify({
+        contentVariables: {
           "1": new Date().toLocaleDateString('en-US', {
             year: 'numeric',
             month: '2-digit',
@@ -679,7 +680,7 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
             minute: '2-digit',
             hour12: true
           })
-        }),
+        },
         to: `whatsapp:${to}`
       });
       
@@ -779,10 +780,11 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
           
           if (useTemplate) {
             // Use template system
+            // Note: contentVariables must be an object, not a JSON string
             await twilioClient.messages.create({
               from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
               contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
-              contentVariables: JSON.stringify({
+              contentVariables: {
                 "1": new Date().toLocaleDateString('en-US', {
                   year: 'numeric',
                   month: '2-digit',
@@ -793,7 +795,7 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
                   minute: '2-digit',
                   hour12: true
                 })
-              }),
+              },
               to: `whatsapp:${formattedNumber}`
             });
           } else {
