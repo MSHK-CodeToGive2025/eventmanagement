@@ -264,20 +264,38 @@ class ReminderService {
               console.log(`[REMINDER SERVICE] Template variables:`, templateVariables);
               
               await twilioClient.messages.create({
-                from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+                from: process.env.TWILIO_WHATSAPP_NUMBER,
                 contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
                 contentVariables: templateVariables, // Object, not JSON string
                 to: `whatsapp:${formattedNumber}`
               });
             } else {
-              // Use custom message system
+              // Use custom message system with marketing template fallback
               const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
               
-              await twilioClient.messages.create({
-                body: message,
-                from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-                to: `whatsapp:${formattedNumber}`
-              });
+              try {
+                await twilioClient.messages.create({
+                  body: message,
+                  from: process.env.TWILIO_WHATSAPP_NUMBER,
+                  to: `whatsapp:${formattedNumber}`
+                });
+              } catch (customError) {
+                // Error 63016: Outside 24-hour session window - try marketing template
+                if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
+                  console.log(`[REMINDER SERVICE] Custom failed for ${formattedNumber}, using marketing template...`);
+                  await twilioClient.messages.create({
+                    from: process.env.TWILIO_WHATSAPP_NUMBER,
+                    contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+                    contentVariables: {
+                      "1": event.title,
+                      "2": message
+                    },
+                    to: `whatsapp:${formattedNumber}`
+                  });
+                } else {
+                  throw customError;
+                }
+              }
             }
 
             console.log(`[REMINDER SERVICE] ✅ Successfully sent ${reminderHours}h reminder to ${formattedNumber}`);

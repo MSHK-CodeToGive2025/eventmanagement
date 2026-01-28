@@ -648,7 +648,7 @@ router.delete('/:id/cover-image', auth, async (req, res) => {
 // Send WhatsApp message to registered participant (requires auth)
 router.post('/send-whatsapp-reminder', async (req, res) => {
   try {
-    const { to, message, useTemplate } = req.body;
+    const { to, message, useTemplate, eventTitle } = req.body;
     
     // Log the attempt (without sensitive data)
     console.log(`Attempting to send WhatsApp message to: ${to}`);
@@ -667,7 +667,7 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
       // Use template system
       // Note: contentVariables must be an object, not a JSON string
       const result = await twilioClient.messages.create({
-        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+        from: process.env.TWILIO_WHATSAPP_NUMBER,
         contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
         contentVariables: {
           "1": new Date().toLocaleDateString('en-US', {
@@ -695,14 +695,36 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
         });
       }
       
-      const result = await twilioClient.messages.create({
-        body: message,
-        from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-        to: `whatsapp:${to}`
-      });
-      
-      console.log('WhatsApp custom message sent successfully:', result.sid);
-      res.json({ success: true, sid: result.sid, method: 'custom' });
+      try {
+        // Try sending custom/freeform message first
+        const result = await twilioClient.messages.create({
+          body: message,
+          from: process.env.TWILIO_WHATSAPP_NUMBER,
+          to: `whatsapp:${to}`
+        });
+        
+        console.log('WhatsApp custom message sent successfully:', result.sid);
+        res.json({ success: true, sid: result.sid, method: 'custom' });
+      } catch (customError) {
+        // Error 63016: Outside 24-hour session window - try marketing template
+        if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
+          console.log('Custom message failed (outside 24h window), using marketing template...');
+          const result = await twilioClient.messages.create({
+            from: process.env.TWILIO_WHATSAPP_NUMBER,
+            contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+            contentVariables: {
+              "1": eventTitle || "Event Update",
+              "2": message
+            },
+            to: `whatsapp:${to}`
+          });
+          
+          console.log('WhatsApp marketing template sent successfully:', result.sid);
+          res.json({ success: true, sid: result.sid, method: 'marketing_template' });
+        } else {
+          throw customError;
+        }
+      }
     }
   } catch (error) {
     console.error('Error sending WhatsApp message:', error);
@@ -782,7 +804,7 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
             // Use template system
             // Note: contentVariables must be an object, not a JSON string
             await twilioClient.messages.create({
-              from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
+              from: process.env.TWILIO_WHATSAPP_NUMBER,
               contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
               contentVariables: {
                 "1": new Date().toLocaleDateString('en-US', {
@@ -799,12 +821,32 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
               to: `whatsapp:${formattedNumber}`
             });
           } else {
-            // Use custom message system
-            await twilioClient.messages.create({
-              body: `Zubin Event Notification: ${event.title}${messageSubtitle ? `\n${messageSubtitle}` : ''}\n\n${message}`,
-              from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-              to: `whatsapp:${formattedNumber}`
-            });
+            // Try custom message first, fall back to marketing template if outside 24h window
+            const fullMessage = `Zubin Event Notification: ${event.title}${messageSubtitle ? `\n${messageSubtitle}` : ''}\n\n${message}`;
+            
+            try {
+              await twilioClient.messages.create({
+                body: fullMessage,
+                from: process.env.TWILIO_WHATSAPP_NUMBER,
+                to: `whatsapp:${formattedNumber}`
+              });
+            } catch (customError) {
+              // Error 63016: Outside 24-hour session window - try marketing template
+              if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
+                console.log(`[WhatsApp] Custom failed for ${formattedNumber}, using marketing template...`);
+                await twilioClient.messages.create({
+                  from: process.env.TWILIO_WHATSAPP_NUMBER,
+                  contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+                  contentVariables: {
+                    "1": event.title,
+                    "2": message
+                  },
+                  to: `whatsapp:${formattedNumber}`
+                });
+              } else {
+                throw customError;
+              }
+            }
           }
           
           console.log(`[WhatsApp] Successfully sent to ${formattedNumber}`);
