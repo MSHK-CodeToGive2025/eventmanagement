@@ -664,22 +664,19 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
     }
     
     if (useTemplate) {
-      // Use template system
-      // Note: contentVariables must be an object, not a JSON string
+      // Template uses 8 variables matching zubin_foundation_event_reminder
       const result = await twilioClient.messages.create({
         from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
         contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
         contentVariables: {
-          "1": new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-          }),
-          "2": new Date().toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          })
+          "1": eventTitle || 'Event',
+          "2": "N/A",
+          "3": "upcoming",
+          "4": new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+          "5": new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+          "6": "TBD",
+          "7": "Zubin Foundation",
+          "8": ""
         },
         to: `whatsapp:${to}`
       });
@@ -825,22 +822,29 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
           }
           
           if (useTemplate) {
-            // Use template system
-            // Note: contentVariables must be an object, not a JSON string
+            // Template uses 8 variables matching zubin_foundation_event_reminder
+            const eventDate = event.startDate
+              ? new Date(event.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+              : 'TBD';
+            const eventTime = event.startDate
+              ? new Date(event.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+              : 'TBD';
+            const locationStr = event.location
+              ? `${event.location.venue || ''}${event.location.address ? ', ' + event.location.address : ''}${event.location.district ? ', ' + event.location.district : ''}`
+              : 'TBD';
+
             await twilioClient.messages.create({
               from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
               contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
               contentVariables: {
-                "1": new Date().toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit'
-                }),
-                "2": new Date().toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: true
-                })
+                "1": event.title || 'Event',
+                "2": "N/A",
+                "3": "upcoming",
+                "4": eventDate,
+                "5": eventTime,
+                "6": locationStr,
+                "7": event.staffContact?.name || 'Zubin Foundation',
+                "8": event.staffContact?.phone || ''
               },
               to: `whatsapp:${formattedNumber}`
             });
