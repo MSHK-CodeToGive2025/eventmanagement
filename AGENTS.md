@@ -30,3 +30,5 @@ The frontend Vite config proxies `/api` requests to `http://localhost:3001`, so 
 - Events require a `registrationFormId` (create a registration form first via `POST /api/registration-forms`).
 - Docker must be started with `sudo dockerd` in this environment (runs inside a Firecracker VM).
 - The backend uses ES modules (`"type": "module"` in package.json).
+- `TWILIO_WHATSAPP_NUMBER` can be set with or without the `whatsapp:` prefix (e.g. `+14155238886` or `whatsapp:+14155238886`); the backend normalizes it via `ensureWhatsAppPrefix()`.
+- When restarting the backend, if `JWT_SECRET` is set both in `backend/.env` and as a shell env var, `dotenv` does NOT override the shell value. This can invalidate browser sessions if the secrets differ.
