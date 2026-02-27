@@ -619,9 +619,9 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
   const filteredUsers = availableUsers.filter(user => {
     const searchLower = userSearchQuery.toLowerCase();
     return (
-      user.firstName.toLowerCase().includes(searchLower) ||
-      user.lastName.toLowerCase().includes(searchLower) ||
-      user.email.toLowerCase().includes(searchLower)
+      (user.firstName || '').toLowerCase().includes(searchLower) ||
+      (user.lastName || '').toLowerCase().includes(searchLower) ||
+      (user.email || '').toLowerCase().includes(searchLower)
     );
   });
 
@@ -1084,7 +1084,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                                     value={user._id}
                                     disabled={isAlreadySelected}
                                   >
-                                    {user.firstName} {user.lastName} ({user.email})
+                                    {user.firstName} {user.lastName} ({user.email || 'No email'})
                                     {isAlreadySelected && " - Already selected"}
                                   </SelectItem>
                                 );
