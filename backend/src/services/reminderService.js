@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import Event from '../models/Event.js';
 import EventRegistration from '../models/EventRegistration.js';
 import twilio from 'twilio';
-import { formatForWhatsApp } from '../utils/phoneUtils.js';
+import { formatForWhatsApp, ensureWhatsAppPrefix } from '../utils/phoneUtils.js';
 
 // Initialize Twilio client
 let twilioClient = null;
@@ -264,7 +264,7 @@ class ReminderService {
               console.log(`[REMINDER SERVICE] Template variables:`, templateVariables);
               
               await twilioClient.messages.create({
-                from: process.env.TWILIO_WHATSAPP_NUMBER,
+                from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
                 contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
                 contentVariables: templateVariables, // Object, not JSON string
                 to: `whatsapp:${formattedNumber}`
@@ -276,7 +276,7 @@ class ReminderService {
               try {
                 await twilioClient.messages.create({
                   body: message,
-                  from: process.env.TWILIO_WHATSAPP_NUMBER,
+                  from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
                   to: `whatsapp:${formattedNumber}`
                 });
               } catch (customError) {
@@ -284,7 +284,7 @@ class ReminderService {
                 if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
                   console.log(`[REMINDER SERVICE] Custom failed for ${formattedNumber}, using marketing template...`);
                   await twilioClient.messages.create({
-                    from: process.env.TWILIO_WHATSAPP_NUMBER,
+                    from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
                     contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
                     contentVariables: {
                       "1": event.title,

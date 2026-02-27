@@ -6,7 +6,7 @@ import User from '../models/User.js';
 import EventRegistration from '../models/EventRegistration.js';
 import multer from 'multer';
 import twilio from 'twilio';
-import { formatForWhatsApp } from '../utils/phoneUtils.js';
+import { formatForWhatsApp, ensureWhatsAppPrefix } from '../utils/phoneUtils.js';
 
 dotenv.config();
 
@@ -667,7 +667,7 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
       // Use template system
       // Note: contentVariables must be an object, not a JSON string
       const result = await twilioClient.messages.create({
-        from: process.env.TWILIO_WHATSAPP_NUMBER,
+        from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
         contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
         contentVariables: {
           "1": new Date().toLocaleDateString('en-US', {
@@ -699,7 +699,7 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
         // Try sending custom/freeform message first
         const result = await twilioClient.messages.create({
           body: message,
-          from: process.env.TWILIO_WHATSAPP_NUMBER,
+          from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
           to: `whatsapp:${to}`
         });
         
@@ -710,7 +710,7 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
         if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
           console.log('Custom message failed (outside 24h window), using marketing template...');
           const result = await twilioClient.messages.create({
-            from: process.env.TWILIO_WHATSAPP_NUMBER,
+            from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
             contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
             contentVariables: {
               "1": eventTitle || "Event Update",
@@ -804,7 +804,7 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
             // Use template system
             // Note: contentVariables must be an object, not a JSON string
             await twilioClient.messages.create({
-              from: process.env.TWILIO_WHATSAPP_NUMBER,
+              from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
               contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
               contentVariables: {
                 "1": new Date().toLocaleDateString('en-US', {
@@ -827,7 +827,7 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
             try {
               await twilioClient.messages.create({
                 body: fullMessage,
-                from: process.env.TWILIO_WHATSAPP_NUMBER,
+                from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
                 to: `whatsapp:${formattedNumber}`
               });
             } catch (customError) {
@@ -835,7 +835,7 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
               if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
                 console.log(`[WhatsApp] Custom failed for ${formattedNumber}, using marketing template...`);
                 await twilioClient.messages.create({
-                  from: process.env.TWILIO_WHATSAPP_NUMBER,
+                  from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
                   contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
                   contentVariables: {
                     "1": event.title,
