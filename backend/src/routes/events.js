@@ -695,36 +695,45 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
         });
       }
       
-      try {
-        // Try sending custom/freeform message first
-        const result = await twilioClient.messages.create({
-          body: message,
-          from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-          to: `whatsapp:${to}`
-        });
-        
-        console.log('WhatsApp custom message sent successfully:', result.sid);
-        res.json({ success: true, sid: result.sid, method: 'custom' });
-      } catch (customError) {
-        // Error 63016: Outside 24-hour session window - try marketing template
-        if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
-          console.log('Custom message failed (outside 24h window), using marketing template...');
-          const result = await twilioClient.messages.create({
-            from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-            contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
-            contentVariables: {
-              "1": eventTitle || "Event Update",
-              "2": message
-            },
-            to: `whatsapp:${to}`
-          });
-          
-          console.log('WhatsApp marketing template sent successfully:', result.sid);
-          res.json({ success: true, sid: result.sid, method: 'marketing_template' });
-        } else {
-          throw customError;
+      // Twilio accepts freeform WhatsApp messages with HTTP 201 but may fail
+      // them asynchronously with error 63016. Poll status and fall back to template.
+      const whatsAppFrom = ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER);
+      const sentMsg = await twilioClient.messages.create({
+        body: message,
+        from: whatsAppFrom,
+        to: `whatsapp:${to}`
+      });
+
+      let method = 'custom';
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const status = await twilioClient.messages(sentMsg.sid).fetch();
+        if (status.status === 'delivered' || status.status === 'read') {
+          break;
+        }
+        if (status.status === 'undelivered' || status.status === 'failed') {
+          if (status.errorCode === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
+            console.log('Freeform undelivered (63016), falling back to marketing template...');
+            const fallback = await twilioClient.messages.create({
+              from: whatsAppFrom,
+              contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+              contentVariables: {
+                "1": eventTitle || "Event Update",
+                "2": message
+              },
+              to: `whatsapp:${to}`
+            });
+            console.log('Marketing template sent:', fallback.sid);
+            method = 'marketing_template';
+          } else {
+            throw new Error(`WhatsApp message ${status.status}: error ${status.errorCode}`);
+          }
+          break;
         }
       }
+
+      console.log(`WhatsApp message sent via ${method}:`, sentMsg.sid);
+      res.json({ success: true, sid: sentMsg.sid, method });
     }
   } catch (error) {
     console.error('Error sending WhatsApp message:', error);
@@ -821,31 +830,49 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
               to: `whatsapp:${formattedNumber}`
             });
           } else {
-            // Try custom message first, fall back to marketing template if outside 24h window
+            // Try custom message first, fall back to marketing template if outside 24h window.
+            // Twilio accepts freeform WhatsApp messages with HTTP 201 but may fail them
+            // asynchronously with error 63016 (outside 24h session window). We must poll
+            // the message status to detect this and fall back to a marketing template.
             const fullMessage = `Zubin Event Notification: ${event.title}${messageSubtitle ? `\n${messageSubtitle}` : ''}\n\n${message}`;
+            const whatsAppFrom = ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER);
             
-            try {
+            const sentMsg = await twilioClient.messages.create({
+              body: fullMessage,
+              from: whatsAppFrom,
+              to: `whatsapp:${formattedNumber}`
+            });
+
+            // Poll for async delivery failure (63016 is reported asynchronously)
+            let needsFallback = false;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              await new Promise(r => setTimeout(r, 2000));
+              const status = await twilioClient.messages(sentMsg.sid).fetch();
+              if (status.status === 'delivered' || status.status === 'read') {
+                break;
+              }
+              if (status.status === 'undelivered' || status.status === 'failed') {
+                console.log(`[WhatsApp] Freeform message ${sentMsg.sid} ${status.status} (error: ${status.errorCode})`);
+                if (status.errorCode === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
+                  needsFallback = true;
+                } else {
+                  throw new Error(`WhatsApp message ${status.status}: error ${status.errorCode}`);
+                }
+                break;
+              }
+            }
+
+            if (needsFallback) {
+              console.log(`[WhatsApp] Falling back to marketing template for ${formattedNumber}...`);
               await twilioClient.messages.create({
-                body: fullMessage,
-                from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
+                from: whatsAppFrom,
+                contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+                contentVariables: {
+                  "1": event.title,
+                  "2": message
+                },
                 to: `whatsapp:${formattedNumber}`
               });
-            } catch (customError) {
-              // Error 63016: Outside 24-hour session window - try marketing template
-              if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
-                console.log(`[WhatsApp] Custom failed for ${formattedNumber}, using marketing template...`);
-                await twilioClient.messages.create({
-                  from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-                  contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
-                  contentVariables: {
-                    "1": event.title,
-                    "2": message
-                  },
-                  to: `whatsapp:${formattedNumber}`
-                });
-              } else {
-                throw customError;
-              }
             }
           }
           
