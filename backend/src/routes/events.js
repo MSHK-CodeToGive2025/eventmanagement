@@ -784,19 +784,34 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
       status: 'registered'
     });
 
+    // Filter out users who opted out of WhatsApp messages
+    const optedOutUsers = await User.find({ whatsappOptOut: true }).select('mobile');
+    const optedOutNumbers = new Set(optedOutUsers.map(u => u.mobile));
+
     console.log(`[WhatsApp] Starting message send for event: ${event.title} (${event._id})`);
     console.log(`[WhatsApp] Using template: ${useTemplate ? 'Yes' : 'No'}`);
     if (!useTemplate) {
       console.log(`[WhatsApp] Message content: ${message}`);
     }
     console.log(`[WhatsApp] Number of registered participants: ${registrations.length}`);
+    if (optedOutNumbers.size > 0) {
+      console.log(`[WhatsApp] Opted-out numbers to skip: ${optedOutNumbers.size}`);
+    }
 
     const failedNumbers = [];
     const successfulNumbers = [];
 
     // Send message to each participant
+    const skippedOptOut = [];
     for (const registration of registrations) {
       if (registration.attendee && registration.attendee.phone) {
+        // Skip users who opted out of WhatsApp messages
+        if (optedOutNumbers.has(registration.attendee.phone)) {
+          console.log(`[WhatsApp] Skipping opted-out user: ${registration.attendee.firstName} ${registration.attendee.lastName}`);
+          skippedOptOut.push(registration.attendee.phone);
+          continue;
+        }
+
         try {
           console.log(`[WhatsApp] Sending to ${registration.attendee.firstName} ${registration.attendee.lastName} (${registration.attendee.phone})`);
           
@@ -896,7 +911,8 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
       message: 'WhatsApp messages sent',
       successful: successfulNumbers.length,
       failed: failedNumbers.length,
-      failedNumbers
+      failedNumbers,
+      skippedOptOut: skippedOptOut.length
     });
   } catch (error) {
     console.error('[WhatsApp] Unexpected error:', error);
