@@ -8,6 +8,7 @@ import { useNavigate } from "react-router-dom"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
+import { formatDateHKT } from "@/utils/dateTimeHKT"
 import { ZubinEvent } from "@/types/event-types"
 import eventService from "@/services/eventService"
 
@@ -825,7 +826,7 @@ export default function EnhancedEventsPage() {
                   <div className="flex items-center text-sm text-gray-600">
                     <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
                     <span>
-                      {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
+                      {formatDateHKT(new Date(event.startDate))} - {formatDateHKT(new Date(event.endDate))}
                     </span>
                   </div>
                   {/* Event Location */}

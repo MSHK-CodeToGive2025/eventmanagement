@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
+import { formatDateHKT, formatSessionDateTimeHKT, formatDateTimeHKT } from "@/utils/dateTimeHKT"
 import { CalendarIcon, MapPin, Search, Eye, X, Loader2, ArrowLeft, ChevronDown, ChevronUp, Clock, FileText, User, Users } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import registrationService, { EventRegistration } from "@/services/registrationService"
@@ -297,9 +298,9 @@ export default function MyRegistrations() {
                               <div className="flex items-center">
                                 <CalendarIcon className="h-4 w-4 mr-1" />
                                 <span>
-                                  {format(new Date(event.startDate), "MMM d, yyyy")}
+                                  {formatDateHKT(new Date(event.startDate))}
                                   {event.startDate !== event.endDate && 
-                                    ` - ${format(new Date(event.endDate), "MMM d, yyyy")}`
+                                    ` - ${formatDateHKT(new Date(event.endDate))}`
                                   }
                                 </span>
                               </div>
@@ -331,9 +332,9 @@ export default function MyRegistrations() {
                         </div>
                         
                         <div className="text-sm text-gray-600">
-                          <p>Registered on: {format(new Date(registration.registeredAt), "MMM d, yyyy 'at' h:mm a")}</p>
+                          <p>Registered on: {formatDateTimeHKT(new Date(registration.registeredAt))}</p>
                           {registration.cancelledAt && (
-                            <p>Cancelled on: {format(new Date(registration.cancelledAt), "MMM d, yyyy 'at' h:mm a")}</p>
+                            <p>Cancelled on: {formatDateTimeHKT(new Date(registration.cancelledAt))}</p>
                           )}
                         </div>
                       </div>
@@ -426,11 +427,7 @@ export default function MyRegistrations() {
                                         <div className="flex flex-wrap gap-4 text-sm text-blue-600">
                                           <div className="flex items-center">
                                             <CalendarIcon className="h-3 w-3 mr-1" />
-                                            <span>{format(new Date(session.date), "MMM d, yyyy")}</span>
-                                          </div>
-                                          <div className="flex items-center">
-                                            <Clock className="h-3 w-3 mr-1" />
-                                            <span>{session.startTime} - {session.endTime}</span>
+                                            <span>{formatSessionDateTimeHKT(new Date(session.date), session.startTime, session.endTime)}</span>
                                           </div>
                                           {session.location?.venue && (
                                             <div className="flex items-center">

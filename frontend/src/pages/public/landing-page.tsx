@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { ArrowRight, Calendar, Users, Heart, Play, Pause, MapPin } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 import eventService, { Event } from "@/services/eventService"
+import { formatDateHKT } from "@/utils/dateTimeHKT"
 
 export default function LandingPage() {
   // State to track which elements have been clicked
@@ -839,7 +840,7 @@ export default function LandingPage() {
                         <div className="flex items-center text-sm text-gray-600">
                           <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
                           <span>
-                            {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
+                            {formatDateHKT(new Date(event.startDate))} - {formatDateHKT(new Date(event.endDate))}
                           </span>
                         </div>
                         {/* Event Location */}

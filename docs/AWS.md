@@ -43,6 +43,14 @@
   - **Deployment Circuit Breaker:** Enabled
 
 #### Backend Environment Variables
+Ensure these are set for WhatsApp and reminders to work:
+- `TWILIO_WHATSAPP_NUMBER` (e.g. +15557515340)
+- `TWILIO_ACCOUNT_SID`
+- `TWILIO_WHATSAPP_TEMPLATE_SID` – 8-variable reminder template for scheduled reminders
+- `TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID` – 2-variable template for manual “Send WhatsApp” (var1=title, var2=message)
+
+Reminder cron runs inside the backend process **every 5 minutes** (Asia/Hong_Kong). The ECS task must stay running (e.g. desired count ≥ 1) for reminders to fire.
+
 ```json
 [
   {

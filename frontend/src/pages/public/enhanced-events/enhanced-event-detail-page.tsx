@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { Progress } from "@/components/ui/progress"
 import { RichTextDisplay } from "@/components/ui/rich-text-display"
+import { formatDateHKT, formatSessionDateTimeHKT } from "@/utils/dateTimeHKT"
 
 export default function EnhancedEventDetailPage() {
   const { id } = useParams()
@@ -474,9 +475,7 @@ export default function EnhancedEventDetailPage() {
                           )}
                           <div className="flex items-center text-sm text-gray-500">
                             <Calendar className="h-4 w-4 mr-2" />
-                            <span>{new Date(session.date).toLocaleDateString()}</span>
-                            <Clock className="h-4 w-4 mr-2 ml-4" />
-                            <span>{session.startTime} - {session.endTime}</span>
+                            <span>{formatSessionDateTimeHKT(new Date(session.date), session.startTime, session.endTime)}</span>
                           </div>
                         </div>
                         <Checkbox
@@ -769,7 +768,7 @@ export default function EnhancedEventDetailPage() {
               <div className="flex items-center">
                 <Calendar className="h-5 w-5 mr-2" />
                 <span>
-                  {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
+                  {formatDateHKT(new Date(event.startDate))} - {formatDateHKT(new Date(event.endDate))}
                 </span>
               </div>
               <div className="flex items-center">
@@ -841,11 +840,7 @@ export default function EnhancedEventDetailPage() {
                                 )}
                                 <div className="flex items-center text-sm text-gray-500">
                                   <Calendar className="h-4 w-4 mr-2" />
-                                  <span>{new Date(session.date).toLocaleDateString()}</span>
-                                </div>
-                                <div className="flex items-center text-sm text-gray-500 mt-1">
-                                  <Clock className="h-4 w-4 mr-2" />
-                                  <span>{session.startTime} - {session.endTime}</span>
+                                  <span>{formatSessionDateTimeHKT(new Date(session.date), session.startTime, session.endTime)}</span>
                                 </div>
                                 {session.location?.venue && (
                                   <div className="flex items-center text-sm text-gray-500 mt-1">
@@ -881,7 +876,7 @@ export default function EnhancedEventDetailPage() {
               <div className="flex justify-between text-sm">
                 <span className="text-gray-600">Date:</span>
                 <span className="font-medium">
-                  {new Date(event.startDate).toLocaleDateString()} - {new Date(event.endDate).toLocaleDateString()}
+                  {formatDateHKT(new Date(event.startDate))} - {formatDateHKT(new Date(event.endDate))}
                 </span>
               </div>
               <Separator />

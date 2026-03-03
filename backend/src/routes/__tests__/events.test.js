@@ -2,10 +2,11 @@ import request from 'supertest';
 import express from 'express';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import eventRoutes from '../events.js';
+import eventRoutes, { setTwilioClientForTesting } from '../events.js';
 import Event from '../../models/Event.js';
 import User from '../../models/User.js';
 import RegistrationForm from '../../models/RegistrationForm.js';
+import EventRegistration from '../../models/EventRegistration.js';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 
@@ -44,26 +45,27 @@ describe('Events Routes', () => {
     await Event.deleteMany({});
     await User.deleteMany({});
     await RegistrationForm.deleteMany({});
+    await EventRegistration.deleteMany({});
 
-    // Create admin user
+    // Create admin user (E.164 mobile required by User model)
     adminUser = new User({
       username: 'admin',
       password: 'admin123',
       firstName: 'Admin',
       lastName: 'User',
-      mobile: '1234567890',
+      mobile: '+85212345678',
       email: 'admin@example.com',
       role: 'admin'
     });
     await adminUser.save();
 
-    // Create regular user
+    // Create regular user (E.164 mobile required by User model)
     regularUser = new User({
       username: 'user',
       password: 'user123',
       firstName: 'Regular',
       lastName: 'User',
-      mobile: '1234567891',
+      mobile: '+85212345679',
       email: 'user@example.com',
       role: 'participant'
     });
@@ -636,6 +638,74 @@ describe('Events Routes', () => {
         expect(response.body).toHaveProperty('participants');
         expect(response.body.participants).toHaveLength(0);
       });
+    });
+  });
+
+  describe('WhatsApp templates (custom / marketing)', () => {
+    const marketingTemplateSid = 'HXmarketing_test_sid_123';
+    let twilioCreateCalls;
+    let mockTwilioCreate;
+    let savedEnv;
+
+    beforeEach(() => {
+      savedEnv = process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID;
+      process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID = marketingTemplateSid;
+      twilioCreateCalls = [];
+      mockTwilioCreate = (payload) => {
+        twilioCreateCalls.push(payload);
+        return Promise.resolve({ sid: 'SM123' });
+      };
+      setTwilioClientForTesting({ messages: { create: mockTwilioCreate } });
+    });
+
+    afterEach(() => {
+      setTwilioClientForTesting(null);
+      process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID = savedEnv;
+    });
+
+    it('send-whatsapp-reminder uses marketing template with variable 1=eventTitle, 2=message', async () => {
+      const response = await request(app)
+        .post('/api/events/send-whatsapp-reminder')
+        .send({
+          to: '+85212345678',
+          message: 'Hello participants',
+          eventTitle: 'My Event Title'
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(twilioCreateCalls.length).toBe(1);
+      const call = twilioCreateCalls[0];
+      expect(call.contentSid).toBe(marketingTemplateSid);
+      const vars = typeof call.contentVariables === 'string' ? JSON.parse(call.contentVariables) : call.contentVariables;
+      expect(vars).toEqual({
+        '1': 'My Event Title',
+        '2': 'Hello participants'
+      });
+      expect(call.to).toBe('whatsapp:+85212345678');
+    });
+
+    it('POST :id/send-whatsapp uses marketing template with title and message for each participant', async () => {
+      await EventRegistration.create({
+        eventId: testEvent._id,
+        attendee: { firstName: 'Test', lastName: 'User', phone: '+85298765432', email: 'test@example.com' },
+        status: 'registered'
+      });
+
+      const response = await request(app)
+        .post(`/api/events/${testEvent._id}/send-whatsapp`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ title: 'Test Event', message: 'Custom message here' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('successful', 1);
+      expect(twilioCreateCalls.length).toBe(1);
+      const call = twilioCreateCalls[0];
+      expect(call.contentSid).toBe(marketingTemplateSid);
+      const vars = typeof call.contentVariables === 'string' ? JSON.parse(call.contentVariables) : call.contentVariables;
+      expect(vars['1']).toBe('Test Event');
+      expect(vars['2']).toBe('Custom message here');
+      expect(call.to).toMatch(/whatsapp:.*85298765432/);
     });
   });
 }); 
