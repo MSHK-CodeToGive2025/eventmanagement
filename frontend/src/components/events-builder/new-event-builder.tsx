@@ -11,7 +11,8 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
-import { CalendarIcon, MapPin, Link, Save, ArrowLeft, Search } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import { CalendarIcon, MapPin, Link, Save, ArrowLeft, Search, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
@@ -46,19 +47,27 @@ const eventFormSchema = z.object({
   targetGroup: z.string().min(1, {
     message: "Target group is required.",
   }),
-  location: z.object({
-    venue: z.string().min(2, {
-      message: "Venue is required.",
-    }),
-    address: z.string().min(2, {
-      message: "Address is required.",
-    }),
-    district: z.string().min(1, {
-      message: "District is required.",
-    }),
-    onlineEvent: z.boolean(),
-    meetingLink: z.string().optional(),
-  }),
+  location: z
+    .object({
+      venue: z.string().optional(),
+      address: z.string().optional(),
+      district: z.string().optional(),
+      onlineEvent: z.boolean(),
+      meetingLink: z.string().optional(),
+    })
+    .refine(
+      (loc) => {
+        if (loc.onlineEvent) {
+          return !!loc.meetingLink?.trim();
+        }
+        return (
+          (loc.venue?.length ?? 0) >= 2 &&
+          (loc.address?.length ?? 0) >= 2 &&
+          (loc.district?.length ?? 0) >= 1
+        );
+      },
+      { message: "For online events provide a meeting link; for in-person events fill venue, address, and district." }
+    ),
   startDate: z.date({
     required_error: "Start date is required.",
   }),
@@ -90,7 +99,7 @@ const eventFormSchema = z.object({
   capacity: z.number().optional(),
   tags: z.array(z.string()).optional(),
   reminderTimes: z.array(z.number()).optional(),
-      defaultReminderMode: z.enum(['template', 'custom']).default('custom'),
+  defaultReminderMode: z.literal('template'),
   staffContact: z.object({
     name: z.string().optional(),
     phone: z.string().optional(),
@@ -119,6 +128,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
   const [availableUsers, setAvailableUsers] = useState<Array<{_id: string, firstName: string, lastName: string, email: string, role: string}>>([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
+  const [submitErrorDialog, setSubmitErrorDialog] = useState<{ open: boolean; title: string; message: string; details?: string }>({ open: false, title: "", message: "" });
   const { toast } = useToast()
   const { user } = useAuth()
 
@@ -207,7 +217,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       capacity: undefined,
       tags: [],
       reminderTimes: [24], // Default to 24 hours before event
-              defaultReminderMode: 'custom',
+      defaultReminderMode: 'template',
       staffContact: {
         name: "",
         phone: "",
@@ -353,7 +363,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         if (session.description) {
           formData.append(`sessions[${index}][description]`, session.description)
         }
-        formData.append(`sessions[${index}][date]`, session.date.toISOString())
+        formData.append(`sessions[${index}][date]`, format(session.date, 'yyyy-MM-dd'))
         formData.append(`sessions[${index}][startTime]`, session.startTime)
         formData.append(`sessions[${index}][endTime]`, session.endTime)
         if (session.location?.venue) {
@@ -503,8 +513,10 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
     } catch (error: any) {
       console.error("Error submitting form:", error)
       
+      let errorTitle = "Form submission failed"
       let errorMessage = "There was a problem submitting the form. Please try again."
-      
+      let details: string | undefined
+
       if (error.response?.status === 403) {
         errorMessage = "You don't have permission to create or update events."
       } else if (error.response?.status === 401) {
@@ -514,7 +526,14 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       } else if (error.message) {
         errorMessage = error.message
       }
+      if (error.response?.data?.error) {
+        details = String(error.response.data.error)
+      }
+      if (error.response?.data?.errors && typeof error.response.data.errors === "object") {
+        details = Object.entries(error.response.data.errors).map(([k, v]) => `${k}: ${v}`).join("\n")
+      }
 
+      setSubmitErrorDialog({ open: true, title: errorTitle, message: errorMessage, details })
       toast({
         title: "Form Submission Error",
         description: errorMessage,
@@ -1290,34 +1309,12 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                 <FormField
                   control={form.control}
                   name="defaultReminderMode"
-                  render={({ field }) => (
+                  render={() => (
                     <FormItem>
-                      <FormLabel className="text-base font-medium">Default WhatsApp Reminder Mode</FormLabel>
-                      <FormControl>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <SelectTrigger className="h-12">
-                            <SelectValue placeholder="Select reminder mode" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="template">
-                              <div className="flex flex-col">
-                                <span className="font-medium">Template Messages</span>
-                                <span className="text-sm text-gray-500">Cheaper, compliant, standardized</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="custom">
-                              <div className="flex flex-col">
-                                <span className="font-medium">Custom Messages</span>
-                                <span className="text-sm text-gray-500">More expensive, flexible content</span>
-                              </div>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </FormControl>
-                      <FormDescription>
-                        Choose the default mode for WhatsApp reminders. Template messages use pre-approved content with date/time variables, while custom messages allow full control over content.
-                      </FormDescription>
-                      <FormMessage />
+                      <FormLabel className="text-base font-medium">WhatsApp Reminders</FormLabel>
+                      <div className="rounded-lg border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
+                        Event reminders are sent using the event reminder template only (no custom message option).
+                      </div>
                     </FormItem>
                   )}
                 />
@@ -1384,6 +1381,28 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
           </Form>
         </Tabs>
       </div>
+
+      <Dialog open={submitErrorDialog.open} onOpenChange={(open) => setSubmitErrorDialog((p) => ({ ...p, open }))}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertCircle className="h-5 w-5" />
+              {submitErrorDialog.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm">{submitErrorDialog.message}</p>
+            {submitErrorDialog.details && (
+              <pre className="mt-2 rounded bg-muted p-3 text-xs whitespace-pre-wrap break-words">{submitErrorDialog.details}</pre>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSubmitErrorDialog((p) => ({ ...p, open: false }))}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

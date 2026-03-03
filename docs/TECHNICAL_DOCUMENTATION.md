@@ -825,7 +825,7 @@ class TwilioService {
 
 **Cron Jobs:**
 ```javascript
-// Check for upcoming events every hour
+// Check for upcoming events every 5 minutes
 '0 * * * *' - Check upcoming events and schedule reminders
 
 // Execute reminders every 15 minutes

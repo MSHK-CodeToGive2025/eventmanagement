@@ -36,7 +36,7 @@ TWILIO_WHATSAPP_TEMPLATE_SID=your_template_sid_here
 ## How the Reminder System Works
 
 ### 1. Automated Reminders
-- **Schedule**: Runs every hour (cron job at minute 0)
+- **Schedule**: Runs every 5 minutes (cron job)
 - **Timezone**: Asia/Hong_Kong
 - **Process**: 
   1. Finds all published events that haven't ended

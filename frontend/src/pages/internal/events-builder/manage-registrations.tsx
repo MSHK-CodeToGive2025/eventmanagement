@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
 import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer } from "lucide-react"
+import { formatDateHKT, formatSessionDateTimeHKT, formatDateTimeHKT } from "@/utils/dateTimeHKT"
 import { ZubinEvent, eventCategories, targetGroups } from "@/types/event-types"
 import RegistrationFormDialog from "@/components/events-builder/registration-form-dialog"
 import WhatsAppMessageDialog from "@/components/events-builder/whatsapp-message-dialog"
@@ -26,34 +27,49 @@ export default function ManageRegistrations() {
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  const event = location.state?.event as ZubinEvent;
+  const stateEvent = location.state?.event as ZubinEvent | undefined;
 
+  const [event, setEvent] = useState<ZubinEvent | null>(stateEvent ?? null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("registered");
   const [selectedRegistration, setSelectedRegistration] = useState<EventRegistration | null>(null);
   const [registrationToReject, setRegistrationToReject] = useState<EventRegistration | null>(null);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   
-  // State for real data
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [registrationForm, setRegistrationForm] = useState<RegistrationForm | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch registrations and form data
+  // Fetch event by URL id so we always use the correct event (avoids wrong event/message when sending WhatsApp)
   useEffect(() => {
+    if (!id) return;
+    const fetchEvent = async () => {
+      try {
+        const eventData = await eventService.getEvent(id);
+        setEvent(eventData as ZubinEvent);
+      } catch (err: any) {
+        console.error('Error fetching event:', err);
+        setError(err.message || 'Failed to load event');
+        setEvent(null);
+        toast({ title: "Error", description: "Failed to load event.", variant: "destructive" });
+      }
+    };
+    fetchEvent();
+  }, [id, toast]);
+
+  // Fetch registrations and form data when event is available
+  useEffect(() => {
+    if (!event?._id) return;
+    
     const fetchData = async () => {
-      if (!event?._id) return;
-      
       try {
         setLoading(true);
         setError(null);
         
-        // Fetch registrations for this event
         const registrationsData = await registrationService.getEventRegistrations(event._id);
         setRegistrations(registrationsData);
         
-        // Fetch registration form
         if (event.registrationFormId) {
           const formData = await formService.getForm(event.registrationFormId);
           setRegistrationForm(formData);
@@ -96,11 +112,12 @@ export default function ManageRegistrations() {
   // Get registered participants count
   const registeredParticipantsCount = registrations.filter(reg => reg.status === 'registered').length;
 
-  const handleSendWhatsAppMessage = async (title: string, message: string, useTemplate: boolean) => {
+  const handleSendWhatsAppMessage = async (message: string) => {
     if (!event?._id) {
       throw new Error("Event ID not found");
     }
-    return await eventService.sendWhatsAppMessage(event._id, title, message, useTemplate);
+    // Send the event title we display (from event fetched by URL id) so the message uses exactly what the user sees
+    return await eventService.sendWhatsAppMessage(event._id, event.title ?? "", message, true);
   };
 
   const handleRejectRegistration = async (registrationId: string) => {
@@ -255,13 +272,13 @@ export default function ManageRegistrations() {
         <body>
           <div class="header">
             <h1>Event Registrations Report</h1>
-            <p>Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}</p>
+            <p>Generated on ${formatDateTimeHKT(new Date())}</p>
           </div>
           
           <div class="event-details">
             <h2>${event?.title}</h2>
             <div class="event-info">
-              <div><strong>Date:</strong> ${event?.startDate ? format(new Date(event.startDate), "MMM d, yyyy") : 'N/A'}</div>
+              <div><strong>Date:</strong> ${event?.startDate ? formatDateHKT(new Date(event.startDate)) : 'N/A'}</div>
               <div><strong>Location:</strong> ${event?.location?.venue || 'N/A'}</div>
               <div><strong>Category:</strong> ${event?.category || 'N/A'}</div>
               <div><strong>Target Group:</strong> ${event?.targetGroup || 'N/A'}</div>
@@ -288,7 +305,7 @@ export default function ManageRegistrations() {
                   ? sessionDetails.map(session => 
                       `<div style="margin-bottom: 8px; padding: 4px; border-left: 3px solid #3b82f6; background-color: #f8fafc;">
                         <div style="font-weight: bold; font-size: 11px; color: #1f2937;">${session.title}</div>
-                        <div style="font-size: 10px; color: #6b7280;">${format(session.date, "MMM d, yyyy")} • ${session.startTime} - ${session.endTime}</div>
+                        <div style="font-size: 10px; color: #6b7280;">${formatSessionDateTimeHKT(session.date, session.startTime, session.endTime)}</div>
                       </div>`
                     ).join('')
                   : 'No sessions selected';
@@ -422,8 +439,8 @@ export default function ManageRegistrations() {
                 <div className="flex items-center mt-2 text-gray-500">
                   <CalendarIcon className="h-4 w-4 mr-2" />
                   <span>
-                    {format(new Date(event.startDate), "MMM d, yyyy")}
-                    {event.startDate !== event.endDate && ` - ${format(new Date(event.endDate), "MMM d, yyyy")}`}
+                    {formatDateHKT(new Date(event.startDate))}
+                    {event.startDate !== event.endDate && ` - ${formatDateHKT(new Date(event.endDate))}`}
                   </span>
                 </div>
               </div>
@@ -549,7 +566,7 @@ export default function ManageRegistrations() {
                                       {session.title}
                                     </div>
                                     <div className="text-xs text-gray-600">
-                                      {format(session.date, "MMM d, yyyy")} • {session.startTime} - {session.endTime}
+                                      {formatSessionDateTimeHKT(session.date, session.startTime, session.endTime)}
                                     </div>
                                   </div>
                                 ))}

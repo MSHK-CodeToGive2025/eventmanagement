@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react"
 import { format } from "date-fns"
+import { formatDateHKT } from "@/utils/dateTimeHKT"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -723,7 +724,7 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
                     <div className="flex flex-col">
                       <div className="flex items-center">
                         <CalendarIcon className="h-4 w-4 mr-1 text-gray-500" />
-                        {format(event.startDate, "MMM d, yyyy")}
+                        {formatDateHKT(event.startDate)}
                       </div>
                       <div className="text-gray-500 text-sm">
                         {event.sessions.length} session{event.sessions.length !== 1 ? "s" : ""}

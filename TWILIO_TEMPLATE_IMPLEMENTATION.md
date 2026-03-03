@@ -2,21 +2,15 @@
 
 ## Overview
 
-This implementation supports **both** Twilio's WhatsApp Business API template system and traditional custom messages, giving users the flexibility to choose based on their needs:
+WhatsApp messaging uses **templates only** (no freeform/body messages) to avoid delivery failures outside the 24-hour session window (error 63016).
 
-1. **Custom Message Mode (Default)**: 
-   - Full control over message content
-   - More expensive than template messages
-   - Flexible for unique communication needs
-   - Requires compliance with WhatsApp content policies
+1. **Manual messages (Send WhatsApp in UI)**  
+   - Use the **marketing template** (`TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID`).  
+   - Variable 1 = event title (auto-filled), Variable 2 = your message (entered in the dialog).
 
-2. **Template Mode**: 
-   - Uses your approved WhatsApp template with 8 variables
-   - Variable 1 = Event title, Variable 2 = Session title, Variable 3 = Time until event
-   - Variable 4 = Date, Variable 5 = Time, Variable 6 = Location
-   - Variable 7 = Contact name, Variable 8 = Contact phone
-   - Significantly cheaper than custom messages
-   - Fully compliant with WhatsApp Business API policies
+2. **Scheduled event reminders**  
+   - Use the **8-variable reminder template** (`TWILIO_WHATSAPP_TEMPLATE_SID`) when the event’s default is “template”, or the **marketing template** when “custom” (reminder text as variable 2).  
+   - Reminders are checked **every 5 minutes** in Hong Kong time (Asia/Hong_Kong).
 
 ## Template Configuration
 
@@ -26,8 +20,8 @@ Add the following variables to your `.env` file:
 
 ```bash
 # Twilio WhatsApp Template Configuration
-TWILIO_WHATSAPP_TEMPLATE_SID=HX3fda9fb1cf05b0d58674a422302bfe90
-TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+TWILIO_WHATSAPP_TEMPLATE_SID=xxx
+TWILIO_WHATSAPP_NUMBER=xxx
 ```
 
 ### Template Variables

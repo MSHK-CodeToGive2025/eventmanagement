@@ -6,6 +6,8 @@ const router = express.Router();
 
 // Twilio sends incoming WhatsApp messages here via webhook.
 // Handles STOP/START opt-out commands and responds with TwiML.
+// These replies use freeform <Message> body on purpose: they are direct responses to
+// the user's incoming message, so the 24h session window is open and freeform is allowed.
 router.post('/incoming', async (req, res) => {
   try {
     const { From, Body } = req.body;

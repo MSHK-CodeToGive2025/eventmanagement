@@ -76,6 +76,7 @@ describe('NewEventBuilder', () => {
   })
 
   it('renders staff contact fields', async () => {
+    const user = userEvent.setup()
     render(
       <NewEventBuilder
         onClose={mockOnClose}
@@ -83,21 +84,19 @@ describe('NewEventBuilder', () => {
       />
     )
 
-    // Wait for the form to load
+    // Staff Contact is in the "Details & Settings" tab; switch to it first
+    await user.click(screen.getByRole('tab', { name: /Details & Settings/i }))
+
     await waitFor(() => {
       expect(screen.getByText('Staff Contact Information')).toBeInTheDocument()
     })
 
-    // Check for staff name field
     expect(screen.getByLabelText('Staff Name')).toBeInTheDocument()
-    
-    // Check for staff phone field
     expect(screen.getByLabelText('Staff Phone Number')).toBeInTheDocument()
   })
 
   it('allows entering staff contact information', async () => {
     const user = userEvent.setup()
-    
     render(
       <NewEventBuilder
         onClose={mockOnClose}
@@ -105,7 +104,7 @@ describe('NewEventBuilder', () => {
       />
     )
 
-    // Wait for the form to load
+    await user.click(screen.getByRole('tab', { name: /Details & Settings/i }))
     await waitFor(() => {
       expect(screen.getByText('Staff Contact Information')).toBeInTheDocument()
     })
@@ -125,7 +124,6 @@ describe('NewEventBuilder', () => {
 
   it('includes staff contact in form submission', async () => {
     const user = userEvent.setup()
-    
     render(
       <NewEventBuilder
         onClose={mockOnClose}
@@ -133,21 +131,14 @@ describe('NewEventBuilder', () => {
       />
     )
 
-    // Wait for the form to load and fill required fields
+    await user.click(screen.getByRole('tab', { name: /Details & Settings/i }))
     await waitFor(() => {
       expect(screen.getByText('Staff Contact Information')).toBeInTheDocument()
     })
 
-    // Fill required fields
-    await user.type(screen.getByLabelText(/Title/), 'Test Event')
-    await user.type(screen.getByTestId('rich-text-editor'), 'Test Description')
-    
-    // Fill staff contact fields
     await user.type(screen.getByLabelText('Staff Name'), 'John Doe')
     await user.type(screen.getByLabelText('Staff Phone Number'), '+852 1234 5678')
 
-    // Submit form (this would normally trigger onSave with the form data)
-    // The actual form submission logic is complex, so we just verify the fields are present
     expect(screen.getByLabelText('Staff Name')).toHaveValue('John Doe')
     expect(screen.getByLabelText('Staff Phone Number')).toHaveValue('+852 1234 5678')
   })

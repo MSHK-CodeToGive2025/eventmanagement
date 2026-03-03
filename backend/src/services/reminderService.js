@@ -4,6 +4,7 @@ import EventRegistration from '../models/EventRegistration.js';
 import User from '../models/User.js';
 import twilio from 'twilio';
 import { formatForWhatsApp, ensureWhatsAppPrefix } from '../utils/phoneUtils.js';
+import { getEventDateRangeFromSessions } from '../utils/eventDateRange.js';
 
 // Initialize Twilio client
 let twilioClient = null;
@@ -17,6 +18,27 @@ try {
 } catch (error) {
   console.error('[REMINDER SERVICE] Failed to initialize Twilio client:', error.message);
   console.log('[REMINDER SERVICE] Reminder service will be disabled');
+}
+
+const HKT = 'Asia/Hong_Kong';
+
+function formatDateHKT(date) {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    timeZone: HKT
+  }) + ' HKT';
+}
+
+function formatTimeHKT(date) {
+  return date.toLocaleTimeString('en-US', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: HKT
+  }) + ' HKT';
 }
 
 class ReminderService {
@@ -38,16 +60,16 @@ class ReminderService {
 
 
 
-    // Schedule job to run every hour
-    cron.schedule('0 * * * *', () => {
+    // Schedule job to run every 5 minutes in Hong Kong time.
+    cron.schedule('*/5 * * * *', () => {
       this.processReminders();
     }, {
       scheduled: true,
-      timezone: "Asia/Hong_Kong" // Hong Kong timezone
+      timezone: "Asia/Hong_Kong"
     });
 
     this.isRunning = true;
-    console.log('[REMINDER SERVICE] Reminder service started - running every hour');
+    console.log('[REMINDER SERVICE] Reminder service started - running every 5 minutes (Asia/Hong_Kong)');
   }
 
   // Stop the reminder service
@@ -77,10 +99,18 @@ class ReminderService {
         status: 'Published' // Only process published events
       });
 
-      // Filter out events that are already completed (endDate < now)
+      // Filter out events that are already completed (endDate < now).
+      // If an event has sessions but stored endDate is in the past (e.g. created with wrong dates),
+      // compute effective end from sessions (HKT) so it still gets reminders.
       const activeEvents = events.filter(event => {
-        if (!event.endDate) return true; // If no end date, keep it
-        return event.endDate > now;
+        if (!event.endDate) return true;
+        if (event.endDate > now) return true;
+        const hasSessions = event.sessions && event.sessions.length > 0;
+        if (hasSessions) {
+          const range = getEventDateRangeFromSessions(event.sessions);
+          if (range && range.endDate > now) return true;
+        }
+        return false;
       });
 
       console.log(`[REMINDER SERVICE] Found ${events.length} published events, ${activeEvents.length} are still active`);
@@ -115,18 +145,20 @@ class ReminderService {
   // Process reminders for a specific event
   async processEventReminders(event, now) {
     try {
+      const reminderTimesList = Array.isArray(event.reminderTimes) ? event.reminderTimes : [24];
+      const remindersSentKeys = Array.isArray(event.remindersSent) ? event.remindersSent : [];
       console.log(`[REMINDER SERVICE] Processing reminders for event: ${event.title}`);
-      console.log(`[REMINDER SERVICE] Event reminder times: ${event.reminderTimes.join(', ')} hours before`);
-      console.log(`[REMINDER SERVICE] Event reminders already sent: ${event.remindersSent.join(', ')}`);
+      console.log(`[REMINDER SERVICE] Event reminder times: ${reminderTimesList.join(', ')} hours before`);
+      console.log(`[REMINDER SERVICE] Event reminders already sent: ${remindersSentKeys.join(', ')}`);
       console.log(`[REMINDER SERVICE] Event ID: ${event._id}`);
-      console.log(`[REMINDER SERVICE] Reminder times type: ${typeof event.reminderTimes}, length: ${event.reminderTimes.length}`);
       console.log(`[REMINDER SERVICE] Raw reminder times:`, JSON.stringify(event.reminderTimes));
 
       let remindersSent = 0;
       let sessionsChecked = 0;
 
-      // Check reminders for the main event
-      if (event.startDate) {
+      // Check reminders for the main event only when there are no sessions (sessions get their own reminders)
+      const hasSessions = event.sessions && event.sessions.length > 0;
+      if (event.startDate && !hasSessions) {
         console.log(`[REMINDER SERVICE] Main event start date: ${event.startDate.toISOString()}`);
         const mainEventResult = await this.processSingleEventReminder(event, event.startDate, now, 'main event');
         if (mainEventResult && mainEventResult.reminderSent) {
@@ -136,7 +168,7 @@ class ReminderService {
       }
 
       // Check reminders for all sessions
-      if (event.sessions && event.sessions.length > 0) {
+      if (hasSessions) {
         console.log(`[REMINDER SERVICE] Event has ${event.sessions.length} sessions to check`);
         
         for (const session of event.sessions) {
@@ -146,12 +178,19 @@ class ReminderService {
             continue;
           }
           
-          // Combine session date with start time to get the actual session start datetime
-          const sessionDate = new Date(session.date);
-          const [hours, minutes] = session.startTime.split(':').map(Number);
-          sessionDate.setHours(hours, minutes, 0, 0);
+          // Interpret session date + startTime in Hong Kong time (Asia/Hong_Kong)
+          // Use UTC date parts so the calendar day doesn't shift with server timezone
+          const d = new Date(session.date);
+          const y = d.getUTCFullYear();
+          const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+          const day = String(d.getUTCDate()).padStart(2, '0');
+          const dateStr = `${y}-${m}-${day}`;
+          const timeParts = String(session.startTime || '').trim().split(':').map(s => Number(s.trim()));
+          const hours = Number.isFinite(timeParts[0]) ? timeParts[0] : 0;
+          const minutes = Number.isFinite(timeParts[1]) ? timeParts[1] : 0;
+          const sessionDate = new Date(`${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+08:00`);
           
-          console.log(`[REMINDER SERVICE] Session "${session.title}" scheduled for ${sessionDate.toISOString()}`);
+          console.log(`[REMINDER SERVICE] Session "${session.title}" date=${dateStr} startTime="${session.startTime}" -> ${sessionDate.toISOString()} (HKT ${hours}:${String(minutes).padStart(2,'0')})`);
           const sessionResult = await this.processSingleEventReminder(event, sessionDate, now, `session: ${session.title}`);
           if (sessionResult && sessionResult.reminderSent) {
             remindersSent++;
@@ -159,7 +198,7 @@ class ReminderService {
           sessionsChecked++;
         }
       } else {
-        console.log(`[REMINDER SERVICE] Event has no sessions, only checking main event`);
+        console.log(`[REMINDER SERVICE] Event has no sessions, only main event was checked`);
       }
 
       console.log(`[REMINDER SERVICE] 📊 Event "${event.title}": Checked ${sessionsChecked} sessions/events, sent ${remindersSent} reminders`);
@@ -176,31 +215,33 @@ class ReminderService {
       const timeUntilEvent = startDateTime.getTime() - now.getTime();
       const hoursUntilEvent = timeUntilEvent / (1000 * 60 * 60);
 
-      console.log(`[REMINDER SERVICE] ${eventType} - ${hoursUntilEvent.toFixed(1)} hours until start`);
+      console.log(`[REMINDER SERVICE] ${eventType} - now=${now.toISOString()} start=${startDateTime.toISOString()} -> ${hoursUntilEvent.toFixed(3)} h until start`);
 
       let reminderSent = false;
 
-      // Check each configured reminder time
-      console.log(`[REMINDER SERVICE] Total reminder times to check: ${event.reminderTimes.length}`);
-      for (const reminderHours of event.reminderTimes) {
-        console.log(`[REMINDER SERVICE] Checking ${reminderHours}h reminder for ${eventType} (type: ${typeof reminderHours})`);
-        console.log(`[REMINDER SERVICE] Time window: ${reminderHours - 0.5} to ${reminderHours + 0.5} hours before`);
-        console.log(`[REMINDER SERVICE] Current hours until event: ${hoursUntilEvent.toFixed(1)}`);
+      // Check each configured reminder time (coerce to number - form/API may send strings)
+      const reminderTimesList = Array.isArray(event.reminderTimes) ? event.reminderTimes : [24];
+      console.log(`[REMINDER SERVICE] Total reminder times to check: ${reminderTimesList.length}`);
+      for (const raw of reminderTimesList) {
+        const reminderHours = Number(raw);
+        if (!Number.isFinite(reminderHours) || reminderHours <= 0) {
+          console.log(`[REMINDER SERVICE] Skipping invalid reminder time: ${raw}`);
+          continue;
+        }
+        const halfWindow = Math.min(0.5, Math.max(0.05, reminderHours / 2));
+        const windowStart = reminderHours - halfWindow;
+        const windowEnd = reminderHours + halfWindow;
+        console.log(`[REMINDER SERVICE] Checking ${reminderHours}h reminder for ${eventType} (window: ${windowStart.toFixed(2)}–${windowEnd.toFixed(2)} h before)`);
+        console.log(`[REMINDER SERVICE] Current hours until event: ${hoursUntilEvent.toFixed(2)}`);
         
-        // Check if reminder is due (within 1 hour window)
-        if (hoursUntilEvent >= reminderHours - 0.5 && hoursUntilEvent <= reminderHours + 0.5) {
+        if (hoursUntilEvent >= windowStart && hoursUntilEvent <= windowEnd) {
           console.log(`[REMINDER SERVICE] ✅ ${reminderHours}h reminder MATCHES criteria for ${eventType}`);
-          
-          // Create a unique identifier for this reminder (event + session + reminder time)
-          const reminderKey = eventType === 'main event' 
-            ? `main_${reminderHours}` 
+          const reminderKey = eventType === 'main event'
+            ? `main_${reminderHours}`
             : `session_${eventType.replace('session: ', '')}_${reminderHours}`;
-          
           console.log(`[REMINDER SERVICE] Reminder key: ${reminderKey}`);
-          console.log(`[REMINDER SERVICE] Already sent reminders: ${event.remindersSent.join(', ')}`);
-          
-          // Check if this reminder has already been sent
-          if (!event.remindersSent.includes(reminderKey)) {
+          console.log(`[REMINDER SERVICE] Already sent reminders: ${(event.remindersSent || []).join(', ')}`);
+          if (!(event.remindersSent || []).includes(reminderKey)) {
             console.log(`[REMINDER SERVICE] 🚀 Sending ${reminderHours}h reminder for ${eventType}: ${event.title}`);
             await this.sendEventReminder(event, reminderHours, eventType, startDateTime);
             reminderSent = true;
@@ -270,46 +311,29 @@ class ReminderService {
 
             console.log(`[REMINDER SERVICE] 📱 Sending reminder to ${formattedNumber} for ${eventType}`);
 
+            // WhatsApp: only templates (no freeform body) to avoid 63016 outside 24h window.
             if (useTemplate && process.env.TWILIO_WHATSAPP_TEMPLATE_SID) {
-              // Use template system
               const templateVariables = this.createTemplateVariables(event, reminderHours, eventType, startDateTime);
-              
-              console.log(`[REMINDER SERVICE] Using template mode with SID: ${process.env.TWILIO_WHATSAPP_TEMPLATE_SID}`);
-              console.log(`[REMINDER SERVICE] Template variables:`, templateVariables);
-              
+              console.log(`[REMINDER SERVICE] Using 8-var reminder template SID: ${process.env.TWILIO_WHATSAPP_TEMPLATE_SID}`);
               await twilioClient.messages.create({
                 from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
                 contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
-                contentVariables: templateVariables, // Object, not JSON string
+                contentVariables: JSON.stringify(templateVariables),
+                to: `whatsapp:${formattedNumber}`
+              });
+            } else if (process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
+              // Event set to "custom" reminder: send full reminder text as variable 2 via marketing template (no freeform).
+              const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
+              console.log(`[REMINDER SERVICE] Using marketing template for reminder to ${formattedNumber}`);
+              await twilioClient.messages.create({
+                from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
+                contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+                contentVariables: JSON.stringify({ "1": event.title, "2": message }),
                 to: `whatsapp:${formattedNumber}`
               });
             } else {
-              // Use custom message system with marketing template fallback
-              const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
-              
-              try {
-                await twilioClient.messages.create({
-                  body: message,
-                  from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-                  to: `whatsapp:${formattedNumber}`
-                });
-              } catch (customError) {
-                // Error 63016: Outside 24-hour session window - try marketing template
-                if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
-                  console.log(`[REMINDER SERVICE] Custom failed for ${formattedNumber}, using marketing template...`);
-                  await twilioClient.messages.create({
-                    from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-                    contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
-                    contentVariables: {
-                      "1": event.title,
-                      "2": message
-                    },
-                    to: `whatsapp:${formattedNumber}`
-                  });
-                } else {
-                  throw customError;
-                }
-              }
+              console.error(`[REMINDER SERVICE] No template SID configured; set TWILIO_WHATSAPP_TEMPLATE_SID or TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID`);
+              throw new Error('WhatsApp template not configured for reminders');
             }
 
             console.log(`[REMINDER SERVICE] ✅ Successfully sent ${reminderHours}h reminder to ${formattedNumber}`);
@@ -337,17 +361,9 @@ class ReminderService {
 
   // Create reminder message
   createReminderMessage(event, reminderHours, eventType, startDateTime) {
-    const eventStartTime = startDateTime; // Use the actual startDateTime
-    const formattedDate = eventStartTime.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    const formattedTime = eventStartTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    const eventStartTime = startDateTime;
+    const formattedDate = formatDateHKT(eventStartTime);
+    const formattedTime = formatTimeHKT(eventStartTime);
 
     let timeText;
     if (reminderHours >= 24) {
@@ -402,6 +418,13 @@ class ReminderService {
     return message;
   }
 
+  // Sanitize a value for Twilio Content API: no null/empty, no newlines/tabs, max 4 consecutive spaces (error 21656)
+  sanitizeContentVariable(val) {
+    if (val == null || val === '') return ' ';
+    let s = String(val).replace(/\r\n|\r|\n|\t/g, ' ').replace(/\s{5,}/g, '    ');
+    return s.trim() === '' ? ' ' : s;
+  }
+
   // Create template variables for WhatsApp template
   // Template structure:
   // 🔔 Event Reminder: {{1}}
@@ -414,17 +437,8 @@ class ReminderService {
   // 📞 Phone: {{8}}
   createTemplateVariables(event, reminderHours, eventType, startDateTime) {
     const eventStartTime = startDateTime;
-    const formattedDate = eventStartTime.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    const formattedTime = eventStartTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    });
+    const formattedDate = formatDateHKT(eventStartTime);
+    const formattedTime = formatTimeHKT(eventStartTime);
 
     let timeText;
     if (reminderHours >= 24) {
@@ -454,36 +468,32 @@ class ReminderService {
     // Variable 5: Time
     const timeText2 = formattedTime;
     
-    // Variable 6: Location
+    // Variable 6: Location (Twilio rejects empty string - use space)
     let locationText = '';
     if (isSession) {
-      // For sessions, use session location if available, otherwise fall back to event location
       const session = event.sessions.find(s => s.title === sessionTitle);
       if (session && session.location && session.location.venue) {
         locationText = session.location.venue;
-      } else {
-        locationText = `${event.location.venue}, ${event.location.district}`;
+      } else if (event.location) {
+        locationText = [event.location.venue, event.location.district].filter(Boolean).join(', ') || (event.location.meetingLink ? 'Online' : '');
       }
-    } else {
-      locationText = `${event.location.venue}, ${event.location.district}`;
+    } else if (event.location) {
+      locationText = [event.location.venue, event.location.district].filter(Boolean).join(', ') || (event.location.meetingLink ? 'Online' : '');
     }
-    
-    // Variable 7: Contact name
+
     const contactName = event.staffContact && event.staffContact.name ? event.staffContact.name : '';
-    
-    // Variable 8: Contact phone
     const contactPhone = event.staffContact && event.staffContact.phone ? event.staffContact.phone : '';
 
-    // Return as object (Twilio Content API expects object, not JSON string)
+    // Twilio 21656: no null/empty; sanitize newlines/tabs and >4 spaces
     return {
-      "1": eventTitle,
-      "2": sessionTitleText,
-      "3": timeUntilEvent,
-      "4": dateText,
-      "5": timeText2,
-      "6": locationText,
-      "7": contactName,
-      "8": contactPhone
+      "1": this.sanitizeContentVariable(eventTitle),
+      "2": this.sanitizeContentVariable(sessionTitleText),
+      "3": this.sanitizeContentVariable(timeUntilEvent),
+      "4": this.sanitizeContentVariable(dateText),
+      "5": this.sanitizeContentVariable(timeText2),
+      "6": this.sanitizeContentVariable(locationText),
+      "7": this.sanitizeContentVariable(contactName),
+      "8": this.sanitizeContentVariable(contactPhone)
     };
   }
 

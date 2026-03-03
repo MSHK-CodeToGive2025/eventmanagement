@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Button } from "@/components/ui/button"
 import { ArrowRight, Calendar, MapPin, Users, Clock } from "lucide-react"
 import eventService, { Event } from "@/services/eventService"
+import { formatDateHKT } from "@/utils/dateTimeHKT"
 
 export default function EventsPageSimple() {
   const [events, setEvents] = useState<Event[]>([])
@@ -102,7 +103,7 @@ export default function EventsPageSimple() {
             <div className="space-y-2 mb-4 text-sm text-gray-500">
               <div className="flex items-center">
                 <Calendar className="h-4 w-4 mr-2" />
-                {new Date(event.startDate).toLocaleDateString()}
+                {formatDateHKT(new Date(event.startDate))}
               </div>
               <div className="flex items-center">
                 <MapPin className="h-4 w-4 mr-2" />

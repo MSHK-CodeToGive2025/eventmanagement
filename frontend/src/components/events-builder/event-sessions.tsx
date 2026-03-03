@@ -259,10 +259,10 @@ export default function EventSessions({ sessions, onChange }: EventSessionsProps
               <div className="flex items-center space-x-2">
                 <Switch
                   id={`session-online-${index}`}
-                  checked={!!session.location?.meetingLink}
+                  checked={(session.location?.meetingLink?.trim() ?? "") !== ""}
                   onCheckedChange={(checked) => {
                     if (checked) {
-                      updateSessionLocation(index, "meetingLink", "");
+                      updateSessionLocation(index, "meetingLink", session.location?.meetingLink?.trim() || "https://");
                     } else {
                       updateSessionLocation(index, "meetingLink", undefined);
                     }

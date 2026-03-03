@@ -30,7 +30,7 @@ const EventAdminForm: React.FC = () => {
     capacity: undefined,
     tags: [],
     reminderTimes: [24],
-    defaultReminderMode: 'custom',
+    defaultReminderMode: 'template',
     staffContact: {
       name: '',
       phone: ''
@@ -139,7 +139,7 @@ const EventAdminForm: React.FC = () => {
           },
           body: JSON.stringify({
             ...formData,
-            defaultReminderMode: formData.defaultReminderMode || 'template'
+            defaultReminderMode: 'template'
           }),
         });
 
@@ -213,19 +213,11 @@ const EventAdminForm: React.FC = () => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Default WhatsApp Reminder Mode</label>
-            <select
-              name="defaultReminderMode"
-              value={formData.defaultReminderMode || 'template'}
-              onChange={handleChange}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-            >
-              <option value="template">Template Messages (Cheaper, Compliant)</option>
-              <option value="custom">Custom Messages (More Expensive, Flexible)</option>
-            </select>
-            <p className="mt-1 text-sm text-gray-500">
-              Choose the default mode for WhatsApp reminders. Template messages use pre-approved content with date/time variables.
+            <label className="block text-sm font-medium text-gray-700">WhatsApp Reminders</label>
+            <p className="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+              Event reminders are sent using the event reminder template only.
             </p>
+            <input type="hidden" name="defaultReminderMode" value="template" />
           </div>
 
           <div>

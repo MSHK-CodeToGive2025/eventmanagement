@@ -46,17 +46,11 @@ const eventSchema = new mongoose.Schema({
     ]
   },
   location: {
-    venue: {
-      type: String,
-      required: true
-    },
-    address: {
-      type: String,
-      required: true
-    },
+    venue: { type: String, required: false },
+    address: { type: String, required: false },
     district: {
       type: String,
-      required: true,
+      required: false,
       enum: [
         "Central and Western",
         "Eastern",
@@ -78,24 +72,8 @@ const eventSchema = new mongoose.Schema({
         "Yuen Long"
       ]
     },
-    onlineEvent: {
-      type: Boolean,
-      required: true
-    },
-    meetingLink: {
-      type: String,
-      required: false,
-      validate: {
-        validator: function(value) {
-          // If this is an online event, meetingLink should be provided
-          if (this.location && this.location.onlineEvent === true) {
-            return value && value.trim().length > 0;
-          }
-          return true; // Not required for offline events
-        },
-        message: 'Meeting link is required for online events'
-      }
-    }
+    onlineEvent: { type: Boolean, required: true },
+    meetingLink: { type: String, required: false }
   },
   startDate: {
     type: Date,
@@ -231,6 +209,34 @@ const eventSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User'
   }], // Users authorized to view this private event
+});
+
+// Validate location: online events need meetingLink; in-person need venue, address, district
+eventSchema.pre('validate', function(next) {
+  if (!this.location) return next();
+  const loc = this.location;
+  const hasMeetingLink = loc.meetingLink && String(loc.meetingLink).trim();
+  const isOnline = loc.onlineEvent === true || !!hasMeetingLink;
+  if (isOnline) {
+    if (!hasMeetingLink) {
+      next(new Error('Meeting link is required for online events'));
+      return;
+    }
+  } else {
+    if (!loc.venue || !String(loc.venue).trim()) {
+      next(new Error('Venue is required for in-person events'));
+      return;
+    }
+    if (!loc.address || !String(loc.address).trim()) {
+      next(new Error('Address is required for in-person events'));
+      return;
+    }
+    if (!loc.district || !String(loc.district).trim()) {
+      next(new Error('District is required for in-person events'));
+      return;
+    }
+  }
+  next();
 });
 
 // Virtual field for available spots

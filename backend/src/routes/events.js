@@ -7,6 +7,7 @@ import EventRegistration from '../models/EventRegistration.js';
 import multer from 'multer';
 import twilio from 'twilio';
 import { formatForWhatsApp, ensureWhatsAppPrefix } from '../utils/phoneUtils.js';
+import { getEventDateRangeFromSessions } from '../utils/eventDateRange.js';
 
 dotenv.config();
 
@@ -41,6 +42,65 @@ const upload = multer({
     }
   }
 });
+
+// Build location object from multipart body (keys like 'location[venue]')
+function buildLocationFromBody(body) {
+  const venue = body['location[venue]'] ?? body.location?.venue;
+  const address = body['location[address]'] ?? body.location?.address;
+  const district = body['location[district]'] ?? body.location?.district;
+  const rawOnline = body['location[onlineEvent]'] ?? body.location?.onlineEvent;
+  const onlineEvent = rawOnline === true || String(rawOnline).toLowerCase() === 'true' || rawOnline === '1';
+  const meetingLinkRaw = body['location[meetingLink]'] ?? body.location?.meetingLink;
+  const meetingLink = meetingLinkRaw ? String(meetingLinkRaw).trim() : undefined;
+  // Treat as online if flag is true OR if user provided a meeting link (defensive for form/parsing issues)
+  const isOnline = onlineEvent || (meetingLink && (!venue || !String(venue).trim()));
+  if (venue !== undefined || address !== undefined || district !== undefined || meetingLink !== undefined || body['location[onlineEvent]'] !== undefined) {
+    if (isOnline) {
+      return {
+        venue: undefined,
+        address: undefined,
+        district: undefined,
+        onlineEvent: true,
+        meetingLink: meetingLink || undefined
+      };
+    }
+    return {
+      venue: (venue && String(venue).trim()) || '',
+      address: (address && String(address).trim()) || '',
+      district: (district && String(district).trim()) || '',
+      onlineEvent: false,
+      meetingLink: undefined
+    };
+  }
+  return undefined;
+}
+
+// Build sessions array from multipart body (keys like 'sessions[0][title]')
+function buildSessionsFromBody(body) {
+  const sessions = [];
+  let index = 0;
+  while (body[`sessions[${index}][title]`] !== undefined || body[`sessions[${index}][date]`] !== undefined) {
+    const title = body[`sessions[${index}][title]`];
+    const date = body[`sessions[${index}][date]`];
+    const startTime = body[`sessions[${index}][startTime]`];
+    const endTime = body[`sessions[${index}][endTime]`];
+    const description = body[`sessions[${index}][description]`];
+    const capacity = body[`sessions[${index}][capacity]`];
+    const venue = body[`sessions[${index}][location][venue]`];
+    const meetingLink = body[`sessions[${index}][location][meetingLink]`];
+    sessions.push({
+      title: title ?? '',
+      description: description || undefined,
+      date: date ? new Date(date) : new Date(),
+      startTime: startTime ?? '',
+      endTime: endTime ?? '',
+      capacity: capacity ? parseInt(capacity, 10) : undefined,
+      location: (venue || meetingLink) ? { venue: venue || undefined, meetingLink: meetingLink || undefined } : undefined
+    });
+    index++;
+  }
+  return sessions.length ? sessions : undefined;
+}
 
 // Configure multer specifically for cover images (500KB limit)
 const coverImageUpload = multer({
@@ -212,7 +272,19 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     } else {
       console.log('[EVENTS] No reminder times provided, will use default');
     }
-    
+
+    const locationFromBody = buildLocationFromBody(req.body);
+    if (locationFromBody) eventData.location = locationFromBody;
+    const sessionsFromBody = buildSessionsFromBody(req.body);
+    if (sessionsFromBody) {
+      eventData.sessions = sessionsFromBody;
+      const range = getEventDateRangeFromSessions(sessionsFromBody);
+      if (range) {
+        eventData.startDate = range.startDate;
+        eventData.endDate = range.endDate;
+      }
+    }
+
     // Handle image upload
     if (req.file) {
       // Check file size (500KB limit)
@@ -233,7 +305,10 @@ router.post('/', auth, upload.single('image'), async (req, res) => {
     
     res.status(201).json(event);
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('[EVENTS] Create error:', error);
+    const message = error.message || 'Server error';
+    const status = error.name === 'ValidationError' ? 400 : 500;
+    res.status(status).json({ message, error: message });
   }
 });
 
@@ -287,7 +362,18 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
     console.log('[EVENTS] Authorization successful - proceeding with update');
 
     const updateData = { ...req.body, updatedBy: req.user.userId };
-    
+    const locationFromBody = buildLocationFromBody(req.body);
+    if (locationFromBody) updateData.location = locationFromBody;
+    const sessionsFromBody = buildSessionsFromBody(req.body);
+    if (sessionsFromBody) {
+      updateData.sessions = sessionsFromBody;
+      const range = getEventDateRangeFromSessions(sessionsFromBody);
+      if (range) {
+        updateData.startDate = range.startDate;
+        updateData.endDate = range.endDate;
+      }
+    }
+
     // Handle reminder times array
     console.log('[EVENTS] Update - Reminder times in request body:', req.body['reminderTimes[]']);
     console.log('[EVENTS] Update - Staff contact in request body:', req.body['staffContact[name]'], req.body['staffContact[phone]']);
@@ -362,7 +448,9 @@ router.put('/:id', auth, upload.single('image'), async (req, res) => {
     res.json(updatedEvent);
   } catch (error) {
     console.error('[EVENTS] Error updating event:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    const message = error.message || 'Server error';
+    const status = error.name === 'ValidationError' ? 400 : 500;
+    res.status(status).json({ message, error: message });
   }
 });
 
@@ -646,99 +734,50 @@ router.delete('/:id/cover-image', auth, async (req, res) => {
 });
 
 // Send WhatsApp message to registered participant (requires auth)
+// All manual WhatsApp messages use the marketing template only (no freeform). Variable 1 = title, Variable 2 = message.
 router.post('/send-whatsapp-reminder', async (req, res) => {
   try {
-    const { to, message, useTemplate, eventTitle } = req.body;
-    
-    // Log the attempt (without sensitive data)
+    const { to, message, eventTitle } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, error: 'Message content is required (template variable 2)' });
+    }
+
     console.log(`Attempting to send WhatsApp message to: ${to}`);
-    console.log(`Using template: ${useTemplate ? 'Yes' : 'No'}`);
-    
+
     if (!twilioClient) {
       console.error('Twilio client not initialized, cannot send WhatsApp message');
-      return res.status(503).json({ 
-        success: false, 
+      return res.status(503).json({
+        success: false,
         error: 'SMS service not available',
         message: 'WhatsApp messaging is currently unavailable'
       });
     }
-    
-    if (useTemplate) {
-      // Use template system
-      // Note: contentVariables must be an object, not a JSON string
-      const result = await twilioClient.messages.create({
-        from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-        contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
-        contentVariables: {
-          "1": new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-          }),
-          "2": new Date().toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          })
-        },
-        to: `whatsapp:${to}`
-      });
-      
-      console.log('WhatsApp template message sent successfully:', result.sid);
-      res.json({ success: true, sid: result.sid, method: 'template' });
-    } else {
-      // Use custom message system
-      if (!message) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Message content required when not using template'
-        });
-      }
-      
-      // Twilio accepts freeform WhatsApp messages with HTTP 201 but may fail
-      // them asynchronously with error 63016. Poll status and fall back to template.
-      const whatsAppFrom = ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER);
-      const sentMsg = await twilioClient.messages.create({
-        body: message,
-        from: whatsAppFrom,
-        to: `whatsapp:${to}`
-      });
 
-      let method = 'custom';
-      for (let attempt = 0; attempt < 3; attempt++) {
-        await new Promise(r => setTimeout(r, 2000));
-        const status = await twilioClient.messages(sentMsg.sid).fetch();
-        if (status.status === 'delivered' || status.status === 'read') {
-          break;
-        }
-        if (status.status === 'undelivered' || status.status === 'failed') {
-          if (status.errorCode === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
-            console.log('Freeform undelivered (63016), falling back to marketing template...');
-            const fallback = await twilioClient.messages.create({
-              from: whatsAppFrom,
-              contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
-              contentVariables: {
-                "1": eventTitle || "Event Update",
-                "2": message
-              },
-              to: `whatsapp:${to}`
-            });
-            console.log('Marketing template sent:', fallback.sid);
-            method = 'marketing_template';
-          } else {
-            throw new Error(`WhatsApp message ${status.status}: error ${status.errorCode}`);
-          }
-          break;
-        }
-      }
-
-      console.log(`WhatsApp message sent via ${method}:`, sentMsg.sid);
-      res.json({ success: true, sid: sentMsg.sid, method });
+    if (!process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
+      return res.status(503).json({
+        success: false,
+        error: 'Marketing template not configured',
+        message: 'TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID is required'
+      });
     }
+
+    const result = await twilioClient.messages.create({
+      from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
+      contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+      contentVariables: JSON.stringify({
+        "1": eventTitle || "Event Update",
+        "2": message.trim()
+      }),
+      to: `whatsapp:${to}`
+    });
+
+    console.log('WhatsApp marketing template message sent successfully:', result.sid);
+    res.json({ success: true, sid: result.sid, method: 'marketing_template' });
   } catch (error) {
     console.error('Error sending WhatsApp message:', error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       error: error.message,
       code: error.code,
       moreInfo: error.moreInfo
@@ -769,14 +808,20 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
       return res.status(403).json({ message: 'Only admin, staff, or event creator can send WhatsApp messages' });
     }
 
-    const { title, message, useTemplate } = req.body;
-    if (!message && !useTemplate) {
-      console.error('[WhatsApp] Message content is required when not using template');
-      return res.status(400).json({ message: 'Message content is required when not using template' });
+    const { title, message } = req.body;
+    if (!message || !String(message).trim()) {
+      console.error('[WhatsApp] Message content is required (template variable 2)');
+      return res.status(400).json({ message: 'Message content is required (used as template variable 2)' });
     }
 
-    // Use provided title as subtitle (optional)
-    const messageSubtitle = title || "";
+    if (!process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
+      console.error('[WhatsApp] Marketing template not configured');
+      return res.status(503).json({ message: 'WhatsApp marketing template is not configured (TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID)' });
+    }
+
+    const messageText = String(message).trim();
+    // Use client-provided title when present (matches what user sees on manage-registrations page); else DB event title
+    const titleForTemplate = (title != null && String(title).trim()) ? String(title).trim() : (event.title || 'Event');
 
     // Get all registered participants for this event
     const registrations = await EventRegistration.find({
@@ -789,10 +834,7 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
     const optedOutNumbers = new Set(optedOutUsers.map(u => u.mobile));
 
     console.log(`[WhatsApp] Starting message send for event: ${event.title} (${event._id})`);
-    console.log(`[WhatsApp] Using template: ${useTemplate ? 'Yes' : 'No'}`);
-    if (!useTemplate) {
-      console.log(`[WhatsApp] Message content: ${message}`);
-    }
+    console.log(`[WhatsApp] Template variables: 1="${titleForTemplate}" 2="${messageText}"`);
     console.log(`[WhatsApp] Number of registered participants: ${registrations.length}`);
     if (optedOutNumbers.size > 0) {
       console.log(`[WhatsApp] Opted-out numbers to skip: ${optedOutNumbers.size}`);
@@ -823,74 +865,18 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
             failedNumbers.push(registration.attendee.phone);
             continue;
           }
-          
-          if (useTemplate) {
-            // Use template system
-            // Note: contentVariables must be an object, not a JSON string
-            await twilioClient.messages.create({
-              from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-              contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
-              contentVariables: {
-                "1": new Date().toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit'
-                }),
-                "2": new Date().toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: true
-                })
-              },
-              to: `whatsapp:${formattedNumber}`
-            });
-          } else {
-            // Try custom message first, fall back to marketing template if outside 24h window.
-            // Twilio accepts freeform WhatsApp messages with HTTP 201 but may fail them
-            // asynchronously with error 63016 (outside 24h session window). We must poll
-            // the message status to detect this and fall back to a marketing template.
-            const fullMessage = `Zubin Event Notification: ${event.title}${messageSubtitle ? `\n${messageSubtitle}` : ''}\n\n${message}`;
-            const whatsAppFrom = ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER);
-            
-            const sentMsg = await twilioClient.messages.create({
-              body: fullMessage,
-              from: whatsAppFrom,
-              to: `whatsapp:${formattedNumber}`
-            });
 
-            // Poll for async delivery failure (63016 is reported asynchronously)
-            let needsFallback = false;
-            for (let attempt = 0; attempt < 3; attempt++) {
-              await new Promise(r => setTimeout(r, 2000));
-              const status = await twilioClient.messages(sentMsg.sid).fetch();
-              if (status.status === 'delivered' || status.status === 'read') {
-                break;
-              }
-              if (status.status === 'undelivered' || status.status === 'failed') {
-                console.log(`[WhatsApp] Freeform message ${sentMsg.sid} ${status.status} (error: ${status.errorCode})`);
-                if (status.errorCode === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
-                  needsFallback = true;
-                } else {
-                  throw new Error(`WhatsApp message ${status.status}: error ${status.errorCode}`);
-                }
-                break;
-              }
-            }
+          // All manual WhatsApp sends use the marketing template only (variable 1 = event title, variable 2 = message).
+          await twilioClient.messages.create({
+            from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
+            contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+            contentVariables: JSON.stringify({
+              "1": titleForTemplate,
+              "2": messageText
+            }),
+            to: `whatsapp:${formattedNumber}`
+          });
 
-            if (needsFallback) {
-              console.log(`[WhatsApp] Falling back to marketing template for ${formattedNumber}...`);
-              await twilioClient.messages.create({
-                from: whatsAppFrom,
-                contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
-                contentVariables: {
-                  "1": event.title,
-                  "2": message
-                },
-                to: `whatsapp:${formattedNumber}`
-              });
-            }
-          }
-          
           console.log(`[WhatsApp] Successfully sent to ${formattedNumber}`);
           successfulNumbers.push(formattedNumber);
         } catch (error) {
@@ -1024,5 +1010,12 @@ router.get('/:id/available-users', auth, async (req, res) => {
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
+
+/**
+ * For tests only: inject a mock Twilio client so we can assert on payload (contentSid, contentVariables).
+ */
+export function setTwilioClientForTesting(client) {
+  twilioClient = client;
+}
 
 export default router; 
