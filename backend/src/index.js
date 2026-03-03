@@ -7,6 +7,7 @@ import eventRoutes from './routes/events.js';
 import usersRoutes from './routes/users.js';
 import eventRegistrationRoutes from './routes/eventRegistrations.js';
 import registrationFormRoutes from './routes/registrationForms.js';
+import whatsappRoutes from './routes/whatsapp.js';
 import corsOptions from './cors-config.js';
 import reminderService from './services/reminderService.js';
 
@@ -28,6 +29,7 @@ app.use('/api/events', eventRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/event-registrations', eventRegistrationRoutes);
 app.use('/api/registration-forms', registrationFormRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)

@@ -6,7 +6,7 @@ import User from '../models/User.js';
 import EventRegistration from '../models/EventRegistration.js';
 import multer from 'multer';
 import twilio from 'twilio';
-import { formatForWhatsApp } from '../utils/phoneUtils.js';
+import { formatForWhatsApp, ensureWhatsAppPrefix } from '../utils/phoneUtils.js';
 
 dotenv.config();
 
@@ -664,22 +664,19 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
     }
     
     if (useTemplate) {
-      // Use template system
-      // Note: contentVariables must be an object, not a JSON string
+      // Template uses 8 variables matching zubin_foundation_event_reminder
       const result = await twilioClient.messages.create({
-        from: process.env.TWILIO_WHATSAPP_NUMBER,
+        from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
         contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
         contentVariables: {
-          "1": new Date().toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit'
-          }),
-          "2": new Date().toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-          })
+          "1": eventTitle || 'Event',
+          "2": "N/A",
+          "3": "upcoming",
+          "4": new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+          "5": new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+          "6": "TBD",
+          "7": "Zubin Foundation",
+          "8": ""
         },
         to: `whatsapp:${to}`
       });
@@ -695,36 +692,45 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
         });
       }
       
-      try {
-        // Try sending custom/freeform message first
-        const result = await twilioClient.messages.create({
-          body: message,
-          from: process.env.TWILIO_WHATSAPP_NUMBER,
-          to: `whatsapp:${to}`
-        });
-        
-        console.log('WhatsApp custom message sent successfully:', result.sid);
-        res.json({ success: true, sid: result.sid, method: 'custom' });
-      } catch (customError) {
-        // Error 63016: Outside 24-hour session window - try marketing template
-        if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
-          console.log('Custom message failed (outside 24h window), using marketing template...');
-          const result = await twilioClient.messages.create({
-            from: process.env.TWILIO_WHATSAPP_NUMBER,
-            contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
-            contentVariables: {
-              "1": eventTitle || "Event Update",
-              "2": message
-            },
-            to: `whatsapp:${to}`
-          });
-          
-          console.log('WhatsApp marketing template sent successfully:', result.sid);
-          res.json({ success: true, sid: result.sid, method: 'marketing_template' });
-        } else {
-          throw customError;
+      // Twilio accepts freeform WhatsApp messages with HTTP 201 but may fail
+      // them asynchronously with error 63016. Poll status and fall back to template.
+      const whatsAppFrom = ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER);
+      const sentMsg = await twilioClient.messages.create({
+        body: message,
+        from: whatsAppFrom,
+        to: `whatsapp:${to}`
+      });
+
+      let method = 'custom';
+      for (let attempt = 0; attempt < 3; attempt++) {
+        await new Promise(r => setTimeout(r, 2000));
+        const status = await twilioClient.messages(sentMsg.sid).fetch();
+        if (status.status === 'delivered' || status.status === 'read') {
+          break;
+        }
+        if (status.status === 'undelivered' || status.status === 'failed') {
+          if (status.errorCode === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
+            console.log('Freeform undelivered (63016), falling back to marketing template...');
+            const fallback = await twilioClient.messages.create({
+              from: whatsAppFrom,
+              contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+              contentVariables: {
+                "1": eventTitle || "Event Update",
+                "2": message
+              },
+              to: `whatsapp:${to}`
+            });
+            console.log('Marketing template sent:', fallback.sid);
+            method = 'marketing_template';
+          } else {
+            throw new Error(`WhatsApp message ${status.status}: error ${status.errorCode}`);
+          }
+          break;
         }
       }
+
+      console.log(`WhatsApp message sent via ${method}:`, sentMsg.sid);
+      res.json({ success: true, sid: sentMsg.sid, method });
     }
   } catch (error) {
     console.error('Error sending WhatsApp message:', error);
@@ -775,19 +781,34 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
       status: 'registered'
     });
 
+    // Filter out users who opted out of WhatsApp messages
+    const optedOutUsers = await User.find({ whatsappOptOut: true }).select('mobile');
+    const optedOutNumbers = new Set(optedOutUsers.map(u => u.mobile));
+
     console.log(`[WhatsApp] Starting message send for event: ${event.title} (${event._id})`);
     console.log(`[WhatsApp] Using template: ${useTemplate ? 'Yes' : 'No'}`);
     if (!useTemplate) {
       console.log(`[WhatsApp] Message content: ${message}`);
     }
     console.log(`[WhatsApp] Number of registered participants: ${registrations.length}`);
+    if (optedOutNumbers.size > 0) {
+      console.log(`[WhatsApp] Opted-out numbers to skip: ${optedOutNumbers.size}`);
+    }
 
     const failedNumbers = [];
     const successfulNumbers = [];
 
     // Send message to each participant
+    const skippedOptOut = [];
     for (const registration of registrations) {
       if (registration.attendee && registration.attendee.phone) {
+        // Skip users who opted out of WhatsApp messages
+        if (optedOutNumbers.has(registration.attendee.phone)) {
+          console.log(`[WhatsApp] Skipping opted-out user: ${registration.attendee.firstName} ${registration.attendee.lastName}`);
+          skippedOptOut.push(registration.attendee.phone);
+          continue;
+        }
+
         try {
           console.log(`[WhatsApp] Sending to ${registration.attendee.firstName} ${registration.attendee.lastName} (${registration.attendee.phone})`);
           
@@ -801,51 +822,76 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
           }
           
           if (useTemplate) {
-            // Use template system
-            // Note: contentVariables must be an object, not a JSON string
+            // Template uses 8 variables matching zubin_foundation_event_reminder
+            const eventDate = event.startDate
+              ? new Date(event.startDate).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+              : 'TBD';
+            const eventTime = event.startDate
+              ? new Date(event.startDate).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })
+              : 'TBD';
+            const locationStr = event.location
+              ? `${event.location.venue || ''}${event.location.address ? ', ' + event.location.address : ''}${event.location.district ? ', ' + event.location.district : ''}`
+              : 'TBD';
+
             await twilioClient.messages.create({
-              from: process.env.TWILIO_WHATSAPP_NUMBER,
+              from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
               contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
               contentVariables: {
-                "1": new Date().toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: '2-digit',
-                  day: '2-digit'
-                }),
-                "2": new Date().toLocaleTimeString('en-US', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                  hour12: true
-                })
+                "1": event.title || 'Event',
+                "2": "N/A",
+                "3": "upcoming",
+                "4": eventDate,
+                "5": eventTime,
+                "6": locationStr,
+                "7": event.staffContact?.name || 'Zubin Foundation',
+                "8": event.staffContact?.phone || ''
               },
               to: `whatsapp:${formattedNumber}`
             });
           } else {
-            // Try custom message first, fall back to marketing template if outside 24h window
+            // Try custom message first, fall back to marketing template if outside 24h window.
+            // Twilio accepts freeform WhatsApp messages with HTTP 201 but may fail them
+            // asynchronously with error 63016 (outside 24h session window). We must poll
+            // the message status to detect this and fall back to a marketing template.
             const fullMessage = `Zubin Event Notification: ${event.title}${messageSubtitle ? `\n${messageSubtitle}` : ''}\n\n${message}`;
+            const whatsAppFrom = ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER);
             
-            try {
+            const sentMsg = await twilioClient.messages.create({
+              body: fullMessage,
+              from: whatsAppFrom,
+              to: `whatsapp:${formattedNumber}`
+            });
+
+            // Poll for async delivery failure (63016 is reported asynchronously)
+            let needsFallback = false;
+            for (let attempt = 0; attempt < 3; attempt++) {
+              await new Promise(r => setTimeout(r, 2000));
+              const status = await twilioClient.messages(sentMsg.sid).fetch();
+              if (status.status === 'delivered' || status.status === 'read') {
+                break;
+              }
+              if (status.status === 'undelivered' || status.status === 'failed') {
+                console.log(`[WhatsApp] Freeform message ${sentMsg.sid} ${status.status} (error: ${status.errorCode})`);
+                if (status.errorCode === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
+                  needsFallback = true;
+                } else {
+                  throw new Error(`WhatsApp message ${status.status}: error ${status.errorCode}`);
+                }
+                break;
+              }
+            }
+
+            if (needsFallback) {
+              console.log(`[WhatsApp] Falling back to marketing template for ${formattedNumber}...`);
               await twilioClient.messages.create({
-                body: fullMessage,
-                from: process.env.TWILIO_WHATSAPP_NUMBER,
+                from: whatsAppFrom,
+                contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+                contentVariables: {
+                  "1": event.title,
+                  "2": message
+                },
                 to: `whatsapp:${formattedNumber}`
               });
-            } catch (customError) {
-              // Error 63016: Outside 24-hour session window - try marketing template
-              if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
-                console.log(`[WhatsApp] Custom failed for ${formattedNumber}, using marketing template...`);
-                await twilioClient.messages.create({
-                  from: process.env.TWILIO_WHATSAPP_NUMBER,
-                  contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
-                  contentVariables: {
-                    "1": event.title,
-                    "2": message
-                  },
-                  to: `whatsapp:${formattedNumber}`
-                });
-              } else {
-                throw customError;
-              }
             }
           }
           
@@ -869,7 +915,8 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
       message: 'WhatsApp messages sent',
       successful: successfulNumbers.length,
       failed: failedNumbers.length,
-      failedNumbers
+      failedNumbers,
+      skippedOptOut: skippedOptOut.length
     });
   } catch (error) {
     console.error('[WhatsApp] Unexpected error:', error);

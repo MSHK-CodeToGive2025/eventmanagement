@@ -1,8 +1,9 @@
 import cron from 'node-cron';
 import Event from '../models/Event.js';
 import EventRegistration from '../models/EventRegistration.js';
+import User from '../models/User.js';
 import twilio from 'twilio';
-import { formatForWhatsApp } from '../utils/phoneUtils.js';
+import { formatForWhatsApp, ensureWhatsAppPrefix } from '../utils/phoneUtils.js';
 
 // Initialize Twilio client
 let twilioClient = null;
@@ -244,12 +245,25 @@ class ReminderService {
         return;
       }
 
+      // Filter out users who opted out of WhatsApp messages
+      const optedOutUsers = await User.find({ whatsappOptOut: true }).select('mobile');
+      const optedOutNumbers = new Set(optedOutUsers.map(u => u.mobile));
+      if (optedOutNumbers.size > 0) {
+        console.log(`[REMINDER SERVICE] Opted-out numbers to skip: ${optedOutNumbers.size}`);
+      }
+
       const failedNumbers = [];
       const successfulNumbers = [];
 
       // Send reminder to each participant
       for (const registration of registrations) {
         if (registration.attendee && registration.attendee.phone) {
+          // Skip users who opted out
+          if (optedOutNumbers.has(registration.attendee.phone)) {
+            console.log(`[REMINDER SERVICE] Skipping opted-out user: ${registration.attendee.phone}`);
+            continue;
+          }
+
           try {
             // Format phone number for Twilio WhatsApp compliance
             const formattedNumber = formatForWhatsApp(registration.attendee.phone);
@@ -264,7 +278,7 @@ class ReminderService {
               console.log(`[REMINDER SERVICE] Template variables:`, templateVariables);
               
               await twilioClient.messages.create({
-                from: process.env.TWILIO_WHATSAPP_NUMBER,
+                from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
                 contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
                 contentVariables: templateVariables, // Object, not JSON string
                 to: `whatsapp:${formattedNumber}`
@@ -276,7 +290,7 @@ class ReminderService {
               try {
                 await twilioClient.messages.create({
                   body: message,
-                  from: process.env.TWILIO_WHATSAPP_NUMBER,
+                  from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
                   to: `whatsapp:${formattedNumber}`
                 });
               } catch (customError) {
@@ -284,7 +298,7 @@ class ReminderService {
                 if (customError.code === 63016 && process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
                   console.log(`[REMINDER SERVICE] Custom failed for ${formattedNumber}, using marketing template...`);
                   await twilioClient.messages.create({
-                    from: process.env.TWILIO_WHATSAPP_NUMBER,
+                    from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
                     contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
                     contentVariables: {
                       "1": event.title,

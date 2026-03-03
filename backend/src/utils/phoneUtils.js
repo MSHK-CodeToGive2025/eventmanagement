@@ -210,6 +210,17 @@ function validatePhoneNumberMiddleware(req, res, next) {
   next();
 }
 
+/**
+ * Ensures a WhatsApp sender number has the required 'whatsapp:' prefix.
+ * Twilio requires both 'from' and 'to' to use the 'whatsapp:' channel prefix.
+ * @param {string} number - The sender phone number (with or without prefix)
+ * @returns {string} Number with 'whatsapp:' prefix
+ */
+function ensureWhatsAppPrefix(number) {
+  if (!number) return number;
+  return number.startsWith('whatsapp:') ? number : `whatsapp:${number}`;
+}
+
 export {
   formatPhoneNumberForTwilio,
   isValidPhoneNumber,
@@ -219,5 +230,6 @@ export {
   validatePhoneNumberForForm,
   getPhonePlaceholder,
   formatForWhatsApp,
+  ensureWhatsAppPrefix,
   validatePhoneNumberMiddleware
 }; 

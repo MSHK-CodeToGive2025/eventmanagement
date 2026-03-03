@@ -95,7 +95,23 @@ export default function WhatsAppMessageDialog({
             </p>
           </div>
 
-  
+          {/* Template/Custom Toggle */}
+          <div className="flex items-center justify-between p-4 border rounded-lg">
+            <div className="space-y-1">
+              <Label className="text-base font-medium">Use WhatsApp Template</Label>
+              <p className="text-sm text-gray-500">
+                {useTemplate
+                  ? "Send using pre-approved template (cheaper, compliant)"
+                  : "Send custom message (more expensive, flexible)"
+                }
+              </p>
+            </div>
+            <Switch
+              checked={useTemplate}
+              onCheckedChange={setUseTemplate}
+              disabled={isSending}
+            />
+          </div>
 
           {useTemplate ? (
             /* Template Info */

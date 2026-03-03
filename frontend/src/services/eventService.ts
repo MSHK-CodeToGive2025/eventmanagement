@@ -277,7 +277,7 @@ const eventService = {
   },
 
   // Send WhatsApp message to all registered participants
-  async sendWhatsAppMessage(eventId: string, title: string, message: string): Promise<{
+  async sendWhatsAppMessage(eventId: string, title: string, message: string, useTemplate: boolean = false): Promise<{
     message: string;
     successful: number;
     failed: number;
@@ -287,7 +287,7 @@ const eventService = {
     //console.log('[eventService] POST', url, 'title:', title, 'message:', message);
     const response = await axios.post(
       url,
-      { title, message },
+      { title, message, useTemplate },
       { headers: authHeader() }
     );
     //console.log('[eventService] WhatsApp Response:', response.data);
