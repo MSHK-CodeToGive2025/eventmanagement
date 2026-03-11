@@ -9,8 +9,9 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
-import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer } from "lucide-react"
+import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer, FileDown } from "lucide-react"
 import { formatDateHKT, formatSessionDateTimeHKT, formatDateTimeHKT } from "@/utils/dateTimeHKT"
+import { exportRegistrationsToExcel } from "@/utils/exportRegistrationsToExcel"
 import { ZubinEvent, eventCategories, targetGroups } from "@/types/event-types"
 import RegistrationFormDialog from "@/components/events-builder/registration-form-dialog"
 import WhatsAppMessageDialog from "@/components/events-builder/whatsapp-message-dialog"
@@ -506,6 +507,14 @@ export default function ManageRegistrations() {
               >
                 <Printer className="h-4 w-4 mr-2" />
                 Print Report
+              </Button>
+              <Button
+                onClick={() => exportRegistrationsToExcel(event, registrations, registrationForm, filteredRegistrations)}
+                variant="outline"
+                className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                Download Excel
               </Button>
               {canSendWhatsApp && registeredParticipantsCount > 0 && (
                 <Button

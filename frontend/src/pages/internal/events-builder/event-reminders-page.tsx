@@ -106,13 +106,23 @@ const generateMockRegisteredUsers = (eventId: string, count: number) => {
 }
 
 /**
- * Sends a WhatsApp message via the marketing template (variable 1 = event title, variable 2 = message).
+ * Sends a WhatsApp message via the event update template (5-var: Event, Session, Message, Contact, Phone).
  */
-const sendWhatsAppMessage = async (phoneNumber: string, message: string, eventTitle: string) => {
+const sendWhatsAppMessage = async (
+  phoneNumber: string,
+  message: string,
+  eventTitle: string,
+  session?: string,
+  contact?: string,
+  phone?: string
+) => {
   const response = await axios.post(`${API_URL}/events/send-whatsapp-reminder`, {
     to: phoneNumber,
     message,
-    eventTitle
+    eventTitle,
+    session: session ?? '',
+    contact: contact ?? '',
+    phone: phone ?? ''
   });
   return response.data;
 };
@@ -167,7 +177,14 @@ export default function EventRemindersPage() {
 
       try {
         const message = `Reminder: You are registered for the event "${event.title}" on ${format(parseISO(event.date), "MMMM d, yyyy")} at ${event.startTime}. Location: ${event.location}`;
-        await sendWhatsAppMessage(user.phone, message, event.title);
+        await sendWhatsAppMessage(
+          user.phone,
+          message,
+          event.title,
+          event.sessions?.[0]?.title,
+          event.staffContact?.name,
+          event.staffContact?.phone
+        );
 
         // Update the current user's reminder status
         setRegisteredUsers((prev) =>

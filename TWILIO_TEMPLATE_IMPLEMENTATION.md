@@ -5,8 +5,8 @@
 WhatsApp messaging uses **templates only** (no freeform/body messages) to avoid delivery failures outside the 24-hour session window (error 63016).
 
 1. **Manual messages (Send WhatsApp in UI)**  
-   - Use the **marketing template** (`TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID`).  
-   - Variable 1 = event title (auto-filled), Variable 2 = your message (entered in the dialog).
+   - Use the **event update template** (`TWILIO_WHATSAPP_EVENT_UPDATE_TEMPLATE_SID`, utility template).  
+   - Variables: {{1}} Event, {{2}} Session, {{3}} Message, {{4}} Contact, {{5}} Phone.
 
 2. **Scheduled event reminders**  
    - Use the **8-variable reminder template** (`TWILIO_WHATSAPP_TEMPLATE_SID`) when the event’s default is “template”, or the **marketing template** when “custom” (reminder text as variable 2).  
@@ -20,7 +20,12 @@ Add the following variables to your `.env` file:
 
 ```bash
 # Twilio WhatsApp Template Configuration
-TWILIO_WHATSAPP_TEMPLATE_SID=xxx
+# Event reminder (8-var): zubin_foundation_event_reminder_v2
+TWILIO_WHATSAPP_TEMPLATE_SID=HX6dcf16072c4b77b1513ef377de2c0879
+# Event update / custom notification (5-var utility): zubin_foundation_event_update_v2
+TWILIO_WHATSAPP_EVENT_UPDATE_TEMPLATE_SID=HX1fc0085538023f4de77d3d3cce079387
+# Marketing template (2-var) - used for reminder custom mode fallback
+TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID=xxx
 TWILIO_WHATSAPP_NUMBER=xxx
 ```
 

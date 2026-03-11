@@ -46,8 +46,9 @@
 Ensure these are set for WhatsApp and reminders to work:
 - `TWILIO_WHATSAPP_NUMBER` (e.g. +15557515340)
 - `TWILIO_ACCOUNT_SID`
-- `TWILIO_WHATSAPP_TEMPLATE_SID` – 8-variable reminder template for scheduled reminders
-- `TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID` – 2-variable template for manual “Send WhatsApp” (var1=title, var2=message)
+- `TWILIO_WHATSAPP_TEMPLATE_SID` – 8-variable reminder template for scheduled reminders (zubin_foundation_event_reminder_v2)
+- `TWILIO_WHATSAPP_EVENT_UPDATE_TEMPLATE_SID` – 5-variable utility template for manual Send WhatsApp (Event, Session, Message, Contact, Phone)
+- `TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID` – 2-variable template for reminder custom mode fallback
 
 Reminder cron runs inside the backend process **every 5 minutes** (Asia/Hong_Kong). The ECS task must stay running (e.g. desired count ≥ 1) for reminders to fire.
 
