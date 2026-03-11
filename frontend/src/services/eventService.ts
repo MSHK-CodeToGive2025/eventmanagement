@@ -108,6 +108,14 @@ export interface EventFormData {
   };
 }
 
+export interface WhatsAppEventUpdatePayload {
+  title: string;
+  sessionTitle: string;
+  message: string;
+  contactName: string;
+  contactPhone: string;
+}
+
 // Add auth token to requests
 export const authHeader = (): { Authorization?: string } => {
   const token = localStorage.getItem('token');
@@ -156,7 +164,7 @@ const eventService = {
   },
 
   // Helper method to get the best available image URL for an event
-  getEventImageUrl(eventId: string, event?: Event | any): string | undefined {
+  getEventImageUrl(eventId: string, event?: Pick<Event, 'coverImage'> | null): string | undefined {
     // Check if event has coverImage
     if (event?.coverImage?.data) {
       return `${API_URL}/events/${eventId}/cover-image`;
@@ -198,10 +206,9 @@ const eventService = {
 
   async deleteEvent(id: string): Promise<void> {
     const url = `${API_URL}/events/${id}`;
-    const response = await axios.delete(url, {
+    await axios.delete(url, {
       headers: authHeader(),
     });
-    //console.log('[eventService] Response:', response.data);
   },
 
   // Register for event
@@ -257,14 +264,14 @@ const eventService = {
   // Register for event (new, correct endpoint)
   async registerForEventV2(eventId: string, data: {
     sessions: string[];
-    formResponses: Array<{ sectionId: string; fieldId: string; response: any }>;
+    formResponses: Array<{ sectionId: string; fieldId: string; response: unknown }>;
     attendee: {
       firstName: string;
       lastName: string;
       phone: string;
       email?: string;
     };
-  }): Promise<any> {
+  }): Promise<unknown> {
     const url = `${API_URL}/event-registrations/event/${eventId}`;
     //console.log('[eventService] POST', url, 'params:', data);
     const response = await axios.post(
@@ -277,20 +284,19 @@ const eventService = {
   },
 
   // Send WhatsApp message to all registered participants
-  async sendWhatsAppMessage(eventId: string, title: string, message: string, useTemplate: boolean = false): Promise<{
+  async sendWhatsAppMessage(eventId: string, payload: WhatsAppEventUpdatePayload): Promise<{
     message: string;
     successful: number;
     failed: number;
     failedNumbers: string[];
+    skippedOptOut?: number;
   }> {
     const url = `${API_URL}/events/${eventId}/send-whatsapp`;
-    //console.log('[eventService] POST', url, 'title:', title, 'message:', message);
     const response = await axios.post(
       url,
-      { title, message, useTemplate },
+      payload,
       { headers: authHeader() }
     );
-    //console.log('[eventService] WhatsApp Response:', response.data);
     return response.data;
   },
 

@@ -1,7 +1,7 @@
 /**
  * Tests for reminder service template building:
  * - Event template (8-var): createTemplateVariables
- * - Custom template (marketing, 2-var): createReminderMessage used with vars "1"=title, "2"=message
+ * - Event update utility template body: createReminderMessage used as variable 3
  */
 import reminderService from '../reminderService.js';
 
@@ -70,22 +70,21 @@ describe('ReminderService template building', () => {
     });
   });
 
-  describe('createReminderMessage (custom / marketing template variable 2)', () => {
-    it('includes event title and main event details', () => {
+  describe('createReminderMessage (event update utility template variable 3)', () => {
+    it('returns reminder body details for the main event', () => {
       const msg = reminderService.createReminderMessage(baseEvent, 1, 'main event', startDateTime);
-      expect(msg).toContain('Test Event');
       expect(msg).toContain('1 hour');
       expect(msg).toContain('Test Venue');
       expect(msg).toContain('Central and Western');
-      expect(msg).toContain('Jane Doe');
-      expect(msg).toContain('+852 1234 5678');
-      expect(msg).toContain('Event Reminder');
+      expect(msg).not.toContain('Test Event');
+      expect(msg).not.toContain('Jane Doe');
+      expect(msg).not.toContain('+852 1234 5678');
     });
 
-    it('includes session title for session reminder', () => {
+    it('describes the session start for session reminders', () => {
       const msg = reminderService.createReminderMessage(baseEvent, 1, 'session: Morning Session', startDateTime);
-      expect(msg).toContain('Morning Session');
-      expect(msg).toContain('session');
+      expect(msg).toContain('The session will start in 1 hour');
+      expect(msg).toContain('Room A');
     });
   });
 });

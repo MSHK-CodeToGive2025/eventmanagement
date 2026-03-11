@@ -5,13 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { format } from "date-fns"
-import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer } from "lucide-react"
+import { CalendarIcon, MapPin, Tag, Users, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer, Download } from "lucide-react"
 import { formatDateHKT, formatSessionDateTimeHKT, formatDateTimeHKT } from "@/utils/dateTimeHKT"
-import { ZubinEvent, eventCategories, targetGroups } from "@/types/event-types"
+import { ZubinEvent } from "@/types/event-types"
 import RegistrationFormDialog from "@/components/events-builder/registration-form-dialog"
 import WhatsAppMessageDialog from "@/components/events-builder/whatsapp-message-dialog"
 import { RegistrationForm } from "@/types/form-types"
@@ -20,6 +18,15 @@ import { formService } from "@/services/formService"
 import eventService from "@/services/eventService"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
+import { downloadRegistrationExport } from "@/lib/registration-export"
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  return fallback
+}
 
 export default function ManageRegistrations() {
   const { id } = useParams<{ id: string }>();
@@ -27,13 +34,12 @@ export default function ManageRegistrations() {
   const location = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  const stateEvent = location.state?.event as ZubinEvent | undefined;
+  const stateEvent = location.state?.event as unknown as ZubinEvent | undefined;
 
   const [event, setEvent] = useState<ZubinEvent | null>(stateEvent ?? null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("registered");
   const [selectedRegistration, setSelectedRegistration] = useState<EventRegistration | null>(null);
-  const [registrationToReject, setRegistrationToReject] = useState<EventRegistration | null>(null);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -47,10 +53,10 @@ export default function ManageRegistrations() {
     const fetchEvent = async () => {
       try {
         const eventData = await eventService.getEvent(id);
-        setEvent(eventData as ZubinEvent);
-      } catch (err: any) {
+        setEvent(eventData as unknown as ZubinEvent);
+      } catch (err: unknown) {
         console.error('Error fetching event:', err);
-        setError(err.message || 'Failed to load event');
+        setError(getErrorMessage(err, 'Failed to load event'));
         setEvent(null);
         toast({ title: "Error", description: "Failed to load event.", variant: "destructive" });
       }
@@ -74,12 +80,13 @@ export default function ManageRegistrations() {
           const formData = await formService.getForm(event.registrationFormId);
           setRegistrationForm(formData);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Error fetching data:', err);
-        setError(err.message || 'Failed to load registrations');
+        const errorMessage = getErrorMessage(err, 'Failed to load registrations');
+        setError(errorMessage);
         toast({
           title: "Error",
-          description: err.message || "Failed to load registrations",
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {
@@ -112,12 +119,45 @@ export default function ManageRegistrations() {
   // Get registered participants count
   const registeredParticipantsCount = registrations.filter(reg => reg.status === 'registered').length;
 
-  const handleSendWhatsAppMessage = async (message: string) => {
+  const handleSendWhatsAppMessage = async (payload: {
+    sessionTitle: string;
+    message: string;
+    contactName: string;
+    contactPhone: string;
+  }) => {
     if (!event?._id) {
       throw new Error("Event ID not found");
     }
-    // Send the event title we display (from event fetched by URL id) so the message uses exactly what the user sees
-    return await eventService.sendWhatsAppMessage(event._id, event.title ?? "", message, true);
+    return await eventService.sendWhatsAppMessage(event._id, {
+      title: event.title ?? "",
+      ...payload
+    });
+  };
+
+  const handleExportExcel = () => {
+    if (!event) {
+      return
+    }
+
+    try {
+      const fileName = downloadRegistrationExport({
+        event,
+        registrations: filteredRegistrations,
+        form: registrationForm
+      });
+
+      toast({
+        title: "Excel exported",
+        description: `${fileName} has been downloaded.`,
+      });
+    } catch (err: unknown) {
+      console.error("Error exporting registrations:", err);
+      toast({
+        title: "Export failed",
+        description: getErrorMessage(err, "Failed to export the registration list."),
+        variant: "destructive",
+      });
+    }
   };
 
   const handleRejectRegistration = async (registrationId: string) => {
@@ -137,12 +177,11 @@ export default function ManageRegistrations() {
       });
       
       setSelectedRegistration(null);
-      setRegistrationToReject(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error rejecting registration:', err);
       toast({
         title: "Error",
-        description: err.message || "Failed to reject registration",
+        description: getErrorMessage(err, "Failed to reject registration"),
         variant: "destructive",
       });
     }
@@ -507,6 +546,15 @@ export default function ManageRegistrations() {
                 <Printer className="h-4 w-4 mr-2" />
                 Print Report
               </Button>
+              <Button
+                onClick={handleExportExcel}
+                variant="outline"
+                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                disabled={filteredRegistrations.length === 0}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export Excel
+              </Button>
               {canSendWhatsApp && registeredParticipantsCount > 0 && (
                 <Button
                   onClick={() => setShowWhatsAppDialog(true)}
@@ -600,7 +648,6 @@ export default function ManageRegistrations() {
                                   <Button
                                     variant="destructive"
                                     size="sm"
-                                    onClick={() => setRegistrationToReject(registration)}
                                   >
                                     <X className="h-4 w-4 mr-2" />
                                     Reject
@@ -658,6 +705,9 @@ export default function ManageRegistrations() {
           isOpen={showWhatsAppDialog}
           onClose={() => setShowWhatsAppDialog(false)}
           eventTitle={event.title}
+          sessions={event.sessions}
+          defaultContactName={event.staffContact?.name || ""}
+          defaultContactPhone={event.staffContact?.phone || ""}
           participantCount={registeredParticipantsCount}
           onSendMessage={handleSendWhatsAppMessage}
         />
