@@ -21,6 +21,7 @@ try {
 }
 
 const HKT = 'Asia/Hong_Kong';
+const DEFAULT_REMINDER_TEMPLATE_SID = 'HX6dcf16072c4b77b1513ef377de2c0879';
 
 function formatDateHKT(date) {
   return date.toLocaleDateString('en-US', {
@@ -312,12 +313,13 @@ class ReminderService {
             console.log(`[REMINDER SERVICE] 📱 Sending reminder to ${formattedNumber} for ${eventType}`);
 
             // WhatsApp: only templates (no freeform body) to avoid 63016 outside 24h window.
-            if (useTemplate && process.env.TWILIO_WHATSAPP_TEMPLATE_SID) {
+            const reminderTemplateSid = process.env.TWILIO_WHATSAPP_TEMPLATE_SID || DEFAULT_REMINDER_TEMPLATE_SID;
+            if (useTemplate && reminderTemplateSid) {
               const templateVariables = this.createTemplateVariables(event, reminderHours, eventType, startDateTime);
-              console.log(`[REMINDER SERVICE] Using 8-var reminder template SID: ${process.env.TWILIO_WHATSAPP_TEMPLATE_SID}`);
+              console.log(`[REMINDER SERVICE] Using 8-var reminder template SID: ${reminderTemplateSid}`);
               await twilioClient.messages.create({
                 from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-                contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
+                contentSid: reminderTemplateSid,
                 contentVariables: JSON.stringify(templateVariables),
                 to: `whatsapp:${formattedNumber}`
               });

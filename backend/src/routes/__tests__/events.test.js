@@ -641,15 +641,15 @@ describe('Events Routes', () => {
     });
   });
 
-  describe('WhatsApp templates (custom / marketing)', () => {
-    const marketingTemplateSid = 'HXmarketing_test_sid_123';
+  describe('WhatsApp templates (event update utility)', () => {
+    const eventUpdateTemplateSid = 'HXevent_update_test_sid_123';
     let twilioCreateCalls;
     let mockTwilioCreate;
     let savedEnv;
 
     beforeEach(() => {
-      savedEnv = process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID;
-      process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID = marketingTemplateSid;
+      savedEnv = process.env.TWILIO_WHATSAPP_EVENT_UPDATE_TEMPLATE_SID;
+      process.env.TWILIO_WHATSAPP_EVENT_UPDATE_TEMPLATE_SID = eventUpdateTemplateSid;
       twilioCreateCalls = [];
       mockTwilioCreate = (payload) => {
         twilioCreateCalls.push(payload);
@@ -660,32 +660,38 @@ describe('Events Routes', () => {
 
     afterEach(() => {
       setTwilioClientForTesting(null);
-      process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID = savedEnv;
+      process.env.TWILIO_WHATSAPP_EVENT_UPDATE_TEMPLATE_SID = savedEnv;
     });
 
-    it('send-whatsapp-reminder uses marketing template with variable 1=eventTitle, 2=message', async () => {
+    it('send-whatsapp-reminder uses utility template with variables 1-5', async () => {
       const response = await request(app)
         .post('/api/events/send-whatsapp-reminder')
         .send({
           to: '+85212345678',
           message: 'Hello participants',
-          eventTitle: 'My Event Title'
+          eventTitle: 'My Event Title',
+          session: 'Session A',
+          contactName: 'Jane Doe',
+          contactPhone: '+852 9999 8888'
         });
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('success', true);
       expect(twilioCreateCalls.length).toBe(1);
       const call = twilioCreateCalls[0];
-      expect(call.contentSid).toBe(marketingTemplateSid);
+      expect(call.contentSid).toBe(eventUpdateTemplateSid);
       const vars = typeof call.contentVariables === 'string' ? JSON.parse(call.contentVariables) : call.contentVariables;
       expect(vars).toEqual({
         '1': 'My Event Title',
-        '2': 'Hello participants'
+        '2': 'Session A',
+        '3': 'Hello participants',
+        '4': 'Jane Doe',
+        '5': '+852 9999 8888'
       });
       expect(call.to).toBe('whatsapp:+85212345678');
     });
 
-    it('POST :id/send-whatsapp uses marketing template with title and message for each participant', async () => {
+    it('POST :id/send-whatsapp uses utility template with title/session/message/contact for each participant', async () => {
       await EventRegistration.create({
         eventId: testEvent._id,
         attendee: { firstName: 'Test', lastName: 'User', phone: '+85298765432', email: 'test@example.com' },
@@ -695,16 +701,25 @@ describe('Events Routes', () => {
       const response = await request(app)
         .post(`/api/events/${testEvent._id}/send-whatsapp`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ title: 'Test Event', message: 'Custom message here' });
+        .send({
+          title: 'Test Event',
+          session: 'Session B',
+          message: 'Custom message here',
+          contactName: 'Alice',
+          contactPhone: '+852 1111 2222'
+        });
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('successful', 1);
       expect(twilioCreateCalls.length).toBe(1);
       const call = twilioCreateCalls[0];
-      expect(call.contentSid).toBe(marketingTemplateSid);
+      expect(call.contentSid).toBe(eventUpdateTemplateSid);
       const vars = typeof call.contentVariables === 'string' ? JSON.parse(call.contentVariables) : call.contentVariables;
       expect(vars['1']).toBe('Test Event');
-      expect(vars['2']).toBe('Custom message here');
+      expect(vars['2']).toBe('Session B');
+      expect(vars['3']).toBe('Custom message here');
+      expect(vars['4']).toBe('Alice');
+      expect(vars['5']).toBe('+852 1111 2222');
       expect(call.to).toMatch(/whatsapp:.*85298765432/);
     });
   });

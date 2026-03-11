@@ -276,21 +276,28 @@ const eventService = {
     return response.data;
   },
 
-  // Send WhatsApp message to all registered participants
-  async sendWhatsAppMessage(eventId: string, title: string, message: string, useTemplate: boolean = false): Promise<{
+  // Send WhatsApp event update message to all registered participants
+  async sendWhatsAppMessage(
+    eventId: string,
+    payload: {
+      title: string;
+      session: string;
+      message: string;
+      contactName: string;
+      contactPhone: string;
+    }
+  ): Promise<{
     message: string;
     successful: number;
     failed: number;
     failedNumbers: string[];
   }> {
     const url = `${API_URL}/events/${eventId}/send-whatsapp`;
-    //console.log('[eventService] POST', url, 'title:', title, 'message:', message);
     const response = await axios.post(
       url,
-      { title, message, useTemplate },
+      payload,
       { headers: authHeader() }
     );
-    //console.log('[eventService] WhatsApp Response:', response.data);
     return response.data;
   },
 

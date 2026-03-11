@@ -5,21 +5,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { format } from "date-fns"
-import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer } from "lucide-react"
+import { CalendarIcon, MapPin, Tag, Users, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer, Download } from "lucide-react"
 import { formatDateHKT, formatSessionDateTimeHKT, formatDateTimeHKT } from "@/utils/dateTimeHKT"
-import { ZubinEvent, eventCategories, targetGroups } from "@/types/event-types"
+import { ZubinEvent } from "@/types/event-types"
 import RegistrationFormDialog from "@/components/events-builder/registration-form-dialog"
 import WhatsAppMessageDialog from "@/components/events-builder/whatsapp-message-dialog"
-import { RegistrationForm } from "@/types/form-types"
+import { RegistrationForm, FormField } from "@/types/form-types"
 import registrationService, { EventRegistration } from "@/services/registrationService"
 import { formService } from "@/services/formService"
 import eventService from "@/services/eventService"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
+import * as XLSX from "xlsx"
 
 export default function ManageRegistrations() {
   const { id } = useParams<{ id: string }>();
@@ -33,7 +32,6 @@ export default function ManageRegistrations() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("registered");
   const [selectedRegistration, setSelectedRegistration] = useState<EventRegistration | null>(null);
-  const [registrationToReject, setRegistrationToReject] = useState<EventRegistration | null>(null);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -47,7 +45,7 @@ export default function ManageRegistrations() {
     const fetchEvent = async () => {
       try {
         const eventData = await eventService.getEvent(id);
-        setEvent(eventData as ZubinEvent);
+        setEvent(eventData as unknown as ZubinEvent);
       } catch (err: any) {
         console.error('Error fetching event:', err);
         setError(err.message || 'Failed to load event');
@@ -112,12 +110,22 @@ export default function ManageRegistrations() {
   // Get registered participants count
   const registeredParticipantsCount = registrations.filter(reg => reg.status === 'registered').length;
 
-  const handleSendWhatsAppMessage = async (message: string) => {
+  const handleSendWhatsAppMessage = async (payload: {
+    session: string;
+    message: string;
+    contactName: string;
+    contactPhone: string;
+  }) => {
     if (!event?._id) {
       throw new Error("Event ID not found");
     }
-    // Send the event title we display (from event fetched by URL id) so the message uses exactly what the user sees
-    return await eventService.sendWhatsAppMessage(event._id, event.title ?? "", message, true);
+    return await eventService.sendWhatsAppMessage(event._id, {
+      title: event.title ?? "",
+      session: payload.session,
+      message: payload.message,
+      contactName: payload.contactName,
+      contactPhone: payload.contactPhone
+    });
   };
 
   const handleRejectRegistration = async (registrationId: string) => {
@@ -137,7 +145,6 @@ export default function ManageRegistrations() {
       });
       
       setSelectedRegistration(null);
-      setRegistrationToReject(null);
     } catch (err: any) {
       console.error('Error rejecting registration:', err);
       toast({
@@ -160,6 +167,115 @@ export default function ManageRegistrations() {
         startTime: session!.startTime,
         endTime: session!.endTime
       }));
+  };
+
+  const formatResponseForExcel = (field: FormField, value: unknown) => {
+    if (value === null || value === undefined || value === "") {
+      return "";
+    }
+
+    if (field.type === "date") {
+      const date = new Date(String(value));
+      return Number.isNaN(date.getTime()) ? String(value) : formatDateHKT(date);
+    }
+
+    if (Array.isArray(value)) {
+      return value.join(", ");
+    }
+
+    if (typeof value === "boolean") {
+      return value ? "Yes" : "No";
+    }
+
+    if (typeof value === "object") {
+      return JSON.stringify(value);
+    }
+
+    return String(value);
+  };
+
+  const handleDownloadExcel = () => {
+    if (!event) return;
+
+    const orderedFields = (registrationForm?.sections ?? [])
+      .slice()
+      .sort((a, b) => a.order - b.order)
+      .flatMap((section) =>
+        section.fields
+          .slice()
+          .sort((a, b) => a.order - b.order)
+      );
+
+    const sessionSummary = event.sessions?.length
+      ? event.sessions.map((session) => session.title).join(" | ")
+      : "N/A";
+    const dateSummary = event.startDate
+      ? event.startDate !== event.endDate
+        ? `${formatDateHKT(new Date(event.startDate))} - ${formatDateHKT(new Date(event.endDate))}`
+        : formatDateHKT(new Date(event.startDate))
+      : "N/A";
+    const timeSummary = event.sessions?.length
+      ? event.sessions.map((session) => `${session.startTime}-${session.endTime}`).join(" | ")
+      : "N/A";
+
+    const fallbackHeaders = ["First Name", "Last Name", "Phone", "Email", "Status"];
+    const tableHeaders = ["No.", ...(orderedFields.length > 0 ? orderedFields.map((field) => field.label) : fallbackHeaders)];
+
+    const tableRows = filteredRegistrations.map((registration, index) => {
+      if (orderedFields.length === 0) {
+        return [
+          index + 1,
+          registration.attendee.firstName,
+          registration.attendee.lastName,
+          registration.attendee.phone,
+          registration.attendee.email || "",
+          registration.status
+        ];
+      }
+
+      const responseMap = new Map(
+        registration.formResponses.map((response) => [response.fieldId, response.response])
+      );
+      const values = orderedFields.map((field) =>
+        formatResponseForExcel(field, responseMap.get(field._id))
+      );
+
+      return [index + 1, ...values];
+    });
+
+    const worksheetData = [
+      ["Organization", "The Zubin Foundation"],
+      ["Event Name", event.title ?? ""],
+      ["Session", sessionSummary],
+      ["Date", dateSummary],
+      ["Time", timeSummary],
+      [],
+      tableHeaders,
+      ...tableRows
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    worksheet["!cols"] = tableHeaders.map((header, columnIndex) => {
+      const maxLength = Math.max(
+        String(header).length,
+        ...tableRows.map((row) => String(row[columnIndex] ?? "").length),
+        columnIndex === 0 ? 4 : 12
+      );
+      return { wch: Math.min(50, maxLength + 2) };
+    });
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Registrations");
+    const safeTitle = (event.title || "event")
+      .replace(/[^a-z0-9]+/gi, "_")
+      .replace(/^_+|_+$/g, "")
+      .toLowerCase();
+    XLSX.writeFile(workbook, `${safeTitle || "event"}_registrations.xlsx`);
+
+    toast({
+      title: "Excel downloaded",
+      description: "Registration list has been exported successfully."
+    });
   };
 
   // Print functionality
@@ -507,6 +623,14 @@ export default function ManageRegistrations() {
                 <Printer className="h-4 w-4 mr-2" />
                 Print Report
               </Button>
+              <Button
+                onClick={handleDownloadExcel}
+                variant="outline"
+                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Excel
+              </Button>
               {canSendWhatsApp && registeredParticipantsCount > 0 && (
                 <Button
                   onClick={() => setShowWhatsAppDialog(true)}
@@ -600,7 +724,6 @@ export default function ManageRegistrations() {
                                   <Button
                                     variant="destructive"
                                     size="sm"
-                                    onClick={() => setRegistrationToReject(registration)}
                                   >
                                     <X className="h-4 w-4 mr-2" />
                                     Reject
@@ -616,7 +739,7 @@ export default function ManageRegistrations() {
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel onClick={() => setRegistrationToReject(null)}>
+                                    <AlertDialogCancel>
                                       Cancel
                                     </AlertDialogCancel>
                                     <AlertDialogAction
@@ -658,6 +781,15 @@ export default function ManageRegistrations() {
           isOpen={showWhatsAppDialog}
           onClose={() => setShowWhatsAppDialog(false)}
           eventTitle={event.title}
+          eventSessionDefault={
+            event.sessions?.length === 1
+              ? event.sessions[0].title
+              : event.sessions?.length
+                ? "All Sessions"
+                : event.title
+          }
+          contactNameDefault={event.staffContact?.name || "The Zubin Foundation"}
+          contactPhoneDefault={event.staffContact?.phone || ""}
           participantCount={registeredParticipantsCount}
           onSendMessage={handleSendWhatsAppMessage}
         />
