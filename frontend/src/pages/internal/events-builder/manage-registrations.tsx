@@ -663,7 +663,7 @@ export default function ManageRegistrations() {
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel onClick={() => setRegistrationToReject(null)}>
+                                    <AlertDialogCancel>
                                       Cancel
                                     </AlertDialogCancel>
                                     <AlertDialogAction
