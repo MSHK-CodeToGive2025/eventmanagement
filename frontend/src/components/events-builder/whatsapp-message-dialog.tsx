@@ -3,15 +3,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, MessageSquare, AlertTriangle, CheckCircle, Info } from "lucide-react"
+import { Session } from "@/types/event-types"
 
 interface WhatsAppMessageDialogProps {
   isOpen: boolean
   onClose: () => void
   eventTitle: string
   participantCount: number
-  onSendMessage: (message: string) => Promise<{
+  sessions?: Session[]
+  staffContact?: { name?: string; phone?: string }
+  onSendMessage: (message: string, session: string) => Promise<{
     message: string
     successful: number
     failed: number
@@ -24,9 +28,12 @@ export default function WhatsAppMessageDialog({
   onClose,
   eventTitle,
   participantCount,
+  sessions = [],
+  staffContact,
   onSendMessage
 }: WhatsAppMessageDialogProps) {
   const [message, setMessage] = useState("")
+  const [selectedSession, setSelectedSession] = useState<string>("")
   const [isSending, setIsSending] = useState(false)
   const [result, setResult] = useState<{
     successful: number
@@ -37,7 +44,7 @@ export default function WhatsAppMessageDialog({
 
   const handleSend = async () => {
     if (!message.trim()) {
-      setError("Please enter a message (template variable 2)")
+      setError("Please enter a message")
       return
     }
 
@@ -46,13 +53,14 @@ export default function WhatsAppMessageDialog({
     setResult(null)
 
     try {
-      const response = await onSendMessage(message)
+      const response = await onSendMessage(message, selectedSession)
       setResult({
         successful: response.successful,
         failed: response.failed,
         failedNumbers: response.failedNumbers
       })
       setMessage("")
+      setSelectedSession("")
     } catch (err: any) {
       setError(err.response?.data?.message || "Failed to send WhatsApp messages")
     } finally {
@@ -62,6 +70,7 @@ export default function WhatsAppMessageDialog({
 
   const handleClose = () => {
     setMessage("")
+    setSelectedSession("")
     setError(null)
     setResult(null)
     onClose()
@@ -81,7 +90,7 @@ export default function WhatsAppMessageDialog({
           <div className="bg-blue-50 p-4 rounded-lg">
             <h3 className="font-semibold text-blue-900 mb-2">Event: {eventTitle}</h3>
             <p className="text-blue-700 text-sm">
-              This message will be sent to {participantCount} registered participant{participantCount !== 1 ? 's' : ''} via the WhatsApp marketing template.
+              This message will be sent to {participantCount} registered participant{participantCount !== 1 ? 's' : ''} via the event update template.
             </p>
           </div>
 
@@ -89,16 +98,33 @@ export default function WhatsAppMessageDialog({
             <Info className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-800">
               <p className="text-sm">
-                The marketing template uses <strong>Variable 1</strong> = event title (filled automatically) and <strong>Variable 2</strong> = your message below. Enter the text you want as the main message body.
+                The event update template includes the <strong>event title</strong>, selected <strong>session</strong>, your <strong>message</strong>, and the event contact details automatically.
               </p>
             </AlertDescription>
           </Alert>
 
+          {sessions.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="session">Session (optional)</Label>
+              <Select value={selectedSession} onValueChange={setSelectedSession} disabled={isSending}>
+                <SelectTrigger id="session">
+                  <SelectValue placeholder="Select a session (or leave blank)" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value=" ">All sessions / General</SelectItem>
+                  {sessions.map(s => (
+                    <SelectItem key={s._id} value={s.title}>{s.title}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <div className="space-y-2">
-            <Label htmlFor="message">Message (template variable 2) *</Label>
+            <Label htmlFor="message">Message *</Label>
             <Textarea
               id="message"
-              placeholder="Enter your message (this is sent as template variable 2)..."
+              placeholder="Enter your event update message..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={6}
@@ -107,6 +133,14 @@ export default function WhatsAppMessageDialog({
               required
             />
           </div>
+
+          {staffContact && (staffContact.name || staffContact.phone) && (
+            <div className="bg-gray-50 p-3 rounded text-sm text-gray-600 space-y-1">
+              <p className="font-medium text-gray-700">Contact info sent with message:</p>
+              {staffContact.name && <p>👤 {staffContact.name}</p>}
+              {staffContact.phone && <p>📞 {staffContact.phone}</p>}
+            </div>
+          )}
 
           {error && (
             <Alert variant="destructive">
@@ -165,4 +199,4 @@ export default function WhatsAppMessageDialog({
       </DialogContent>
     </Dialog>
   )
-} 
+}

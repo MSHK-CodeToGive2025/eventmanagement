@@ -41,13 +41,13 @@ jobs:
         id: taskdef
         env:
           TWILIO_WHATSAPP_TEMPLATE_SID: ${{ secrets.TWILIO_WHATSAPP_TEMPLATE_SID }}
-          TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID: ${{ secrets.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID }}
+          TWILIO_WHATSAPP_NOTIFICATION_TEMPLATE_SID: ${{ secrets.TWILIO_WHATSAPP_NOTIFICATION_TEMPLATE_SID }}
         run: |
           TASK_DEF=$(aws ecs describe-services --cluster $ECS_CLUSTER --services $ECS_SERVICE_BACKEND --query 'services[0].taskDefinition' --output text)
           aws ecs describe-task-definition --task-definition "$TASK_DEF" --query 'taskDefinition' > current.json
           jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .placementConstraints, .compatibilities, .registeredAt, .registeredBy)' current.json > clean.json
-          jq --arg t "${TWILIO_WHATSAPP_TEMPLATE_SID}" --arg m "${TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID}" \
-            '.containerDefinitions[0].environment = ((.containerDefinitions[0].environment // []) | map(select(.name != "TWILIO_WHATSAPP_TEMPLATE_SID" and .name != "TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID"))) + [{"name":"TWILIO_WHATSAPP_TEMPLATE_SID","value":$t},{"name":"TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID","value":$m}]' \
+          jq --arg t "${TWILIO_WHATSAPP_TEMPLATE_SID}" --arg n "${TWILIO_WHATSAPP_NOTIFICATION_TEMPLATE_SID}" \
+            '.containerDefinitions[0].environment = ((.containerDefinitions[0].environment // []) | map(select(.name != "TWILIO_WHATSAPP_TEMPLATE_SID" and .name != "TWILIO_WHATSAPP_NOTIFICATION_TEMPLATE_SID"))) + [{"name":"TWILIO_WHATSAPP_TEMPLATE_SID","value":$t},{"name":"TWILIO_WHATSAPP_NOTIFICATION_TEMPLATE_SID","value":$n}]' \
             clean.json > new.json
           NEW_ARN=$(aws ecs register-task-definition --cli-input-json file://new.json --query 'taskDefinition.taskDefinitionArn' --output text)
           echo "task_def_arn=$NEW_ARN" >> $GITHUB_OUTPUT

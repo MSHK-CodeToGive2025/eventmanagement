@@ -10,7 +10,7 @@ Use this to run the full stack (MongoDB + Backend + Frontend) in Docker and test
   - `JWT_SECRET`
   - `PORT=3001`
   - `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_WHATSAPP_NUMBER`
-  - `TWILIO_WHATSAPP_TEMPLATE_SID`, `TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID`
+  - `TWILIO_WHATSAPP_TEMPLATE_SID`, `TWILIO_WHATSAPP_NOTIFICATION_TEMPLATE_SID`
 
 The compose file uses `.env` for the backend and forces `MONGODB_URI=mongodb://mongodb:27017/zubin-foundation` so the app uses the MongoDB container.
 
@@ -80,7 +80,7 @@ docker compose down -v
   Ensure `.env` has `TWILIO_ACCOUNT_SID` and `TWILIO_AUTH_TOKEN`.
 
 - **Template / 21619 or 63016**  
-  Ensure `.env` has `TWILIO_WHATSAPP_TEMPLATE_SID` and `TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID` (same values as in Twilio Content Templates).
+  Ensure `.env` has `TWILIO_WHATSAPP_TEMPLATE_SID` and `TWILIO_WHATSAPP_NOTIFICATION_TEMPLATE_SID` (same values as in Twilio Content Templates).
 
 - **Frontend can’t reach API**  
   The frontend image is built with `VITE_API_URL=http://localhost:3001/api`. You must open the app at **http://localhost:3000** (not another host/port) so the browser can call `http://localhost:3001/api`.

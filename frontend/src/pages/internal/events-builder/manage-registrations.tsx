@@ -5,13 +5,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { format } from "date-fns"
-import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer } from "lucide-react"
+import { CalendarIcon, MapPin, Tag, Users, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer, FileSpreadsheet } from "lucide-react"
 import { formatDateHKT, formatSessionDateTimeHKT, formatDateTimeHKT } from "@/utils/dateTimeHKT"
-import { ZubinEvent, eventCategories, targetGroups } from "@/types/event-types"
+import { ZubinEvent } from "@/types/event-types"
 import RegistrationFormDialog from "@/components/events-builder/registration-form-dialog"
 import WhatsAppMessageDialog from "@/components/events-builder/whatsapp-message-dialog"
 import { RegistrationForm } from "@/types/form-types"
@@ -20,6 +18,7 @@ import { formService } from "@/services/formService"
 import eventService from "@/services/eventService"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
+import * as XLSX from "xlsx"
 
 export default function ManageRegistrations() {
   const { id } = useParams<{ id: string }>();
@@ -112,12 +111,11 @@ export default function ManageRegistrations() {
   // Get registered participants count
   const registeredParticipantsCount = registrations.filter(reg => reg.status === 'registered').length;
 
-  const handleSendWhatsAppMessage = async (message: string) => {
+  const handleSendWhatsAppMessage = async (message: string, session: string) => {
     if (!event?._id) {
       throw new Error("Event ID not found");
     }
-    // Send the event title we display (from event fetched by URL id) so the message uses exactly what the user sees
-    return await eventService.sendWhatsAppMessage(event._id, event.title ?? "", message, true);
+    return await eventService.sendWhatsAppMessage(event._id, event.title ?? "", message, session);
   };
 
   const handleRejectRegistration = async (registrationId: string) => {
@@ -355,6 +353,104 @@ export default function ManageRegistrations() {
     }, 500);
   };
 
+  const handleExcelExport = () => {
+    if (!event) return;
+
+    // Flatten form fields preserving section/field order
+    const allFields = registrationForm
+      ? registrationForm.sections
+          .slice()
+          .sort((a, b) => a.order - b.order)
+          .flatMap(section =>
+            section.fields.slice().sort((a, b) => a.order - b.order).map(field => ({
+              sectionId: section._id,
+              fieldId: field._id,
+              label: field.label,
+            }))
+          )
+      : [];
+
+    // Build header metadata rows
+    const sessionTitles = event.sessions && event.sessions.length > 0
+      ? event.sessions.map(s => s.title).join("; ")
+      : "N/A";
+    const sessionTimes = event.sessions && event.sessions.length > 0
+      ? event.sessions.map(s => `${s.startTime}${s.endTime ? " - " + s.endTime : ""}`).join("; ")
+      : "N/A";
+    const eventDate = event.startDate ? formatDateHKT(new Date(event.startDate)) : "N/A";
+
+    const headerRows = [
+      ["Organization", "The Zubin Foundation"],
+      ["Event", event.title],
+      ["Session", sessionTitles],
+      ["Date", eventDate],
+      ["Time", sessionTimes],
+      [],
+    ];
+
+    // Column headers: form fields + sessions column + status
+    const columnHeaders = [
+      ...allFields.map(f => f.label),
+      "Sessions Registered",
+      "Status",
+    ];
+
+    // Build data rows
+    const dataRows = filteredRegistrations.map(registration => {
+      const formValues = allFields.map(({ sectionId, fieldId }) => {
+        const resp = registration.formResponses?.find(
+          r => r.sectionId === sectionId && r.fieldId === fieldId
+        );
+        if (!resp) return "";
+        const val = resp.response;
+        if (Array.isArray(val)) return val.join(", ");
+        if (val === null || val === undefined) return "";
+        return String(val);
+      });
+
+      const sessionDetails = getSessionDetails(registration.sessions);
+      const sessionsText = sessionDetails.length > 0
+        ? sessionDetails.map(s => `${s.title} (${formatSessionDateTimeHKT(s.date, s.startTime, s.endTime)})`).join("; ")
+        : "No sessions selected";
+
+      return [...formValues, sessionsText, registration.status];
+    });
+
+    // Assemble worksheet data
+    const wsData = [...headerRows, columnHeaders, ...dataRows];
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    // Style header metadata cells (bold label column)
+    const headerRowCount = headerRows.length;
+    for (let r = 0; r < headerRowCount - 1; r++) {
+      const cellRef = XLSX.utils.encode_cell({ r, c: 0 });
+      if (!ws[cellRef]) ws[cellRef] = { v: wsData[r][0] };
+      ws[cellRef].s = { font: { bold: true } };
+    }
+
+    // Bold column header row
+    const colHeaderRowIdx = headerRowCount;
+    for (let c = 0; c < columnHeaders.length; c++) {
+      const cellRef = XLSX.utils.encode_cell({ r: colHeaderRowIdx, c });
+      if (!ws[cellRef]) ws[cellRef] = { v: columnHeaders[c] };
+      ws[cellRef].s = { font: { bold: true } };
+    }
+
+    // Set column widths
+    ws["!cols"] = [
+      ...allFields.map(() => ({ wch: 25 })),
+      { wch: 40 },
+      { wch: 15 },
+    ];
+    if (ws["!cols"].length < 2) ws["!cols"] = [{ wch: 30 }, { wch: 50 }];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Registrations");
+
+    const safeTitle = (event.title || "event").replace(/[/\\?*[\]]/g, "_").slice(0, 30);
+    XLSX.writeFile(wb, `${safeTitle}_registrations.xlsx`);
+  };
+
   type RegistrationStatus = "registered" | "cancelled" | "rejected";
 
   const getStatusVariant = (status: RegistrationStatus) => {
@@ -506,6 +602,14 @@ export default function ManageRegistrations() {
               >
                 <Printer className="h-4 w-4 mr-2" />
                 Print Report
+              </Button>
+              <Button
+                onClick={handleExcelExport}
+                variant="outline"
+                className="bg-green-50 hover:bg-green-100 text-green-700 border-green-200"
+              >
+                <FileSpreadsheet className="h-4 w-4 mr-2" />
+                Export Excel
               </Button>
               {canSendWhatsApp && registeredParticipantsCount > 0 && (
                 <Button
@@ -659,6 +763,8 @@ export default function ManageRegistrations() {
           onClose={() => setShowWhatsAppDialog(false)}
           eventTitle={event.title}
           participantCount={registeredParticipantsCount}
+          sessions={event.sessions}
+          staffContact={event.staffContact}
           onSendMessage={handleSendWhatsAppMessage}
         />
       )}

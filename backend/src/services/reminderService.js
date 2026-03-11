@@ -313,6 +313,7 @@ class ReminderService {
 
             // WhatsApp: only templates (no freeform body) to avoid 63016 outside 24h window.
             if (useTemplate && process.env.TWILIO_WHATSAPP_TEMPLATE_SID) {
+              // 8-variable reminder template (zubin_foundation_event_reminder_v2)
               const templateVariables = this.createTemplateVariables(event, reminderHours, eventType, startDateTime);
               console.log(`[REMINDER SERVICE] Using 8-var reminder template SID: ${process.env.TWILIO_WHATSAPP_TEMPLATE_SID}`);
               await twilioClient.messages.create({
@@ -321,18 +322,29 @@ class ReminderService {
                 contentVariables: JSON.stringify(templateVariables),
                 to: `whatsapp:${formattedNumber}`
               });
-            } else if (process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
-              // Event set to "custom" reminder: send full reminder text as variable 2 via marketing template (no freeform).
-              const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
-              console.log(`[REMINDER SERVICE] Using marketing template for reminder to ${formattedNumber}`);
+            } else if (process.env.TWILIO_WHATSAPP_NOTIFICATION_TEMPLATE_SID) {
+              // 5-variable event update template (zubin_foundation_event_update_v2):
+              // {{1}} event, {{2}} session, {{3}} message body, {{4}} contact name, {{5}} contact phone
+              const isSession = eventType.startsWith('session:');
+              const sessionTitle = isSession ? eventType.replace('session: ', '') : '';
+              const reminderBody = this.createReminderMessageBody(event, reminderHours, eventType, startDateTime);
+              const contactName = event.staffContact && event.staffContact.name ? event.staffContact.name : '';
+              const contactPhone = event.staffContact && event.staffContact.phone ? event.staffContact.phone : '';
+              console.log(`[REMINDER SERVICE] Using 5-var notification template for reminder to ${formattedNumber}`);
               await twilioClient.messages.create({
                 from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-                contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
-                contentVariables: JSON.stringify({ "1": event.title, "2": message }),
+                contentSid: process.env.TWILIO_WHATSAPP_NOTIFICATION_TEMPLATE_SID,
+                contentVariables: JSON.stringify({
+                  "1": this.sanitizeContentVariable(event.title),
+                  "2": this.sanitizeContentVariable(sessionTitle),
+                  "3": this.sanitizeContentVariable(reminderBody),
+                  "4": this.sanitizeContentVariable(contactName),
+                  "5": this.sanitizeContentVariable(contactPhone)
+                }),
                 to: `whatsapp:${formattedNumber}`
               });
             } else {
-              console.error(`[REMINDER SERVICE] No template SID configured; set TWILIO_WHATSAPP_TEMPLATE_SID or TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID`);
+              console.error(`[REMINDER SERVICE] No template SID configured; set TWILIO_WHATSAPP_TEMPLATE_SID or TWILIO_WHATSAPP_NOTIFICATION_TEMPLATE_SID`);
               throw new Error('WhatsApp template not configured for reminders');
             }
 
@@ -357,6 +369,39 @@ class ReminderService {
     } catch (error) {
       console.error(`[REMINDER SERVICE] Error sending reminder for event ${event.title}:`, error);
     }
+  }
+
+  // Create a concise reminder body for use as {{3}} in the 5-variable notification template.
+  // Does NOT include event title or session (those are in {{1}} and {{2}}).
+  createReminderMessageBody(event, reminderHours, eventType, startDateTime) {
+    const formattedDate = formatDateHKT(startDateTime);
+    const formattedTime = formatTimeHKT(startDateTime);
+
+    let timeText;
+    if (reminderHours >= 24) {
+      const days = Math.floor(reminderHours / 24);
+      timeText = `${days} day${days > 1 ? 's' : ''}`;
+    } else {
+      timeText = `${reminderHours} hour${reminderHours > 1 ? 's' : ''}`;
+    }
+
+    const isSession = eventType.startsWith('session:');
+    const sessionTitle = isSession ? eventType.replace('session: ', '') : null;
+
+    let body = `⏰ The ${isSession ? 'session' : 'event'} will start in ${timeText}\n📅 Date: ${formattedDate}\n🕐 Time: ${formattedTime}`;
+
+    if (isSession) {
+      const session = event.sessions.find(s => s.title === sessionTitle);
+      if (session && session.location && session.location.venue) {
+        body += `\n📍 Location: ${session.location.venue}`;
+      } else if (event.location) {
+        body += `\n📍 Location: ${[event.location.venue, event.location.district].filter(Boolean).join(', ') || (event.location.meetingLink ? 'Online' : '')}`;
+      }
+    } else if (event.location) {
+      body += `\n📍 Location: ${[event.location.venue, event.location.district].filter(Boolean).join(', ') || (event.location.meetingLink ? 'Online' : '')}`;
+    }
+
+    return body;
   }
 
   // Create reminder message
@@ -425,16 +470,21 @@ class ReminderService {
     return s.trim() === '' ? ' ' : s;
   }
 
-  // Create template variables for WhatsApp template
+  // Create template variables for the 8-variable reminder template (zubin_foundation_event_reminder_v2)
   // Template structure:
-  // 🔔 Event Reminder: {{1}}
+  // 🔔 Event Reminder from The Zubin Foundation
+  //
+  // 📢 Event: {{1}}
   // 📋 Session: {{2}}
+  //
   // ⏰ The session will start in {{3}}
   // 📅 Date: {{4}}
   // 🕐 Time: {{5}}
   // 📍 Location: {{6}}
   // 👤 Contact: {{7}}
   // 📞 Phone: {{8}}
+  //
+  // We look forward to seeing you!
   createTemplateVariables(event, reminderHours, eventType, startDateTime) {
     const eventStartTime = startDateTime;
     const formattedDate = formatDateHKT(eventStartTime);
