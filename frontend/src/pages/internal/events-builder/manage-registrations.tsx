@@ -9,7 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
-import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer } from "lucide-react"
+import * as XLSX from "xlsx"
+import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer, Download } from "lucide-react"
 import { formatDateHKT, formatSessionDateTimeHKT, formatDateTimeHKT } from "@/utils/dateTimeHKT"
 import { ZubinEvent, eventCategories, targetGroups } from "@/types/event-types"
 import RegistrationFormDialog from "@/components/events-builder/registration-form-dialog"
@@ -112,12 +113,11 @@ export default function ManageRegistrations() {
   // Get registered participants count
   const registeredParticipantsCount = registrations.filter(reg => reg.status === 'registered').length;
 
-  const handleSendWhatsAppMessage = async (message: string) => {
+  const handleSendWhatsAppMessage = async (message: string, session?: string) => {
     if (!event?._id) {
       throw new Error("Event ID not found");
     }
-    // Send the event title we display (from event fetched by URL id) so the message uses exactly what the user sees
-    return await eventService.sendWhatsAppMessage(event._id, event.title ?? "", message, true);
+    return await eventService.sendWhatsAppMessage(event._id, event.title ?? "", message, true, session);
   };
 
   const handleRejectRegistration = async (registrationId: string) => {
@@ -355,6 +355,104 @@ export default function ManageRegistrations() {
     }, 500);
   };
 
+  const handleExportExcel = () => {
+    if (!event || !registrationForm) return;
+
+    const wb = XLSX.utils.book_new();
+
+    const sessionsSummary = event.sessions?.length
+      ? event.sessions.map(s => s.title).join(", ")
+      : "N/A";
+
+    const dateRange = event.startDate
+      ? formatDateHKT(new Date(event.startDate)) +
+        (event.startDate !== event.endDate && event.endDate
+          ? ` - ${formatDateHKT(new Date(event.endDate))}`
+          : "")
+      : "N/A";
+
+    const timeRange = event.sessions?.length
+      ? event.sessions.map(s => `${s.startTime} - ${s.endTime} HKT`).join(", ")
+      : "N/A";
+
+    const headerRows: (string | undefined)[][] = [
+      ["The Zubin Foundation"],
+      [],
+      ["Event:", event.title],
+      ["Session(s):", sessionsSummary],
+      ["Date:", dateRange],
+      ["Time:", timeRange],
+      [],
+    ];
+
+    const formFields: { label: string; sectionId: string; fieldId: string }[] = [];
+    for (const section of registrationForm.sections) {
+      for (const field of section.fields) {
+        formFields.push({ label: field.label, sectionId: section._id, fieldId: field._id });
+      }
+    }
+
+    const tableHeaders = [
+      "No.",
+      "First Name",
+      "Last Name",
+      "Mobile Number",
+      "Email",
+      "Sessions Registered",
+      ...formFields.map(f => f.label),
+      "Status",
+      "Registered At",
+    ];
+    headerRows.push(tableHeaders);
+
+    const dataRows = filteredRegistrations.map((reg, idx) => {
+      const sessionDetails = getSessionDetails(reg.sessions);
+      const sessionsText = sessionDetails.length > 0
+        ? sessionDetails.map(s => `${s.title} (${formatSessionDateTimeHKT(s.date, s.startTime, s.endTime)})`).join("; ")
+        : "No sessions selected";
+
+      const fieldValues = formFields.map(f => {
+        const resp = reg.formResponses.find(
+          r => r.sectionId === f.sectionId && r.fieldId === f.fieldId
+        );
+        if (!resp) return "";
+        const val = resp.response;
+        if (Array.isArray(val)) return val.join(", ");
+        return val != null ? String(val) : "";
+      });
+
+      return [
+        idx + 1,
+        reg.attendee.firstName,
+        reg.attendee.lastName,
+        reg.attendee.phone,
+        reg.attendee.email || "",
+        sessionsText,
+        ...fieldValues,
+        reg.status.charAt(0).toUpperCase() + reg.status.slice(1),
+        reg.registeredAt ? format(new Date(reg.registeredAt), "MMM d, yyyy") : "",
+      ];
+    });
+
+    const allRows = [...headerRows, ...dataRows];
+    const ws = XLSX.utils.aoa_to_sheet(allRows);
+
+    const totalCols = tableHeaders.length;
+    ws["!cols"] = Array.from({ length: totalCols }, () => ({ wch: 20 }));
+    if (totalCols > 0) {
+      ws["!cols"][0] = { wch: 6 };
+    }
+
+    ws["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: Math.min(totalCols - 1, 3) } },
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "Registrations");
+
+    const safeTitle = (event.title || "Event").replace(/[^a-zA-Z0-9_ -]/g, "").substring(0, 50);
+    XLSX.writeFile(wb, `${safeTitle}_Registrations.xlsx`);
+  };
+
   type RegistrationStatus = "registered" | "cancelled" | "rejected";
 
   const getStatusVariant = (status: RegistrationStatus) => {
@@ -499,6 +597,15 @@ export default function ManageRegistrations() {
                   <SelectItem value="rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
+              <Button
+                onClick={handleExportExcel}
+                variant="outline"
+                className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200"
+                disabled={!registrationForm}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Export Excel
+              </Button>
               <Button
                 onClick={handlePrint}
                 variant="outline"
@@ -659,6 +766,8 @@ export default function ManageRegistrations() {
           onClose={() => setShowWhatsAppDialog(false)}
           eventTitle={event.title}
           participantCount={registeredParticipantsCount}
+          sessions={event.sessions}
+          staffContact={event.staffContact}
           onSendMessage={handleSendWhatsAppMessage}
         />
       )}

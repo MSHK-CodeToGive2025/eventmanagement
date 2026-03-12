@@ -734,13 +734,14 @@ router.delete('/:id/cover-image', auth, async (req, res) => {
 });
 
 // Send WhatsApp message to registered participant (requires auth)
-// All manual WhatsApp messages use the marketing template only (no freeform). Variable 1 = title, Variable 2 = message.
+// Uses the event update utility template (zubin_foundation_event_update_v2).
+// Variables: 1=event title, 2=session, 3=message body, 4=contact name, 5=contact phone.
 router.post('/send-whatsapp-reminder', async (req, res) => {
   try {
-    const { to, message, eventTitle } = req.body;
+    const { to, message, eventTitle, session, contactName, contactPhone } = req.body;
 
     if (!message || !message.trim()) {
-      return res.status(400).json({ success: false, error: 'Message content is required (template variable 2)' });
+      return res.status(400).json({ success: false, error: 'Message content is required (template variable 3)' });
     }
 
     console.log(`Attempting to send WhatsApp message to: ${to}`);
@@ -754,26 +755,29 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
       });
     }
 
-    if (!process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
+    if (!process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID) {
       return res.status(503).json({
         success: false,
-        error: 'Marketing template not configured',
-        message: 'TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID is required'
+        error: 'Event update template not configured',
+        message: 'TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID is required'
       });
     }
 
     const result = await twilioClient.messages.create({
       from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-      contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+      contentSid: process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID,
       contentVariables: JSON.stringify({
         "1": eventTitle || "Event Update",
-        "2": message.trim()
+        "2": session || " ",
+        "3": message.trim(),
+        "4": contactName || " ",
+        "5": contactPhone || " "
       }),
       to: `whatsapp:${to}`
     });
 
-    console.log('WhatsApp marketing template message sent successfully:', result.sid);
-    res.json({ success: true, sid: result.sid, method: 'marketing_template' });
+    console.log('WhatsApp event update template message sent successfully:', result.sid);
+    res.json({ success: true, sid: result.sid, method: 'update_template' });
   } catch (error) {
     console.error('Error sending WhatsApp message:', error);
     res.status(500).json({
@@ -786,6 +790,8 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
 });
 
 // Send WhatsApp message to all registered participants (requires auth)
+// Uses the event update utility template (zubin_foundation_event_update_v2).
+// Variables: 1=event title, 2=session, 3=message body, 4=contact name, 5=contact phone.
 router.post('/:id/send-whatsapp', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
@@ -802,39 +808,38 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
-    // Check if user is event creator (additional authorization)
     if (user.role !== 'admin' && user.role !== 'staff' && event.createdBy.toString() !== req.user.userId) {
       console.error(`[WhatsApp] Unauthorized access attempt by user: ${req.user.userId} for event: ${req.params.id}`);
       return res.status(403).json({ message: 'Only admin, staff, or event creator can send WhatsApp messages' });
     }
 
-    const { title, message } = req.body;
+    const { title, message, session } = req.body;
     if (!message || !String(message).trim()) {
-      console.error('[WhatsApp] Message content is required (template variable 2)');
-      return res.status(400).json({ message: 'Message content is required (used as template variable 2)' });
+      console.error('[WhatsApp] Message content is required (template variable 3)');
+      return res.status(400).json({ message: 'Message content is required (used as template variable 3)' });
     }
 
-    if (!process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID) {
-      console.error('[WhatsApp] Marketing template not configured');
-      return res.status(503).json({ message: 'WhatsApp marketing template is not configured (TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID)' });
+    if (!process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID) {
+      console.error('[WhatsApp] Event update template not configured');
+      return res.status(503).json({ message: 'WhatsApp event update template is not configured (TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID)' });
     }
 
     const messageText = String(message).trim();
-    // Use client-provided title when present (matches what user sees on manage-registrations page); else DB event title
     const titleForTemplate = (title != null && String(title).trim()) ? String(title).trim() : (event.title || 'Event');
+    const sessionForTemplate = (session != null && String(session).trim()) ? String(session).trim() : ' ';
+    const contactName = (event.staffContact && event.staffContact.name) ? event.staffContact.name : ' ';
+    const contactPhone = (event.staffContact && event.staffContact.phone) ? event.staffContact.phone : ' ';
 
-    // Get all registered participants for this event
     const registrations = await EventRegistration.find({
       eventId: req.params.id,
       status: 'registered'
     });
 
-    // Filter out users who opted out of WhatsApp messages
     const optedOutUsers = await User.find({ whatsappOptOut: true }).select('mobile');
     const optedOutNumbers = new Set(optedOutUsers.map(u => u.mobile));
 
     console.log(`[WhatsApp] Starting message send for event: ${event.title} (${event._id})`);
-    console.log(`[WhatsApp] Template variables: 1="${titleForTemplate}" 2="${messageText}"`);
+    console.log(`[WhatsApp] Template variables: 1="${titleForTemplate}" 2="${sessionForTemplate}" 3="${messageText}" 4="${contactName}" 5="${contactPhone}"`);
     console.log(`[WhatsApp] Number of registered participants: ${registrations.length}`);
     if (optedOutNumbers.size > 0) {
       console.log(`[WhatsApp] Opted-out numbers to skip: ${optedOutNumbers.size}`);
@@ -842,12 +847,10 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
 
     const failedNumbers = [];
     const successfulNumbers = [];
-
-    // Send message to each participant
     const skippedOptOut = [];
+
     for (const registration of registrations) {
       if (registration.attendee && registration.attendee.phone) {
-        // Skip users who opted out of WhatsApp messages
         if (optedOutNumbers.has(registration.attendee.phone)) {
           console.log(`[WhatsApp] Skipping opted-out user: ${registration.attendee.firstName} ${registration.attendee.lastName}`);
           skippedOptOut.push(registration.attendee.phone);
@@ -856,8 +859,6 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
 
         try {
           console.log(`[WhatsApp] Sending to ${registration.attendee.firstName} ${registration.attendee.lastName} (${registration.attendee.phone})`);
-          
-          // Format phone number for Twilio WhatsApp compliance
           const formattedNumber = formatForWhatsApp(registration.attendee.phone);
 
           if (!twilioClient) {
@@ -866,13 +867,15 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
             continue;
           }
 
-          // All manual WhatsApp sends use the marketing template only (variable 1 = event title, variable 2 = message).
           await twilioClient.messages.create({
             from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-            contentSid: process.env.TWILIO_WHATSAPP_MARKETING_TEMPLATE_SID,
+            contentSid: process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID,
             contentVariables: JSON.stringify({
               "1": titleForTemplate,
-              "2": messageText
+              "2": sessionForTemplate,
+              "3": messageText,
+              "4": contactName,
+              "5": contactPhone
             }),
             to: `whatsapp:${formattedNumber}`
           });
