@@ -43,7 +43,7 @@ mongoose.connect(process.env.MONGODB_URI)
 
 // Basic route
 app.get('/', (req, res) => {
-  res.json({ message: 'Welcome to Zubin Foundation Event Management System API' });
+  res.json({ message: 'Welcome to The Zubin Foundation Event Management System API' });
 });
 
 // Health check endpoint

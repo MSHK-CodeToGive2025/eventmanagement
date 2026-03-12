@@ -324,7 +324,7 @@ export default function ManageRegistrations() {
           </table>
           
           <div class="footer">
-            <p>Zubin Foundation Event Management System</p>
+            <p>The Zubin Foundation Event Management System</p>
             <p>This report contains ${filteredRegistrations.length} registration(s)</p>
           </div>
         </body>
