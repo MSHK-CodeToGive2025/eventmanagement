@@ -675,7 +675,7 @@ export default function EventsPage() {
     if (navigator.share) {
       navigator
         .share({
-          title: "Filtered Events - Zubin Foundation",
+          title: "Filtered Events - The Zubin Foundation",
           url: window.location.href,
         })
         .catch((err) => {

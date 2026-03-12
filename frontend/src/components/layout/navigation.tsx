@@ -87,7 +87,7 @@ export function Navigation() {
         <div className="flex h-20 items-center justify-between">
           <div className="flex items-center">
             <Link to="/" className="flex items-center" onClick={closeMenu}>
-              <img src="/Zubin_Plus_Line.png" alt="Zubin Foundation Logo" className="h-20 w-auto" />
+              <img src="/Zubin_Plus_Line.png" alt="The Zubin Foundation Logo" className="h-20 w-auto" />
               <Calendar className="h-8 w-8 text-yellow-500 ml-1" aria-hidden="true" />
               <span className="text-xl font-bold text-yellow-500">Zubin</span>
               <span className="text-xl font-bold ml-1">Events</span>

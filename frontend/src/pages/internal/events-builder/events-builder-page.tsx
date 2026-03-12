@@ -66,7 +66,7 @@ export default function EventsBuilderPage() {
     <RouteGuard requiredRoles={["admin", "staff"]}>
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">Events Builder</h1>
-        <p className="text-gray-600 mb-8">Create and manage events for the Zubin Foundation.</p>
+        <p className="text-gray-600 mb-8">Create and manage events for The Zubin Foundation.</p>
 
         {showEventBuilder ? (
           <NewEventBuilder onClose={handleCloseEventBuilder} onSave={handleSaveEvent} eventId={editingEventId} />

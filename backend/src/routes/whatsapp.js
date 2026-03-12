@@ -41,7 +41,7 @@ router.post('/incoming', async (req, res) => {
       }
 
       res.type('text/xml').send(
-        '<Response><Message>You have been unsubscribed from Zubin Foundation WhatsApp messages. Reply START to re-subscribe.</Message></Response>'
+        '<Response><Message>You have been unsubscribed from The Zubin Foundation WhatsApp messages. Reply START to re-subscribe.</Message></Response>'
       );
     } else if (command === 'START') {
       let user = await User.findOne({ mobile: rawNumber });
@@ -61,7 +61,7 @@ router.post('/incoming', async (req, res) => {
       }
 
       res.type('text/xml').send(
-        '<Response><Message>You have been re-subscribed to Zubin Foundation WhatsApp messages.</Message></Response>'
+        '<Response><Message>You have been re-subscribed to The Zubin Foundation WhatsApp messages.</Message></Response>'
       );
     } else {
       // Not a command — acknowledge with empty TwiML

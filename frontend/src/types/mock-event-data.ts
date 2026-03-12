@@ -149,7 +149,7 @@ export const allEvents = [
         "Our Language Learning Program offers comprehensive Cantonese language instruction specifically designed for non-Chinese speaking residents of Hong Kong. These free classes aim to break down language barriers that often prevent full integration into Hong Kong society and limit employment opportunities. The curriculum focuses on practical, everyday Cantonese that participants can immediately use in their daily lives, from shopping and using public transportation to workplace communication. Classes are taught by experienced language instructors who understand the unique challenges faced by adult learners from diverse linguistic backgrounds. With small class sizes and personalized attention, learners of all levels can progress at their own pace. By improving Cantonese language skills, participants can enhance their employment prospects, better navigate daily life in Hong Kong, and connect more deeply with the local community.",
       date: "2025-08-05",
       time: "10:00 - 12:00",
-      location: "Zubin Foundation Office, Wan Chai",
+      location: "The Zubin Foundation Office, Wan Chai",
       address: "5/F, Unit 501, Kai Tak Commercial Building, 317-319 Des Voeux Road Central, Hong Kong",
       image: "/language-learning.png",
       category: "Education",
