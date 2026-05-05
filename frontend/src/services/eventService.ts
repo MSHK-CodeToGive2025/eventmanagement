@@ -131,7 +131,6 @@ const eventService = {
   async getPublicEvents(): Promise<Event[]> {
     const url = `${API_URL}/events/public`;
     const response = await axios.get(url);
-    //console.log('[eventService] Response:', response.data);
     return response.data;
   },
 
@@ -140,7 +139,6 @@ const eventService = {
   async getPublicNonExpiredEvents(): Promise<Event[]> {
     const url = `${API_URL}/events/public-nonexpired`;
     const response = await axios.get(url);
-    //console.log('[eventService] Response:', response.data);
     return response.data;
   },
 

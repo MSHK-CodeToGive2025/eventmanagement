@@ -1,12 +1,13 @@
-import { Link } from "react-router-dom"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { ArrowRight, Calendar, Users, Heart, Play, Pause, MapPin } from "lucide-react"
-import { useState, useEffect, useRef } from "react"
-import eventService, { Event } from "@/services/eventService"
-import { formatDateHKT } from "@/utils/dateTimeHKT"
+import { Link, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { ArrowRight, Calendar, Users, Heart, Play, Pause, MapPin } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import eventService, { Event } from '@/services/eventService';
+import { formatDateHKT } from '@/utils/dateTimeHKT';
 
 export default function LandingPage() {
+  const navigate = useNavigate();
   // State to track which elements have been clicked
   const [clickedElements, setClickedElements] = useState<{
     person1: boolean;
@@ -22,7 +23,7 @@ export default function LandingPage() {
     person4: false,
     person5: false,
     centerCircle: false,
-  })
+  });
 
   // State to track animation sequences
   const [animationSequence, setAnimationSequence] = useState({
@@ -30,21 +31,21 @@ export default function LandingPage() {
     currentStep: 0,
     totalSteps: 5,
     storyMode: false,
-  })
+  });
 
   // State to track if all characters have been clicked
-  const [allCharactersClicked, setAllCharactersClicked] = useState(false)
+  const [allCharactersClicked, setAllCharactersClicked] = useState(false);
 
   // State to track auto-play mode
-  const [autoPlay, setAutoPlay] = useState(false)
+  const [autoPlay, setAutoPlay] = useState(false);
 
   // State for events
-  const [events, setEvents] = useState<Event[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [events, setEvents] = useState<Event[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // Ref to store timeouts for cleanup
-  const timeoutsRef = useRef<NodeJS.Timeout[]>([])
+  const timeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
   // Check if all characters have been clicked
   useEffect(() => {
@@ -53,133 +54,133 @@ export default function LandingPage() {
       clickedElements.person2 &&
       clickedElements.person3 &&
       clickedElements.person4 &&
-      clickedElements.person5
+      clickedElements.person5;
 
-    setAllCharactersClicked(allClicked)
+    setAllCharactersClicked(allClicked);
 
     // If all characters are clicked and center is clicked, start the story sequence
     if (allClicked && clickedElements.centerCircle && !animationSequence.storyMode) {
-      startStorySequence()
+      startStorySequence();
     }
-  }, [clickedElements])
+  }, [clickedElements]);
 
   // Auto-play effect
   useEffect(() => {
     if (autoPlay && !animationSequence.isPlaying) {
-      startAutoPlaySequence()
+      startAutoPlaySequence();
     }
 
     return () => {
       // Clean up any pending timeouts when component unmounts or autoPlay changes
-      timeoutsRef.current.forEach((timeout) => {
-        if (timeout) clearTimeout(timeout)
-      })
-      timeoutsRef.current = []
-    }
-  }, [autoPlay])
+      timeoutsRef.current.forEach(timeout => {
+        if (timeout) clearTimeout(timeout);
+      });
+      timeoutsRef.current = [];
+    };
+  }, [autoPlay]);
 
   // Fetch events from backend
   useEffect(() => {
     const fetchEvents = async () => {
       try {
-        setLoading(true)
-        const publicEvents = await eventService.getPublicNonExpiredEvents()
-        setEvents(publicEvents)
+        setLoading(true);
+        const publicEvents = await eventService.getPublicNonExpiredEvents();
+        setEvents(publicEvents);
       } catch (err) {
-        console.error('Error fetching events:', err)
-        setError('Failed to load events')
+        console.error('Error fetching events:', err);
+        setError('Failed to load events');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    fetchEvents()
-  }, [])
+    fetchEvents();
+  }, []);
 
   // Function to toggle auto-play
   const toggleAutoPlay = () => {
     // If turning off auto-play, clear all timeouts
     if (autoPlay) {
-      timeoutsRef.current.forEach((timeout) => clearTimeout(timeout))
-      timeoutsRef.current = []
+      timeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+      timeoutsRef.current = [];
 
       // Only reset if we're in the middle of a sequence
       if (animationSequence.isPlaying) {
-        resetAnimations()
+        resetAnimations();
       }
     }
 
-    setAutoPlay(!autoPlay)
-  }
+    setAutoPlay(!autoPlay);
+  };
 
   // Function to start the auto-play sequence
   const startAutoPlaySequence = () => {
     // Reset any existing animations
-    resetAnimations()
+    resetAnimations();
 
     // Start with a clean slate
     setTimeout(() => {
       // Click each character in sequence
       const addTimeout = (fn: () => void, delay: number) => {
-        const timeout = setTimeout(fn, delay)
-        timeoutsRef.current.push(timeout)
-        return timeout
-      }
+        const timeout = setTimeout(fn, delay);
+        timeoutsRef.current.push(timeout);
+        return timeout;
+      };
 
       // Click person 1
       addTimeout(() => {
-        handleElementClick("person1")
-      }, 1000)
+        handleElementClick('person1');
+      }, 1000);
 
       // Click person 2
       addTimeout(() => {
-        handleElementClick("person2")
-      }, 3000)
+        handleElementClick('person2');
+      }, 3000);
 
       // Click person 3
       addTimeout(() => {
-        handleElementClick("person3")
-      }, 5000)
+        handleElementClick('person3');
+      }, 5000);
 
       // Click person 4
       addTimeout(() => {
-        handleElementClick("person4")
-      }, 7000)
+        handleElementClick('person4');
+      }, 7000);
 
       // Click person 5
       addTimeout(() => {
-        handleElementClick("person5")
-      }, 9000)
+        handleElementClick('person5');
+      }, 9000);
 
       // Click center to start story mode
       addTimeout(() => {
-        handleElementClick("centerCircle")
-      }, 11000)
+        handleElementClick('centerCircle');
+      }, 11000);
 
       // After story sequence completes, restart if still in auto-play
       addTimeout(() => {
         if (autoPlay) {
-          startAutoPlaySequence()
+          startAutoPlaySequence();
         }
-      }, 22000) // Story sequence takes about 9-10 seconds, plus the 11 seconds above
-    }, 500)
-  }
+      }, 22000); // Story sequence takes about 9-10 seconds, plus the 11 seconds above
+    }, 500);
+  };
 
   // Function to handle element clicks
   const handleElementClick = (element: keyof typeof clickedElements) => {
     // If a sequence is already playing, don't allow new clicks
-    if (animationSequence.isPlaying && animationSequence.storyMode) return
+    if (animationSequence.isPlaying && animationSequence.storyMode) return;
 
-    setClickedElements((prev) => ({
+    setClickedElements(prev => ({
       ...prev,
       [element]: !prev[element],
-    }))
+    }));
 
     // If clicking a character, play its individual sequence
-    if (element.startsWith("person") && !clickedElements[element]) {
-      playCharacterSequence(element)
+    if (element.startsWith('person') && !clickedElements[element]) {
+      playCharacterSequence(element);
     }
-  }
+  };
 
   // Function to play a character's animation sequence
   const playCharacterSequence = (character: string) => {
@@ -188,26 +189,26 @@ export default function LandingPage() {
       currentStep: 0,
       totalSteps: 3,
       storyMode: false,
-    })
+    });
 
     // Step 1: Show speech bubble
     const timeout1 = setTimeout(() => {
-      setAnimationSequence((prev) => ({ ...prev, currentStep: 1 }))
-    }, 500)
-    timeoutsRef.current.push(timeout1)
+      setAnimationSequence(prev => ({ ...prev, currentStep: 1 }));
+    }, 500);
+    timeoutsRef.current.push(timeout1);
 
     // Step 2: Highlight connection to center
     const timeout2 = setTimeout(() => {
-      setAnimationSequence((prev) => ({ ...prev, currentStep: 2 }))
-    }, 1500)
-    timeoutsRef.current.push(timeout2)
+      setAnimationSequence(prev => ({ ...prev, currentStep: 2 }));
+    }, 1500);
+    timeoutsRef.current.push(timeout2);
 
     // Step 3: Complete sequence
     const timeout3 = setTimeout(() => {
-      setAnimationSequence((prev) => ({ ...prev, currentStep: 3, isPlaying: false }))
-    }, 3000)
-    timeoutsRef.current.push(timeout3)
-  }
+      setAnimationSequence(prev => ({ ...prev, currentStep: 3, isPlaying: false }));
+    }, 3000);
+    timeoutsRef.current.push(timeout3);
+  };
 
   // Function to start the main story sequence
   const startStorySequence = () => {
@@ -216,7 +217,7 @@ export default function LandingPage() {
       currentStep: 0,
       totalSteps: 5,
       storyMode: true,
-    })
+    });
 
     // Reset all characters to not clicked for the sequence
     setClickedElements({
@@ -226,64 +227,64 @@ export default function LandingPage() {
       person4: false,
       person5: false,
       centerCircle: true,
-    })
+    });
 
     // Step 1: Center circle expands
     const timeout1 = setTimeout(() => {
-      setAnimationSequence((prev) => ({ ...prev, currentStep: 1 }))
-    }, 1000)
-    timeoutsRef.current.push(timeout1)
+      setAnimationSequence(prev => ({ ...prev, currentStep: 1 }));
+    }, 1000);
+    timeoutsRef.current.push(timeout1);
 
     // Step 2: First wave of characters connect (1 and 3)
     const timeout2 = setTimeout(() => {
-      setClickedElements((prev) => ({
+      setClickedElements(prev => ({
         ...prev,
         person1: true,
         person3: true,
-      }))
-      setAnimationSequence((prev) => ({ ...prev, currentStep: 2 }))
-    }, 2000)
-    timeoutsRef.current.push(timeout2)
+      }));
+      setAnimationSequence(prev => ({ ...prev, currentStep: 2 }));
+    }, 2000);
+    timeoutsRef.current.push(timeout2);
 
     // Step 3: Second wave of characters connect (2 and 5)
     const timeout3 = setTimeout(() => {
-      setClickedElements((prev) => ({
+      setClickedElements(prev => ({
         ...prev,
         person2: true,
         person5: true,
-      }))
-      setAnimationSequence((prev) => ({ ...prev, currentStep: 3 }))
-    }, 3500)
-    timeoutsRef.current.push(timeout3)
+      }));
+      setAnimationSequence(prev => ({ ...prev, currentStep: 3 }));
+    }, 3500);
+    timeoutsRef.current.push(timeout3);
 
     // Step 4: Final character connects (4)
     const timeout4 = setTimeout(() => {
-      setClickedElements((prev) => ({
+      setClickedElements(prev => ({
         ...prev,
         person4: true,
-      }))
-      setAnimationSequence((prev) => ({ ...prev, currentStep: 4 }))
-    }, 5000)
-    timeoutsRef.current.push(timeout4)
+      }));
+      setAnimationSequence(prev => ({ ...prev, currentStep: 4 }));
+    }, 5000);
+    timeoutsRef.current.push(timeout4);
 
     // Step 5: All characters celebrate
     const timeout5 = setTimeout(() => {
-      setAnimationSequence((prev) => ({ ...prev, currentStep: 5 }))
-    }, 6500)
-    timeoutsRef.current.push(timeout5)
+      setAnimationSequence(prev => ({ ...prev, currentStep: 5 }));
+    }, 6500);
+    timeoutsRef.current.push(timeout5);
 
     // Complete sequence
     const timeout6 = setTimeout(() => {
-      setAnimationSequence((prev) => ({ ...prev, isPlaying: false }))
-    }, 9000)
-    timeoutsRef.current.push(timeout6)
-  }
+      setAnimationSequence(prev => ({ ...prev, isPlaying: false }));
+    }, 9000);
+    timeoutsRef.current.push(timeout6);
+  };
 
   // Function to reset all animations
   const resetAnimations = () => {
     // Clear all timeouts
-    timeoutsRef.current.forEach((timeout) => clearTimeout(timeout))
-    timeoutsRef.current = []
+    timeoutsRef.current.forEach(timeout => clearTimeout(timeout));
+    timeoutsRef.current = [];
 
     setClickedElements({
       person1: false,
@@ -292,15 +293,15 @@ export default function LandingPage() {
       person4: false,
       person5: false,
       centerCircle: false,
-    })
+    });
     setAnimationSequence({
       isPlaying: false,
       currentStep: 0,
       totalSteps: 5,
       storyMode: false,
-    })
-    setAllCharactersClicked(false)
-  }
+    });
+    setAllCharactersClicked(false);
+  };
 
   return (
     <div>
@@ -314,7 +315,8 @@ export default function LandingPage() {
                 Transforming Lives of Hong Kong's Ethnically diverse individuals
               </h1>
               <p className="text-lg text-gray-700">
-                Join our events and be part of our mission to improve the lives of ethnically diverse individuals in Hong Kong.
+                Join our events and be part of our mission to improve the lives of ethnically
+                diverse individuals in Hong Kong.
               </p>
               <div className="flex flex-wrap gap-4">
                 <Link to="/enhanced-events">
@@ -335,10 +337,10 @@ export default function LandingPage() {
               <button
                 onClick={toggleAutoPlay}
                 className={`absolute top-4 right-4 z-20 p-2 rounded-full ${
-                  autoPlay ? "bg-yellow-500 text-white" : "bg-white/80 text-yellow-600"
+                  autoPlay ? 'bg-yellow-500 text-white' : 'bg-white/80 text-yellow-600'
                 } hover:bg-yellow-400 hover:text-white transition-colors shadow-md focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:ring-offset-2`}
-                aria-label={autoPlay ? "Pause animation" : "Play animation automatically"}
-                title={autoPlay ? "Pause animation" : "Play animation automatically"}
+                aria-label={autoPlay ? 'Pause animation' : 'Play animation automatically'}
+                title={autoPlay ? 'Pause animation' : 'Play animation automatically'}
               >
                 {autoPlay ? <Pause size={20} /> : <Play size={20} />}
               </button>
@@ -352,8 +354,8 @@ export default function LandingPage() {
               >
                 <title id="hero-svg-title">Community Connections</title>
                 <desc id="hero-svg-desc">
-                  An interactive illustration of diverse people connecting at a community event in Hong Kong. Click on
-                  people to see animations and discover their stories.
+                  An interactive illustration of diverse people connecting at a community event in
+                  Hong Kong. Click on people to see animations and discover their stories.
                 </desc>
 
                 {/* Decorative elements */}
@@ -368,13 +370,15 @@ export default function LandingPage() {
                 <circle
                   cx="400"
                   cy="300"
-                  r={clickedElements.centerCircle ? "60" : "40"}
-                  fill={clickedElements.centerCircle ? "#FBBF24" : "#FEF3C7"}
-                  className={`center-circle ${clickedElements.centerCircle ? "clicked" : ""} ${
-                    animationSequence.storyMode && animationSequence.currentStep >= 1 ? "pulse-scale" : ""
+                  r={clickedElements.centerCircle ? '60' : '40'}
+                  fill={clickedElements.centerCircle ? '#FBBF24' : '#FEF3C7'}
+                  className={`center-circle ${clickedElements.centerCircle ? 'clicked' : ''} ${
+                    animationSequence.storyMode && animationSequence.currentStep >= 1
+                      ? 'pulse-scale'
+                      : ''
                   }`}
-                  onClick={() => handleElementClick("centerCircle")}
-                  style={{ cursor: "pointer" }}
+                  onClick={() => handleElementClick('centerCircle')}
+                  style={{ cursor: 'pointer' }}
                 />
 
                 {/* Center text that appears during story mode */}
@@ -395,95 +399,115 @@ export default function LandingPage() {
                 {/* Connection lines */}
                 <g
                   className={`connection-lines ${
-                    clickedElements.centerCircle ? "active-connections" : "animate-pulse-slow"
+                    clickedElements.centerCircle ? 'active-connections' : 'animate-pulse-slow'
                   }`}
                 >
                   {/* Person 1 connection */}
                   <path
                     d="M400,300 L200,300"
                     stroke="#FBBF24"
-                    strokeWidth={clickedElements.person1 ? "5" : "2"}
+                    strokeWidth={clickedElements.person1 ? '5' : '2'}
                     fill="none"
-                    className={`${clickedElements.person1 ? "active-line" : ""} ${
-                      animationSequence.storyMode && animationSequence.currentStep >= 2 ? "animate-draw" : ""
+                    className={`${clickedElements.person1 ? 'active-line' : ''} ${
+                      animationSequence.storyMode && animationSequence.currentStep >= 2
+                        ? 'animate-draw'
+                        : ''
                     }`}
-                    strokeDasharray={clickedElements.person1 ? "0" : "1000"}
-                    strokeDashoffset={clickedElements.person1 ? "0" : "1000"}
+                    strokeDasharray={clickedElements.person1 ? '0' : '1000'}
+                    strokeDashoffset={clickedElements.person1 ? '0' : '1000'}
                   />
 
                   {/* Person 2 connection */}
                   <path
                     d="M400,300 L400,250"
                     stroke="#FBBF24"
-                    strokeWidth={clickedElements.person2 ? "5" : "2"}
+                    strokeWidth={clickedElements.person2 ? '5' : '2'}
                     fill="none"
-                    className={`${clickedElements.person2 ? "active-line" : ""} ${
-                      animationSequence.storyMode && animationSequence.currentStep >= 3 ? "animate-draw" : ""
+                    className={`${clickedElements.person2 ? 'active-line' : ''} ${
+                      animationSequence.storyMode && animationSequence.currentStep >= 3
+                        ? 'animate-draw'
+                        : ''
                     }`}
-                    strokeDasharray={clickedElements.person2 ? "0" : "1000"}
-                    strokeDashoffset={clickedElements.person2 ? "0" : "1000"}
+                    strokeDasharray={clickedElements.person2 ? '0' : '1000'}
+                    strokeDashoffset={clickedElements.person2 ? '0' : '1000'}
                   />
 
                   {/* Person 3 connection */}
                   <path
                     d="M400,300 L600,300"
                     stroke="#FBBF24"
-                    strokeWidth={clickedElements.person3 ? "5" : "2"}
+                    strokeWidth={clickedElements.person3 ? '5' : '2'}
                     fill="none"
-                    className={`${clickedElements.person3 ? "active-line" : ""} ${
-                      animationSequence.storyMode && animationSequence.currentStep >= 2 ? "animate-draw" : ""
+                    className={`${clickedElements.person3 ? 'active-line' : ''} ${
+                      animationSequence.storyMode && animationSequence.currentStep >= 2
+                        ? 'animate-draw'
+                        : ''
                     }`}
-                    strokeDasharray={clickedElements.person3 ? "0" : "1000"}
-                    strokeDashoffset={clickedElements.person3 ? "0" : "1000"}
+                    strokeDasharray={clickedElements.person3 ? '0' : '1000'}
+                    strokeDashoffset={clickedElements.person3 ? '0' : '1000'}
                   />
 
                   {/* Person 4 connection */}
                   <path
                     d="M400,300 L300,400"
                     stroke="#FBBF24"
-                    strokeWidth={clickedElements.person4 ? "5" : "2"}
+                    strokeWidth={clickedElements.person4 ? '5' : '2'}
                     fill="none"
-                    className={`${clickedElements.person4 ? "active-line" : ""} ${
-                      animationSequence.storyMode && animationSequence.currentStep >= 4 ? "animate-draw" : ""
+                    className={`${clickedElements.person4 ? 'active-line' : ''} ${
+                      animationSequence.storyMode && animationSequence.currentStep >= 4
+                        ? 'animate-draw'
+                        : ''
                     }`}
-                    strokeDasharray={clickedElements.person4 ? "0" : "1000"}
-                    strokeDashoffset={clickedElements.person4 ? "0" : "1000"}
+                    strokeDasharray={clickedElements.person4 ? '0' : '1000'}
+                    strokeDashoffset={clickedElements.person4 ? '0' : '1000'}
                   />
 
                   {/* Person 5 connection */}
                   <path
                     d="M400,300 L500,400"
                     stroke="#FBBF24"
-                    strokeWidth={clickedElements.person5 ? "5" : "2"}
+                    strokeWidth={clickedElements.person5 ? '5' : '2'}
                     fill="none"
-                    className={`${clickedElements.person5 ? "active-line" : ""} ${
-                      animationSequence.storyMode && animationSequence.currentStep >= 3 ? "animate-draw" : ""
+                    className={`${clickedElements.person5 ? 'active-line' : ''} ${
+                      animationSequence.storyMode && animationSequence.currentStep >= 3
+                        ? 'animate-draw'
+                        : ''
                     }`}
-                    strokeDasharray={clickedElements.person5 ? "0" : "1000"}
-                    strokeDashoffset={clickedElements.person5 ? "0" : "1000"}
+                    strokeDasharray={clickedElements.person5 ? '0' : '1000'}
+                    strokeDashoffset={clickedElements.person5 ? '0' : '1000'}
                   />
                 </g>
 
                 {/* People group 1 - interactive on click */}
                 <g
-                  className={`person-group ${clickedElements.person1 ? "clicked" : ""} ${
-                    animationSequence.storyMode && animationSequence.currentStep >= 5 ? "celebrate" : ""
+                  className={`person-group ${clickedElements.person1 ? 'clicked' : ''} ${
+                    animationSequence.storyMode && animationSequence.currentStep >= 5
+                      ? 'celebrate'
+                      : ''
                   }`}
-                  transform={`translate(200, 300) ${clickedElements.person1 ? "scale(1.2)" : ""}`}
-                  onClick={() => handleElementClick("person1")}
+                  transform={`translate(200, 300) ${clickedElements.person1 ? 'scale(1.2)' : ''}`}
+                  onClick={() => handleElementClick('person1')}
                 >
                   <circle
                     className="person-circle"
                     cx="0"
                     cy="0"
                     r="40"
-                    fill={clickedElements.person1 ? "#FBBF24" : "#FCD34D"}
+                    fill={clickedElements.person1 ? '#FBBF24' : '#FCD34D'}
                   />
                   <circle cx="0" cy="-15" r="15" fill="#F59E0B" />
                   <path d="M-15,0 Q0,20 15,0" stroke="#F59E0B" strokeWidth="3" fill="none" />
                   {clickedElements.person1 && (
                     <g className="speech-bubble">
-                      <rect x="-70" y="-80" width="140" height="40" rx="10" fill="white" stroke="#F59E0B" />
+                      <rect
+                        x="-70"
+                        y="-80"
+                        width="140"
+                        height="40"
+                        rx="10"
+                        fill="white"
+                        stroke="#F59E0B"
+                      />
                       <text x="0" y="-55" textAnchor="middle" fill="#F59E0B" fontSize="12">
                         {animationSequence.storyMode && animationSequence.currentStep >= 5
                           ? "We're stronger together!"
@@ -495,27 +519,37 @@ export default function LandingPage() {
 
                 {/* People group 2 - interactive on click */}
                 <g
-                  className={`person-group ${clickedElements.person2 ? "clicked" : ""} ${
-                    animationSequence.storyMode && animationSequence.currentStep >= 5 ? "celebrate" : ""
+                  className={`person-group ${clickedElements.person2 ? 'clicked' : ''} ${
+                    animationSequence.storyMode && animationSequence.currentStep >= 5
+                      ? 'celebrate'
+                      : ''
                   }`}
-                  transform={`translate(400, 250) ${clickedElements.person2 ? "scale(1.2)" : ""}`}
-                  onClick={() => handleElementClick("person2")}
+                  transform={`translate(400, 250) ${clickedElements.person2 ? 'scale(1.2)' : ''}`}
+                  onClick={() => handleElementClick('person2')}
                 >
                   <circle
                     className="person-circle"
                     cx="0"
                     cy="0"
                     r="40"
-                    fill={clickedElements.person2 ? "#FBBF24" : "#A7F3D0"}
+                    fill={clickedElements.person2 ? '#FBBF24' : '#A7F3D0'}
                   />
                   <circle cx="0" cy="-15" r="15" fill="#10B981" />
                   <path d="M-15,0 Q0,20 15,0" stroke="#10B981" strokeWidth="3" fill="none" />
                   {clickedElements.person2 && (
                     <g className="speech-bubble">
-                      <rect x="-70" y="-80" width="140" height="40" rx="10" fill="white" stroke="#10B981" />
+                      <rect
+                        x="-70"
+                        y="-80"
+                        width="140"
+                        height="40"
+                        rx="10"
+                        fill="white"
+                        stroke="#10B981"
+                      />
                       <text x="0" y="-55" textAnchor="middle" fill="#10B981" fontSize="12">
                         {animationSequence.storyMode && animationSequence.currentStep >= 5
-                          ? "Building community!"
+                          ? 'Building community!'
                           : "I'm Raj from India!"}
                       </text>
                     </g>
@@ -524,27 +558,37 @@ export default function LandingPage() {
 
                 {/* People group 3 - interactive on click */}
                 <g
-                  className={`person-group ${clickedElements.person3 ? "clicked" : ""} ${
-                    animationSequence.storyMode && animationSequence.currentStep >= 5 ? "celebrate" : ""
+                  className={`person-group ${clickedElements.person3 ? 'clicked' : ''} ${
+                    animationSequence.storyMode && animationSequence.currentStep >= 5
+                      ? 'celebrate'
+                      : ''
                   }`}
-                  transform={`translate(600, 300) ${clickedElements.person3 ? "scale(1.2)" : ""}`}
-                  onClick={() => handleElementClick("person3")}
+                  transform={`translate(600, 300) ${clickedElements.person3 ? 'scale(1.2)' : ''}`}
+                  onClick={() => handleElementClick('person3')}
                 >
                   <circle
                     className="person-circle"
                     cx="0"
                     cy="0"
                     r="40"
-                    fill={clickedElements.person3 ? "#FBBF24" : "#BFDBFE"}
+                    fill={clickedElements.person3 ? '#FBBF24' : '#BFDBFE'}
                   />
                   <circle cx="0" cy="-15" r="15" fill="#3B82F6" />
                   <path d="M-15,0 Q0,20 15,0" stroke="#3B82F6" strokeWidth="3" fill="none" />
                   {clickedElements.person3 && (
                     <g className="speech-bubble">
-                      <rect x="-70" y="-80" width="140" height="40" rx="10" fill="white" stroke="#3B82F6" />
+                      <rect
+                        x="-70"
+                        y="-80"
+                        width="140"
+                        height="40"
+                        rx="10"
+                        fill="white"
+                        stroke="#3B82F6"
+                      />
                       <text x="0" y="-55" textAnchor="middle" fill="#3B82F6" fontSize="12">
                         {animationSequence.storyMode && animationSequence.currentStep >= 5
-                          ? "Diversity is our strength!"
+                          ? 'Diversity is our strength!'
                           : "Hi, I'm Ahmed from Pakistan!"}
                       </text>
                     </g>
@@ -553,27 +597,37 @@ export default function LandingPage() {
 
                 {/* People group 4 - interactive on click */}
                 <g
-                  className={`person-group ${clickedElements.person4 ? "clicked" : ""} ${
-                    animationSequence.storyMode && animationSequence.currentStep >= 5 ? "celebrate" : ""
+                  className={`person-group ${clickedElements.person4 ? 'clicked' : ''} ${
+                    animationSequence.storyMode && animationSequence.currentStep >= 5
+                      ? 'celebrate'
+                      : ''
                   }`}
-                  transform={`translate(300, 400) ${clickedElements.person4 ? "scale(1.2)" : ""}`}
-                  onClick={() => handleElementClick("person4")}
+                  transform={`translate(300, 400) ${clickedElements.person4 ? 'scale(1.2)' : ''}`}
+                  onClick={() => handleElementClick('person4')}
                 >
                   <circle
                     className="person-circle"
                     cx="0"
                     cy="0"
                     r="40"
-                    fill={clickedElements.person4 ? "#FBBF24" : "#FBD5E0"}
+                    fill={clickedElements.person4 ? '#FBBF24' : '#FBD5E0'}
                   />
                   <circle cx="0" cy="-15" r="15" fill="#EC4899" />
                   <path d="M-15,0 Q0,20 15,0" stroke="#EC4899" strokeWidth="3" fill="none" />
                   {clickedElements.person4 && (
                     <g className="speech-bubble">
-                      <rect x="-70" y="-80" width="140" height="40" rx="10" fill="white" stroke="#EC4899" />
+                      <rect
+                        x="-70"
+                        y="-80"
+                        width="140"
+                        height="40"
+                        rx="10"
+                        fill="white"
+                        stroke="#EC4899"
+                      />
                       <text x="0" y="-55" textAnchor="middle" fill="#EC4899" fontSize="12">
                         {animationSequence.storyMode && animationSequence.currentStep >= 5
-                          ? "Together we can do more!"
+                          ? 'Together we can do more!'
                           : "I'm Sofia from Philippines!"}
                       </text>
                     </g>
@@ -582,27 +636,37 @@ export default function LandingPage() {
 
                 {/* People group 5 - interactive on click */}
                 <g
-                  className={`person-group ${clickedElements.person5 ? "clicked" : ""} ${
-                    animationSequence.storyMode && animationSequence.currentStep >= 5 ? "celebrate" : ""
+                  className={`person-group ${clickedElements.person5 ? 'clicked' : ''} ${
+                    animationSequence.storyMode && animationSequence.currentStep >= 5
+                      ? 'celebrate'
+                      : ''
                   }`}
-                  transform={`translate(500, 400) ${clickedElements.person5 ? "scale(1.2)" : ""}`}
-                  onClick={() => handleElementClick("person5")}
+                  transform={`translate(500, 400) ${clickedElements.person5 ? 'scale(1.2)' : ''}`}
+                  onClick={() => handleElementClick('person5')}
                 >
                   <circle
                     className="person-circle"
                     cx="0"
                     cy="0"
                     r="40"
-                    fill={clickedElements.person5 ? "#FBBF24" : "#DDD6FE"}
+                    fill={clickedElements.person5 ? '#FBBF24' : '#DDD6FE'}
                   />
                   <circle cx="0" cy="-15" r="15" fill="#8B5CF6" />
                   <path d="M-15,0 Q0,20 15,0" stroke="#8B5CF6" strokeWidth="3" fill="none" />
                   {clickedElements.person5 && (
                     <g className="speech-bubble">
-                      <rect x="-70" y="-80" width="140" height="40" rx="10" fill="white" stroke="#8B5CF6" />
+                      <rect
+                        x="-70"
+                        y="-80"
+                        width="140"
+                        height="40"
+                        rx="10"
+                        fill="white"
+                        stroke="#8B5CF6"
+                      />
                       <text x="0" y="-55" textAnchor="middle" fill="#8B5CF6" fontSize="12">
                         {animationSequence.storyMode && animationSequence.currentStep >= 5
-                          ? "Creating a better Hong Kong!"
+                          ? 'Creating a better Hong Kong!'
                           : "Hello, I'm Li from Indonesia!"}
                       </text>
                     </g>
@@ -621,8 +685,17 @@ export default function LandingPage() {
                       fill="#FBBF24"
                       className="animate-pulse-slow"
                     />
-                    <text x="400" y="145" textAnchor="middle" fill="white" fontWeight="bold" fontSize="16">
-                      {animationSequence.currentStep < 5 ? "Watch our community form..." : "We are stronger together!"}
+                    <text
+                      x="400"
+                      y="145"
+                      textAnchor="middle"
+                      fill="white"
+                      fontWeight="bold"
+                      fontSize="16"
+                    >
+                      {animationSequence.currentStep < 5
+                        ? 'Watch our community form...'
+                        : 'We are stronger together!'}
                     </text>
                   </g>
                 )}
@@ -630,7 +703,14 @@ export default function LandingPage() {
                 {/* Text label */}
                 <g className="animate-fade-in">
                   <rect x="250" y="500" width="300" height="40" rx="20" fill="#FBBF24" />
-                  <text x="400" y="525" textAnchor="middle" fill="white" fontWeight="bold" fontSize="18">
+                  <text
+                    x="400"
+                    y="525"
+                    textAnchor="middle"
+                    fill="white"
+                    fontWeight="bold"
+                    fontSize="18"
+                  >
                     Building Inclusive Communities
                   </text>
                 </g>
@@ -638,10 +718,10 @@ export default function LandingPage() {
                 {/* Instructions text */}
                 <text x="400" y="560" textAnchor="middle" fill="#6B7280" fontSize="14">
                   {autoPlay
-                    ? "Watching auto-play animation..."
+                    ? 'Watching auto-play animation...'
                     : allCharactersClicked
-                      ? "Now click the center to see the community story!"
-                      : "Click on each character to meet them"}
+                      ? 'Now click the center to see the community story!'
+                      : 'Click on each character to meet them'}
                 </text>
 
                 {/* Auto-play indicator */}
@@ -798,8 +878,8 @@ export default function LandingPage() {
               // Error state
               <div className="col-span-3 text-center py-8">
                 <p className="text-gray-500">{error}</p>
-                <Button 
-                  onClick={() => window.location.reload()} 
+                <Button
+                  onClick={() => window.location.reload()}
                   className="mt-4 bg-yellow-400 hover:bg-yellow-500 text-black"
                 >
                   Try Again
@@ -812,65 +892,66 @@ export default function LandingPage() {
                 <p className="text-gray-400 text-sm mt-2">Check back soon for new events!</p>
               </div>
             ) : (
-              // Events display
-              events
-                .filter((event: Event) => new Date(event.startDate) > new Date() && event.status === "Published")
-                .slice(0, 3)
-                .map((event: Event) => (
-                  <Card key={event._id} className="overflow-hidden hover:shadow-md transition-shadow">
-                    {/* Event Image */}
-                    <div className="relative aspect-square">
-                      <img
-                        src={eventService.getEventImageUrl(event._id, event) || "/placeholder.svg?height=400&width=400&query=event"}
-                        alt={event.title}
-                        className="object-cover w-full h-full"
-                        onError={(e) => {
-                          // Safe error handling with proper type checking
-                          if (e && e.currentTarget) {
-                            e.currentTarget.src = "/placeholder.svg?key=event-fallback"
-                          }
-                        }}
-                      />
+              // Events display - API already returns published, non-expired events
+              events.slice(0, 3).map((event: Event) => (
+                <Card key={event._id} className="overflow-hidden hover:shadow-md transition-shadow">
+                  {/* Event Image */}
+                  <div className="relative aspect-square">
+                    <img
+                      src={
+                        eventService.getEventImageUrl(event._id, event) ||
+                        '/placeholder.svg?height=400&width=400&query=event'
+                      }
+                      alt={event.title}
+                      className="object-cover w-full h-full"
+                      onError={e => {
+                        // Safe error handling with proper type checking
+                        if (e && e.currentTarget) {
+                          e.currentTarget.src = '/placeholder.svg?key=event-fallback';
+                        }
+                      }}
+                    />
+                  </div>
+                  {/* Event Details */}
+                  <CardContent className="p-4">
+                    <h2 className="text-xl font-semibold mb-2 line-clamp-1">{event.title}</h2>
+                    <div className="space-y-2 mb-4">
+                      {/* Event Date Range */}
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span>
+                          {formatDateHKT(new Date(event.startDate))} -{' '}
+                          {formatDateHKT(new Date(event.endDate))}
+                        </span>
+                      </div>
+                      {/* Event Location */}
+                      <div className="flex items-center text-sm text-gray-600">
+                        <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span className="line-clamp-1">{event.location.venue}</span>
+                      </div>
                     </div>
-                    {/* Event Details */}
-                    <CardContent className="p-4">
-                      <h2 className="text-xl font-semibold mb-2 line-clamp-1">{event.title}</h2>
-                      <div className="space-y-2 mb-4">
-                        {/* Event Date Range */}
-                        <div className="flex items-center text-sm text-gray-600">
-                          <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span>
-                            {formatDateHKT(new Date(event.startDate))} - {formatDateHKT(new Date(event.endDate))}
-                          </span>
-                        </div>
-                        {/* Event Location */}
-                        <div className="flex items-center text-sm text-gray-600">
-                          <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
-                          <span className="line-clamp-1">{event.location.venue}</span>
-                        </div>
-                      </div>
-                      {/* Event Tags */}
-                      <div className="flex flex-wrap gap-2 mb-4">
-                        <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">
-                          {event.category}
-                        </span>
-                        <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
-                          {event.targetGroup}
-                        </span>
-                      </div>
-                      {/* Event Footer */}
-                      <div className="flex justify-end">
-                        <Button
-                          onClick={() => window.location.href = `/enhanced-events/${event._id}`}
-                          className="bg-yellow-400 hover:bg-yellow-500 text-black"
-                          size="sm"
-                        >
-                          View Details
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                    {/* Event Tags */}
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs">
+                        {event.category}
+                      </span>
+                      <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-xs">
+                        {event.targetGroup}
+                      </span>
+                    </div>
+                    {/* Event Footer */}
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={() => navigate(`/enhanced-events/${event._id}`, { state: { event } })}
+                        className="bg-yellow-400 hover:bg-yellow-500 text-black"
+                        size="sm"
+                      >
+                        View Details
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </div>
           <div className="text-center mt-8">
@@ -889,8 +970,8 @@ export default function LandingPage() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold mb-4">Our Event Platform</h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
-              Discover, register, and participate in events designed to support and empower ethnic minorities in Hong
-              Kong.
+              Discover, register, and participate in events designed to support and empower ethnic
+              minorities in Hong Kong.
             </p>
           </div>
 
@@ -933,7 +1014,8 @@ export default function LandingPage() {
               </div>
               <h3 className="text-xl font-bold mb-2">Support Our Mission</h3>
               <p className="text-gray-600 mb-4">
-                Join our community and help us transform the lives of ethnic minorities in Hong Kong.
+                Join our community and help us transform the lives of ethnic minorities in Hong
+                Kong.
               </p>
               <a
                 href="https://www.zubinfoundation.org/"
@@ -953,14 +1035,18 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4 text-black">Ready to Join Our Events?</h2>
           <p className="text-black/80 max-w-2xl mx-auto mb-8">
-            Create an account to register for events, connect with our community, and stay updated on our initiatives.
+            Create an account to register for events, connect with our community, and stay updated
+            on our initiatives.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
             <Link to="/sign-up">
               <Button className="bg-black hover:bg-black/80 text-white">Sign Up Now</Button>
             </Link>
             <Link to="/enhanced-events">
-              <Button variant="outline" className="bg-white hover:bg-white/90 text-black border-black">
+              <Button
+                variant="outline"
+                className="bg-white hover:bg-white/90 text-black border-black"
+              >
                 Browse Events
               </Button>
             </Link>
@@ -968,5 +1054,5 @@ export default function LandingPage() {
         </div>
       </section>
     </div>
-  )
+  );
 }
