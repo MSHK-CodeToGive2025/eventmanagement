@@ -80,7 +80,22 @@ export default function SimplifiedFormBuilder({
   const [currentStep, setCurrentStep] = useState(1)
   const [sections, setSections] = useState<FormSectionType[]>(defaultSections)
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
-  const [nextId, setNextId] = useState(defaultSections.length + 1)
+  const [nextId, setNextId] = useState(() => {
+    let maxId = 0;
+    defaultSections.forEach(section => {
+      const sIdMatch = section.id.match(/\d+/);
+      if (sIdMatch) {
+        maxId = Math.max(maxId, parseInt(sIdMatch[0], 10));
+      }
+      section.fields.forEach(field => {
+        const fIdMatch = field.id.match(/\d+/);
+        if (fIdMatch) {
+          maxId = Math.max(maxId, parseInt(fIdMatch[0], 10));
+        }
+      });
+    });
+    return maxId + 1;
+  });
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [previewValues, setPreviewValues] = useState<Record<string, any>>({})
 
