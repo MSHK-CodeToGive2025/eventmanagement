@@ -194,6 +194,29 @@ router.get('/public-nonexpired', async (req, res) => {
   }
 });
 
+// Get single event for public access (no auth required).
+// Only returns published, non-private events so shared links work in guest mode.
+// Private events still require auth via GET /:id below.
+router.get('/public/:id', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id)
+      .populate('createdBy', 'firstName lastName email');
+
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    if (event.status !== 'Published' || event.isPrivate) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    res.json(event);
+  } catch (error) {
+    console.error('[EVENTS] Error fetching public event:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get single event (requires auth - implements private event access control)
 router.get('/:id', auth, async (req, res) => {
   try {

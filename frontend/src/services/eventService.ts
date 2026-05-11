@@ -142,14 +142,41 @@ const eventService = {
     return response.data;
   },
 
-  // Get single event
+  // Get single event.
+  // Authenticated users hit the protected endpoint (which honors private-event
+  // access control). Guests fall back to the public endpoint so shared event
+  // links work without sign-in (only published, non-private events are returned).
 
   async getEvent(id: string): Promise<Event> {
-    const url = `${API_URL}/events/${id}`;
-    const response = await axios.get(url, {
-      headers: authHeader(),
-    });
-    //console.log('[eventService] Response:', response.data);
+    const token = localStorage.getItem('token');
+    if (!token) {
+      const response = await axios.get(`${API_URL}/events/public/${id}`);
+      return response.data;
+    }
+
+    try {
+      const response = await axios.get(`${API_URL}/events/${id}`, {
+        headers: authHeader(),
+      });
+      return response.data;
+    } catch (error: any) {
+      // Token may be expired/invalid - fall back to the public endpoint so
+      // shared links still work for published, non-private events.
+      const status = error?.response?.status;
+      if (status === 401 || status === 403) {
+        const response = await axios.get(`${API_URL}/events/public/${id}`);
+        return response.data;
+      }
+      throw error;
+    }
+  },
+
+  // Explicitly fetch the public view of an event (no auth required).
+  // Useful when we need the public response shape regardless of auth state.
+
+  async getPublicEvent(id: string): Promise<Event> {
+    const url = `${API_URL}/events/public/${id}`;
+    const response = await axios.get(url);
     return response.data;
   },
 
