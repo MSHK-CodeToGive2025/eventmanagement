@@ -6,7 +6,7 @@ WhatsApp messaging uses **templates only** (no freeform/body messages) to avoid 
 
 1. **Manual messages (Send WhatsApp Event Update in UI)**  
    - Use the **event update utility template** (`TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID` / `zubin_foundation_event_update_v2`).  
-   - Variable 1 = event title (auto-filled), Variable 2 = session (selectable), Variable 3 = your message (entered in the dialog), Variable 4 = contact name (auto-filled from event settings), Variable 5 = contact phone (auto-filled from event settings).
+   - Variable 1 = event title (auto-filled), Variable 2 = session (selectable), Variable 3 = your message **plus** the standard disclaimer (appended in the backend), Variable 4 = contact name (auto-filled from event settings), Variable 5 = contact phone (auto-filled from event settings).
 
 2. **Scheduled event reminders**  
    - Use the **8-variable reminder template** (`TWILIO_WHATSAPP_TEMPLATE_SID` / `zubin_foundation_event_reminder_v2`) when the event's default is "template", or the **event update template** when "custom".  
@@ -59,6 +59,14 @@ We look forward to seeing you!
 
 Template: `zubin_foundation_event_update_v2`
 
+The backend appends the following disclaimer to **variable 3** after the staff-entered message (Twilio-safe, single block of text):
+
+`Please do not reply to this message. For further information, kindly contact the number above.`
+
+**Twilio / Meta template body:** Remove any static footer such as `Reply STOP to unsubscribe.` from the approved template. Otherwise recipients would see both the old STOP line and the new disclaimer inside variable 3.
+
+Example layout (static text in Twilio; `{{3}}` already includes the disclaimer from the API):
+
 ```
 📢 *The Zubin Foundation Event Update*
 
@@ -70,13 +78,11 @@ Template: `zubin_foundation_event_update_v2`
 For query,
 👤 Contact: {{4}}
 📞 Phone: {{5}}
-
-Reply STOP to unsubscribe.
 ```
 
 - **Variable 1**: Event title
 - **Variable 2**: Session title (space if not applicable)
-- **Variable 3**: Message body
+- **Variable 3**: Message body **including** the post-body disclaimer (combined server-side)
 - **Variable 4**: Contact name
 - **Variable 5**: Contact phone
 
@@ -100,8 +106,8 @@ await this.sendEventReminder(event, reminderHours, eventType, startDateTime, fal
 
 Both individual and bulk WhatsApp message routes use the event update template:
 
-- `/send-whatsapp-reminder` - Individual messages (5 variables)
-- `/:id/send-whatsapp` - Bulk messages to all registered participants (5 variables)
+- `/send-whatsapp-reminder` - Individual messages (5 variables; variable 3 includes the post-body disclaimer)
+- `/:id/send-whatsapp` - Bulk messages to all registered participants (5 variables; variable 3 includes the post-body disclaimer)
 
 ### Frontend Changes
 

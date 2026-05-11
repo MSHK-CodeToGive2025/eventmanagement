@@ -9,6 +9,7 @@ import RegistrationForm from '../../models/RegistrationForm.js';
 import EventRegistration from '../../models/EventRegistration.js';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
+import { buildEventUpdateMessageBodyVariable } from '../../utils/whatsappEventUpdateVariables.js';
 
 // Load environment variables
 dotenv.config();
@@ -684,7 +685,7 @@ describe('Events Routes', () => {
       expect(vars).toEqual({
         '1': 'My Event Title',
         '2': 'Session 1',
-        '3': 'Hello participants',
+        '3': buildEventUpdateMessageBodyVariable('Hello participants'),
         '4': 'John',
         '5': '+85200000000'
       });
@@ -716,7 +717,7 @@ describe('Events Routes', () => {
       const vars = typeof call.contentVariables === 'string' ? JSON.parse(call.contentVariables) : call.contentVariables;
       expect(vars['1']).toBe('Test Event');
       expect(vars['2']).toBe('Session A');
-      expect(vars['3']).toBe('Custom message here');
+      expect(vars['3']).toBe(buildEventUpdateMessageBodyVariable('Custom message here'));
       expect(vars['4']).toBe('Staff User');
       expect(vars['5']).toBe('+85211111111');
       expect(call.to).toMatch(/whatsapp:.*85298765432/);

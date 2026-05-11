@@ -7,6 +7,7 @@ import EventRegistration from '../models/EventRegistration.js';
 import multer from 'multer';
 import twilio from 'twilio';
 import { formatForWhatsApp, ensureWhatsAppPrefix } from '../utils/phoneUtils.js';
+import { buildEventUpdateMessageBodyVariable } from '../utils/whatsappEventUpdateVariables.js';
 import { getEventDateRangeFromSessions } from '../utils/eventDateRange.js';
 
 dotenv.config();
@@ -758,7 +759,7 @@ router.delete('/:id/cover-image', auth, async (req, res) => {
 
 // Send WhatsApp message to registered participant (requires auth)
 // Uses the event update utility template (zubin_foundation_event_update_v2).
-// Variables: 1=event title, 2=session, 3=message body, 4=contact name, 5=contact phone.
+// Variables: 1=event title, 2=session, 3=message body (includes post-body disclaimer), 4=contact name, 5=contact phone.
 router.post('/send-whatsapp-reminder', async (req, res) => {
   try {
     const { to, message, eventTitle, session, contactName, contactPhone } = req.body;
@@ -792,7 +793,7 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
       contentVariables: JSON.stringify({
         "1": eventTitle || "Event Update",
         "2": session || " ",
-        "3": message.trim(),
+        "3": buildEventUpdateMessageBodyVariable(message),
         "4": contactName || " ",
         "5": contactPhone || " "
       }),
@@ -814,7 +815,7 @@ router.post('/send-whatsapp-reminder', async (req, res) => {
 
 // Send WhatsApp message to all registered participants (requires auth)
 // Uses the event update utility template (zubin_foundation_event_update_v2).
-// Variables: 1=event title, 2=session, 3=message body, 4=contact name, 5=contact phone.
+// Variables: 1=event title, 2=session, 3=message body (includes post-body disclaimer), 4=contact name, 5=contact phone.
 router.post('/:id/send-whatsapp', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
@@ -862,7 +863,8 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
     const optedOutNumbers = new Set(optedOutUsers.map(u => u.mobile));
 
     console.log(`[WhatsApp] Starting message send for event: ${event.title} (${event._id})`);
-    console.log(`[WhatsApp] Template variables: 1="${titleForTemplate}" 2="${sessionForTemplate}" 3="${messageText}" 4="${contactName}" 5="${contactPhone}"`);
+    const messageBodyForTemplate = buildEventUpdateMessageBodyVariable(messageText);
+    console.log(`[WhatsApp] Template variables: 1="${titleForTemplate}" 2="${sessionForTemplate}" 3="${messageBodyForTemplate}" 4="${contactName}" 5="${contactPhone}"`);
     console.log(`[WhatsApp] Number of registered participants: ${registrations.length}`);
     if (optedOutNumbers.size > 0) {
       console.log(`[WhatsApp] Opted-out numbers to skip: ${optedOutNumbers.size}`);
@@ -896,7 +898,7 @@ router.post('/:id/send-whatsapp', auth, async (req, res) => {
             contentVariables: JSON.stringify({
               "1": titleForTemplate,
               "2": sessionForTemplate,
-              "3": messageText,
+              "3": messageBodyForTemplate,
               "4": contactName,
               "5": contactPhone
             }),

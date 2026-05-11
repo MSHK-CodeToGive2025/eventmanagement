@@ -96,7 +96,7 @@ export default function WhatsAppMessageDialog({
             <Info className="h-4 w-4 text-blue-600" />
             <AlertDescription className="text-blue-800">
               <p className="text-sm">
-                Template: <strong>Event</strong> (auto-filled), <strong>Session</strong> (select below), <strong>Message</strong> (enter below), <strong>Contact</strong> &amp; <strong>Phone</strong> (from event settings).
+                Template: <strong>Event</strong> (auto-filled), <strong>Session</strong> (select below), <strong>Message</strong> (enter below), <strong>Contact</strong> &amp; <strong>Phone</strong> (from event settings). A standard closing line about not replying and contacting the number above is added automatically to every send.
               </p>
             </AlertDescription>
           </Alert>

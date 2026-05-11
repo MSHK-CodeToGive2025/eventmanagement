@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import twilio from 'twilio';
 import { formatForWhatsApp, ensureWhatsAppPrefix } from '../utils/phoneUtils.js';
 import { getEventDateRangeFromSessions } from '../utils/eventDateRange.js';
+import { buildEventUpdateMessageBodyVariable } from '../utils/whatsappEventUpdateVariables.js';
 
 // Initialize Twilio client
 let twilioClient = null;
@@ -323,7 +324,7 @@ class ReminderService {
               });
             } else if (process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID) {
               // Event set to "custom" reminder: send full reminder text as variable 3 via event update template.
-              // Variables: 1=event title, 2=session, 3=message body, 4=contact name, 5=contact phone.
+              // Variables: 1=event title, 2=session, 3=message body (includes post-body disclaimer), 4=contact name, 5=contact phone.
               const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
               const isSession = eventType.startsWith('session:');
               const sessionTitle = isSession ? eventType.replace('session: ', '') : ' ';
@@ -336,7 +337,7 @@ class ReminderService {
                 contentVariables: JSON.stringify({
                   "1": this.sanitizeContentVariable(event.title),
                   "2": this.sanitizeContentVariable(sessionTitle),
-                  "3": this.sanitizeContentVariable(message),
+                  "3": buildEventUpdateMessageBodyVariable(message),
                   "4": this.sanitizeContentVariable(contactName),
                   "5": this.sanitizeContentVariable(contactPhone)
                 }),
