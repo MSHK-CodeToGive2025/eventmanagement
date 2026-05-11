@@ -312,7 +312,7 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div className="space-y-6">
               <h1 className="text-4xl md:text-5xl font-bold tracking-tight text-yellow-500">
-                Transforming Lives of Hong Kong's Ethnically diverse individuals
+                Transforming Lives of Hong Kong's Ethnically Diverse Individuals
               </h1>
               <p className="text-lg text-gray-700">
                 Join our events and be part of our mission to improve the lives of ethnically
