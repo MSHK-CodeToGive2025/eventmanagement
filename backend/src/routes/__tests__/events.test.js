@@ -135,6 +135,7 @@ describe('Events Routes', () => {
     await testEvent.save();
 
     // Create a test event without cover image for testing 404 scenarios
+    // startDate one day after testEvent so list sort order by startDate is deterministic
     testEventNoImage = new Event({
       title: 'Test Event No Image',
       description: 'Test Description No Image',
@@ -146,8 +147,8 @@ describe('Events Routes', () => {
         district: 'Central and Western',
         onlineEvent: false
       },
-      startDate: new Date(Date.now() + 86400000), // tomorrow
-      endDate: new Date(Date.now() + 86400000 + 7200000), // tomorrow + 2 hours
+      startDate: new Date(Date.now() + 2 * 86400000), // day after tomorrow
+      endDate: new Date(Date.now() + 2 * 86400000 + 7200000),
       isPrivate: false,
       status: 'Published',
       registrationFormId: testRegistrationForm._id,
@@ -159,16 +160,35 @@ describe('Events Routes', () => {
   });
 
   describe('GET /api/events', () => {
-    it('should return all events', async () => {
+    it('should return all events (default newest startDate first)', async () => {
       const response = await request(app)
-        .get('/api/events');
+        .get('/api/events')
+        .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(200);
       expect(Array.isArray(response.body)).toBe(true);
       expect(response.body.length).toBe(2); // Now two events
+      const dates = response.body.map((e) => new Date(e.startDate).getTime());
+      expect(dates[0]).toBeGreaterThanOrEqual(dates[1]);
+      const byTitle = (t) => response.body.find((e) => e.title === t);
+      const testEv = byTitle('Test Event');
+      expect(testEv).toBeDefined();
+      expect(testEv).toHaveProperty('availableSpots');
+      expect(testEv).toHaveProperty('isFull');
+    });
+
+    it('should honor startDateOrder=asc', async () => {
+      const response = await request(app)
+        .get('/api/events')
+        .query({ startDateOrder: 'asc' })
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.length).toBe(2);
+      const dates = response.body.map((e) => new Date(e.startDate).getTime());
+      expect(dates[0]).toBeLessThanOrEqual(dates[1]);
       expect(response.body[0].title).toBe('Test Event');
-      expect(response.body[0]).toHaveProperty('availableSpots');
-      expect(response.body[0]).toHaveProperty('isFull');
+      expect(response.body[1].title).toBe('Test Event No Image');
     });
   });
 

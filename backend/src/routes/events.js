@@ -103,6 +103,13 @@ function buildSessionsFromBody(body) {
   return sessions.length ? sessions : undefined;
 }
 
+/** @returns {1 | -1} Mongo sort direction for startDate */
+function parseStartDateOrder(query) {
+  const raw = String(query.startDateOrder ?? query.sortOrder ?? 'desc').toLowerCase();
+  if (raw === 'asc' || raw === '1') return 1;
+  return -1;
+}
+
 // Configure multer specifically for cover images (500KB limit)
 const coverImageUpload = multer({
   storage: storage,
@@ -143,12 +150,13 @@ router.get('/', auth, async (req, res) => {
     }
     // Admin can see all events (no query filter needed)
 
+    const startDir = parseStartDateOrder(req.query);
     const events = await Event.find(query)
       .populate('createdBy', 'firstName lastName email')
       .populate('updatedBy', 'firstName lastName email')
       .populate('participants', 'firstName lastName email')
-      .sort({ startDate: 1 });
-    
+      .sort({ startDate: startDir });
+
     res.json(events);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
@@ -179,13 +187,14 @@ router.get('/public-nonexpired', async (req, res) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Start of today
     
+    const startDir = parseStartDateOrder(req.query);
     const events = await Event.find({
       status: 'Published',
       isPrivate: false,
       endDate: { $gte: today } // endDate is greater than or equal to today
     })
       .populate('createdBy', 'firstName lastName email')
-      .sort({ startDate: 1 });
+      .sort({ startDate: startDir });
     
     console.log(`[EVENTS] Found ${events.length} published, non-private, non-expired events`);
     res.json(events);

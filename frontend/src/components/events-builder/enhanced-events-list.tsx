@@ -68,11 +68,11 @@ interface EnhancedEventsListProps {
 export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: EnhancedEventsListProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
-  
+
   // State for events data
   const [events, setEvents] = useState<ZubinEvent[]>([])
   const [loading, setLoading] = useState(true)
-  
+
   // State for search, filters, sorting, and pagination
   const [searchQuery, setSearchQuery] = useState("")
   const [filters, setFilters] = useState<FilterState>({
@@ -111,7 +111,7 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
         location: event.location,
         startDate: new Date(event.startDate),
         endDate: new Date(event.endDate),
-                    coverImage: event.coverImage,
+        coverImage: event.coverImage,
         isPrivate: event.isPrivate,
         status: event.status,
         registrationFormId: event.registrationFormId,
@@ -274,8 +274,8 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
     const matchesIsPrivate = filters.isPrivate !== null ? event.isPrivate === filters.isPrivate : true;
 
     const matchesLastUpdatedBy = filters.lastUpdatedBy
-      ? (event.updatedBy?.firstName?.toLowerCase().includes(filters.lastUpdatedBy.toLowerCase()) || 
-         event.updatedBy?.lastName?.toLowerCase().includes(filters.lastUpdatedBy.toLowerCase()) || false)
+      ? (event.updatedBy?.firstName?.toLowerCase().includes(filters.lastUpdatedBy.toLowerCase()) ||
+        event.updatedBy?.lastName?.toLowerCase().includes(filters.lastUpdatedBy.toLowerCase()) || false)
       : true;
 
     // Date range filter
@@ -374,7 +374,7 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
       } catch (error: any) {
         console.error("Error deleting event:", error)
         let errorMessage = "Failed to delete event"
-        
+
         // Provide more specific error messages
         if (error.message?.includes("403")) {
           errorMessage = "Access denied. Only administrators can delete events."
@@ -383,7 +383,7 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
         } else if (error.message) {
           errorMessage = error.message
         }
-        
+
         toast({
           title: "Error",
           description: errorMessage,
@@ -627,204 +627,204 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
       ) : (
         <div className="rounded-md border">
           <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("title")}>
-                <div className="flex items-center">
-                  Event Title
-                  {sortConfig?.key === "title" &&
-                    (sortConfig.direction === "ascending" ? (
-                      <ChevronUp className="h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 ml-1" />
-                    ))}
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("date")}>
-                <div className="flex items-center">
-                  Start Date & Sessions
-                  {sortConfig?.key === "date" &&
-                    (sortConfig.direction === "ascending" ? (
-                      <ChevronUp className="h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 ml-1" />
-                    ))}
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("location")}>
-                <div className="flex items-center">
-                  Location
-                  {sortConfig?.key === "location" &&
-                    (sortConfig.direction === "ascending" ? (
-                      <ChevronUp className="h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 ml-1" />
-                    ))}
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("category")}>
-                <div className="flex items-center">
-                  Category
-                  {sortConfig?.key === "category" &&
-                    (sortConfig.direction === "ascending" ? (
-                      <ChevronUp className="h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 ml-1" />
-                    ))}
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("isPrivate")}>
-                <div className="flex items-center">
-                  Private Event
-                  {sortConfig?.key === "isPrivate" &&
-                    (sortConfig.direction === "ascending" ? (
-                      <ChevronUp className="h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 ml-1" />
-                    ))}
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("status")}>
-                <div className="flex items-center">
-                  Status
-                  {sortConfig?.key === "status" &&
-                    (sortConfig.direction === "ascending" ? (
-                      <ChevronUp className="h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 ml-1" />
-                    ))}
-                </div>
-              </TableHead>
-              <TableHead className="cursor-pointer" onClick={() => handleSort("updatedBy")}>
-                <div className="flex items-center">
-                  Last Updated By
-                  {sortConfig?.key === "updatedBy" &&
-                    (sortConfig.direction === "ascending" ? (
-                      <ChevronUp className="h-4 w-4 ml-1" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4 ml-1" />
-                    ))}
-                </div>
-              </TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedEvents.length === 0 ? (
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-gray-500">
-                  No events found. Try a different search or clear filters.
-                </TableCell>
+                <TableHead className="cursor-pointer" onClick={() => handleSort("title")}>
+                  <div className="flex items-center">
+                    Event Title
+                    {sortConfig?.key === "title" &&
+                      (sortConfig.direction === "ascending" ? (
+                        <ChevronUp className="h-4 w-4 ml-1" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead className="cursor-pointer" onClick={() => handleSort("date")}>
+                  <div className="flex items-center">
+                    Start Date & Sessions
+                    {sortConfig?.key === "date" &&
+                      (sortConfig.direction === "ascending" ? (
+                        <ChevronUp className="h-4 w-4 ml-1" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead className="cursor-pointer" onClick={() => handleSort("location")}>
+                  <div className="flex items-center">
+                    Location
+                    {sortConfig?.key === "location" &&
+                      (sortConfig.direction === "ascending" ? (
+                        <ChevronUp className="h-4 w-4 ml-1" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead className="cursor-pointer" onClick={() => handleSort("category")}>
+                  <div className="flex items-center">
+                    Category
+                    {sortConfig?.key === "category" &&
+                      (sortConfig.direction === "ascending" ? (
+                        <ChevronUp className="h-4 w-4 ml-1" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead className="cursor-pointer" onClick={() => handleSort("isPrivate")}>
+                  <div className="flex items-center">
+                    Private Event
+                    {sortConfig?.key === "isPrivate" &&
+                      (sortConfig.direction === "ascending" ? (
+                        <ChevronUp className="h-4 w-4 ml-1" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead className="cursor-pointer" onClick={() => handleSort("status")}>
+                  <div className="flex items-center">
+                    Status
+                    {sortConfig?.key === "status" &&
+                      (sortConfig.direction === "ascending" ? (
+                        <ChevronUp className="h-4 w-4 ml-1" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead className="cursor-pointer" onClick={() => handleSort("updatedBy")}>
+                  <div className="flex items-center">
+                    Last Updated By
+                    {sortConfig?.key === "updatedBy" &&
+                      (sortConfig.direction === "ascending" ? (
+                        <ChevronUp className="h-4 w-4 ml-1" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 ml-1" />
+                      ))}
+                  </div>
+                </TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
-            ) : (
-              paginatedEvents.map((event) => (
-                <TableRow key={event._id}>
-                  <TableCell className="font-medium">{event.title}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
+            </TableHeader>
+            <TableBody>
+              {paginatedEvents.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                    No events found. Try a different search or clear filters.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedEvents.map((event) => (
+                  <TableRow key={event._id}>
+                    <TableCell className="font-medium">{event.title}</TableCell>
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <div className="flex items-center">
+                          <CalendarIcon className="h-4 w-4 mr-1 text-gray-500" />
+                          {formatDateHKT(event.startDate, { style: "dmyShortMonth" })} HKT
+                        </div>
+                        <div className="text-gray-500 text-sm">
+                          {event.sessions.length} session{event.sessions.length !== 1 ? "s" : ""}
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center">
-                        <CalendarIcon className="h-4 w-4 mr-1 text-gray-500" />
-                        {formatDateHKT(event.startDate)}
+                        <MapPin className="h-4 w-4 mr-1 text-gray-500" />
+                        {event.location.onlineEvent ? "Online" : event.location.venue}
                       </div>
-                      <div className="text-gray-500 text-sm">
-                        {event.sessions.length} session{event.sessions.length !== 1 ? "s" : ""}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <MapPin className="h-4 w-4 mr-1 text-gray-500" />
-                      {event.location.onlineEvent ? "Online" : event.location.venue}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <Tag className="h-4 w-4 mr-1 text-gray-500" />
-                      <Badge variant="outline" className="bg-gray-50">
-                        {event.category}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <Badge variant={event.isPrivate ? "default" : "outline"} className={event.isPrivate ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-800"}>
-                        {event.isPrivate ? "Private" : "Public"}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        event.status === "Published"
-                          ? "default"
-                          : event.status === "Draft"
-                            ? "outline"
-                            : event.status === "Cancelled"
-                              ? "destructive"
-                              : "secondary"
-                      }
-                      className={
-                        event.status === "Published"
-                          ? "bg-green-100 text-green-800 hover:bg-green-100"
-                          : event.status === "Draft"
-                            ? "bg-gray-100 text-gray-800 hover:bg-gray-100"
-                            : event.status === "Cancelled"
-                              ? "bg-red-100 text-red-800 hover:bg-red-100"
-                              : "bg-purple-100 text-purple-800 hover:bg-purple-100"
-                      }
-                    >
+                    </TableCell>
+                    <TableCell>
                       <div className="flex items-center">
-                        {event.status === "Published" ? (
-                          <div className="w-1.5 h-1.5 rounded-full bg-green-600 mr-1.5"></div>
-                        ) : event.status === "Draft" ? (
-                          <div className="w-1.5 h-1.5 rounded-full bg-gray-600 mr-1.5"></div>
-                        ) : event.status === "Cancelled" ? (
-                          <div className="w-1.5 h-1.5 rounded-full bg-red-600 mr-1.5"></div>
-                        ) : (
-                          <div className="w-1.5 h-1.5 rounded-full bg-purple-600 mr-1.5"></div>
-                        )}
-                        {event.status}
+                        <Tag className="h-4 w-4 mr-1 text-gray-500" />
+                        <Badge variant="outline" className="bg-gray-50">
+                          {event.category}
+                        </Badge>
                       </div>
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center">
-                      <UserCircle className="h-4 w-4 mr-1 text-gray-500" />
-                      <span className="text-sm">
-                        {event.updatedBy 
-                          ? `${event.updatedBy.firstName} ${event.updatedBy.lastName}`
-                          : event.createdBy 
-                            ? `${event.createdBy.firstName} ${event.createdBy.lastName}`
-                            : "Unknown"
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <Badge variant={event.isPrivate ? "default" : "outline"} className={event.isPrivate ? "bg-yellow-100 text-yellow-800" : "bg-gray-100 text-gray-800"}>
+                          {event.isPrivate ? "Private" : "Public"}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={
+                          event.status === "Published"
+                            ? "default"
+                            : event.status === "Draft"
+                              ? "outline"
+                              : event.status === "Cancelled"
+                                ? "destructive"
+                                : "secondary"
                         }
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => {
-                          console.log('Viewing event:', event._id, event.title);
-                          navigate(`/enhanced-events/${event._id}`);
-                        }}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onEditEvent(event._id)}>
-                          <Edit className="h-4 w-4 mr-2" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => navigate(`/manage/events/${event._id}/registrations`, { state: { event } })}>
-                          <Users className="h-4 w-4 mr-2" />
-                          Manage Registrations
-                        </DropdownMenuItem>
-                        {/* 
+                        className={
+                          event.status === "Published"
+                            ? "bg-green-100 text-green-800 hover:bg-green-100"
+                            : event.status === "Draft"
+                              ? "bg-gray-100 text-gray-800 hover:bg-gray-100"
+                              : event.status === "Cancelled"
+                                ? "bg-red-100 text-red-800 hover:bg-red-100"
+                                : "bg-purple-100 text-purple-800 hover:bg-purple-100"
+                        }
+                      >
+                        <div className="flex items-center">
+                          {event.status === "Published" ? (
+                            <div className="w-1.5 h-1.5 rounded-full bg-green-600 mr-1.5"></div>
+                          ) : event.status === "Draft" ? (
+                            <div className="w-1.5 h-1.5 rounded-full bg-gray-600 mr-1.5"></div>
+                          ) : event.status === "Cancelled" ? (
+                            <div className="w-1.5 h-1.5 rounded-full bg-red-600 mr-1.5"></div>
+                          ) : (
+                            <div className="w-1.5 h-1.5 rounded-full bg-purple-600 mr-1.5"></div>
+                          )}
+                          {event.status}
+                        </div>
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center">
+                        <UserCircle className="h-4 w-4 mr-1 text-gray-500" />
+                        <span className="text-sm">
+                          {event.updatedBy
+                            ? `${event.updatedBy.firstName} ${event.updatedBy.lastName}`
+                            : event.createdBy
+                              ? `${event.createdBy.firstName} ${event.createdBy.lastName}`
+                              : "Unknown"
+                          }
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                            <span className="sr-only">Open menu</span>
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => {
+                            console.log('Viewing event:', event._id, event.title);
+                            navigate(`/enhanced-events/${event._id}`);
+                          }}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onEditEvent(event._id)}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/manage/events/${event._id}/registrations`, { state: { event } })}>
+                            <Users className="h-4 w-4 mr-2" />
+                            Manage Registrations
+                          </DropdownMenuItem>
+                          {/* 
                         <DropdownMenuItem
                           onClick={() => (window.location.href = `/manage/events/${event._id}/reminders`)}
                         >
@@ -832,30 +832,30 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
                           Send WhatsApp Reminders
                         </DropdownMenuItem>
                         */}
-                        <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteClick(event._id)}>
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteClick(event._id)}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
 
-        {/* Pagination */}
-        <div className="p-4 border-t">
-          <PaginationControls
-            currentPage={currentPage}
-            totalItems={sortedEvents.length}
-            itemsPerPage={itemsPerPage}
-            onPageChange={setCurrentPage}
-            onItemsPerPageChange={setItemsPerPage}
-          />
+          {/* Pagination */}
+          <div className="p-4 border-t">
+            <PaginationControls
+              currentPage={currentPage}
+              totalItems={sortedEvents.length}
+              itemsPerPage={itemsPerPage}
+              onPageChange={setCurrentPage}
+              onItemsPerPageChange={setItemsPerPage}
+            />
+          </div>
         </div>
-      </div>
       )}
 
       {/* Delete Confirmation Dialog */}

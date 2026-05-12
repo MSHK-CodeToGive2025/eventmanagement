@@ -6,12 +6,30 @@ const HKT = 'Asia/Hong_Kong';
 
 /**
  * Format a date in HKT (e.g. "Mar 4, 2026 HKT" or "Tuesday, March 4, 2026 HKT").
+ * Use `style: 'dmy'` for DD/MM/YYYY in HKT (e.g. "18/04/2026").
+ * Use `style: 'dmyShortMonth'` for day + abbreviated month + 2-digit year in HKT (e.g. "18 Apr 26", "12 May 26").
  */
 export function formatDateHKT(
-  date: Date,
-  options: { weekday?: boolean } = {}
+  date: Date | string,
+  options: { weekday?: boolean; style?: 'default' | 'dmy' | 'dmyShortMonth' } = {}
 ): string {
   const d = date instanceof Date ? date : new Date(date);
+  if (options.style === 'dmy') {
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      timeZone: HKT,
+    });
+  }
+  if (options.style === 'dmyShortMonth') {
+    return d.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: '2-digit',
+      timeZone: HKT,
+    });
+  }
   const formatted = d.toLocaleDateString('en-US', {
     weekday: options.weekday ? 'long' : undefined,
     year: 'numeric',

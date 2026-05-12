@@ -48,8 +48,8 @@ export default function EnhancedEventsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [eventsPerPage, setEventsPerPage] = useState(9)
 
-  // Sorting state - options: date-asc, date-desc, title-asc, title-desc
-  const [sortBy, setSortBy] = useState<string>("date-asc")
+  // Sorting state - options: date-asc, date-desc, title-asc, title-desc (default matches API: latest startDate first)
+  const [sortBy, setSortBy] = useState<string>("date-desc")
 
   // Mobile filter visibility state
   const [showFilters, setShowFilters] = useState(false)
@@ -213,7 +213,7 @@ export default function EnhancedEventsPage() {
     setSelectedLocation(null)
     setStartDate(null)
     setEndDate(null)
-    setSortBy("date-asc")
+    setSortBy("date-desc")
     setCurrentPage(1)
   }
 

@@ -986,45 +986,49 @@ export default function EnhancedEventDetailPage() {
               <CardTitle className="text-base">Location</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Venue:</span>
-                <span className="font-medium">{event.location.venue}</span>
+              <div className="flex items-start justify-between gap-3 text-sm">
+                <span className="shrink-0 text-gray-600">Venue:</span>
+                <span className="min-w-0 flex-1 text-right font-medium">{event.location.venue}</span>
               </div>
               <Separator />
               {event.location.address && (
                 <>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Address:</span>
-                    <span className="font-medium">{event.location.address}</span>
+                  <div className="flex items-start justify-between gap-3 text-sm">
+                    <span className="shrink-0 text-gray-600">Address:</span>
+                    <span className="min-w-0 flex-1 text-right font-medium break-words">
+                      {event.location.address}
+                    </span>
                   </div>
                   <Separator />
                 </>
               )}
               {event.location.district && (
                 <>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">District:</span>
-                    <span className="font-medium">{event.location.district}</span>
+                  <div className="flex items-start justify-between gap-3 text-sm">
+                    <span className="shrink-0 text-gray-600">District:</span>
+                    <span className="min-w-0 flex-1 text-right font-medium">
+                      {event.location.district}
+                    </span>
                   </div>
                   <Separator />
                 </>
               )}
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-600">Type:</span>
-                <span className="font-medium">
+              <div className="flex items-start justify-between gap-3 text-sm">
+                <span className="shrink-0 text-gray-600">Type:</span>
+                <span className="min-w-0 flex-1 text-right font-medium">
                   {event.location.onlineEvent ? 'Online Event' : 'In-person Event'}
                 </span>
               </div>
               {event.location.onlineEvent && event.location.meetingLink && (
                 <>
                   <Separator />
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Meeting Link:</span>
+                  <div className="flex items-start justify-between gap-3 text-sm">
+                    <span className="shrink-0 text-gray-600">Meeting Link:</span>
                     <a
                       href={event.location.meetingLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="font-medium text-blue-600 hover:text-blue-800"
+                      className="min-w-0 flex-1 text-right font-medium break-words text-blue-600 hover:text-blue-800"
                     >
                       Join Meeting
                     </a>

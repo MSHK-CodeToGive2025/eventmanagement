@@ -774,7 +774,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                               type="date"
                               placeholder="Select date"
                               className="pl-10 h-12"
-                              min={formattedToday}
+                              // min={formattedToday}
                               value={format(field.value, "yyyy-MM-dd")}
                               onChange={(e) => field.onChange(new Date(e.target.value))}
                             />
