@@ -226,6 +226,9 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
     },
   })
 
+  // Watch startDate so the End Date min attribute stays reactive
+  const watchedStartDate = form.watch("startDate");
+
   // Fetch event data when editing
   useEffect(() => {
     const fetchEventData = async () => {
@@ -774,9 +777,16 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                               type="date"
                               placeholder="Select date"
                               className="pl-10 h-12"
-                              // min={formattedToday}
                               value={format(field.value, "yyyy-MM-dd")}
-                              onChange={(e) => field.onChange(new Date(e.target.value))}
+                              onChange={(e) => {
+                                const newStartDate = new Date(e.target.value);
+                                field.onChange(newStartDate);
+                                // Reset endDate if it now falls before the new startDate
+                                const currentEndDate = form.getValues("endDate");
+                                if (currentEndDate && newStartDate > currentEndDate) {
+                                  form.setValue("endDate", newStartDate, { shouldValidate: true });
+                                }
+                              }}
                             />
                           </div>
                         </FormControl>
@@ -802,7 +812,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                               type="date"
                               placeholder="Select date"
                               className="pl-10 h-12"
-                              min={formattedToday}
+                              min={format(watchedStartDate, "yyyy-MM-dd")}
                               value={format(field.value, "yyyy-MM-dd")}
                               onChange={(e) => field.onChange(new Date(e.target.value))}
                             />
