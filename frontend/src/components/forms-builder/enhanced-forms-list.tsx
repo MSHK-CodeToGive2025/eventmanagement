@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { formatDateHKT } from "@/utils/dateTimeHKT"
 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
@@ -343,11 +344,11 @@ export default function EnhancedFormsList() {
                       {form.description || "No description"}
                     </div>
                   </TableCell>
-                  <TableCell>{new Date(form.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>{formatDateHKT(form.createdAt)}</TableCell>
                   <TableCell>
                     {form.updatedAt 
-                      ? new Date(form.updatedAt).toLocaleDateString()
-                      : new Date(form.createdAt).toLocaleDateString()
+                      ? formatDateHKT(form.updatedAt)
+                      : formatDateHKT(form.createdAt)
                     }
                   </TableCell>
                   <TableCell>

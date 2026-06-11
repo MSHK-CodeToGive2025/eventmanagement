@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { CheckCircle, X } from "lucide-react"
 import { RegistrationForm } from "@/types/form-types"
+import { formatDateHKT } from "@/utils/dateTimeHKT"
 
 interface FormSuccessModalProps {
   isOpen: boolean
@@ -38,7 +39,7 @@ export function FormSuccessModal({ isOpen, onClose, form, isUpdate = false }: Fo
               <span>Status: <Badge variant={form.isActive ? "default" : "secondary"}>
                 {form.isActive ? "Active" : "Inactive"}
               </Badge></span>
-              <span>Created: {new Date(form.createdAt).toLocaleDateString()}</span>
+              <span>Created: {formatDateHKT(form.createdAt)}</span>
             </div>
           </div>
 

@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { User } from "@/types/user-types"
 import { Edit, Trash2, Key, RefreshCw } from "lucide-react"
+import { formatDateHKT } from "@/utils/dateTimeHKT"
 
 interface UserDetailsProps {
   user: User
@@ -27,11 +28,7 @@ export function UserDetails({
 }: UserDetailsProps) {
   const formatDate = (dateString: string) => {
     if (!dateString) return "Never"
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    })
+    return formatDateHKT(dateString)
   }
 
   const getRoleBadgeColor = (role: string) => {

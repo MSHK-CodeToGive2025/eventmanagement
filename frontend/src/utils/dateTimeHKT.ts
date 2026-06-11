@@ -67,12 +67,7 @@ export function formatTimeHKT(date: Date): string {
  */
 export function formatDateTimeHKT(date: Date): string {
   const d = date instanceof Date ? date : new Date(date);
-  const datePart = d.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    timeZone: HKT,
-  });
+  const datePart = formatDateHKT(d);
   const timePart = d.toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',

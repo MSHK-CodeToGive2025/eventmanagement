@@ -21,6 +21,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { formatDateHKT } from "@/utils/dateTimeHKT"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -131,9 +132,9 @@ export function UserList({
     onFilter({})
   }
 
-  const formatDate = (date: Date | undefined) => {
+  const formatDate = (date: Date | string | undefined) => {
     if (!date) return "Never"
-    return new Date(date).toLocaleDateString()
+    return formatDateHKT(date)
   }
 
   const getRoleBadgeColor = (role: string) => {

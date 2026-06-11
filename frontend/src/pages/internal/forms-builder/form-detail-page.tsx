@@ -8,6 +8,7 @@ import { ArrowLeft, Edit } from "lucide-react"
 import { RichTextDisplay } from "@/components/ui/rich-text-display"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
+import { formatDateHKT } from "@/utils/dateTimeHKT"
 
 export default function FormDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -118,11 +119,11 @@ export default function FormDetailPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="text-sm font-medium text-gray-500">Created</label>
-                <p className="mt-1">{new Date(form.createdAt).toLocaleDateString()}</p>
+                <p className="mt-1">{formatDateHKT(form.createdAt)}</p>
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-500">Last Updated</label>
-                <p className="mt-1">{new Date(form.updatedAt || form.createdAt).toLocaleDateString()}</p>
+                <p className="mt-1">{formatDateHKT(form.updatedAt || form.createdAt)}</p>
               </div>
             </div>
           </CardContent>

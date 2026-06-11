@@ -351,6 +351,31 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
 
       return 0
     })
+  } else {
+    // Default sorting: ongoing/upcoming events first (closest first), completed/past events last (most recent first)
+    sortedEvents.sort((a, b) => {
+      const today = new Date()
+      today.setHours(0, 0, 0, 0)
+      const todayTime = today.getTime()
+
+      const aStart = new Date(a.startDate).getTime()
+      const bStart = new Date(b.startDate).getTime()
+      const aEnd = new Date(a.endDate).getTime()
+      const bEnd = new Date(b.endDate).getTime()
+
+      const aIsPast = aEnd < todayTime
+      const bIsPast = bEnd < todayTime
+
+      // Past events come last
+      if (!aIsPast && bIsPast) return -1
+      if (aIsPast && !bIsPast) return 1
+
+      // Both active: closest start date first
+      if (!aIsPast && !bIsPast) return aStart - bStart
+
+      // Both past: most recent first
+      return bStart - aStart
+    })
   }
 
   // Paginate the sorted events
@@ -724,7 +749,7 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
                       <div className="flex flex-col">
                         <div className="flex items-center">
                           <CalendarIcon className="h-4 w-4 mr-1 text-gray-500" />
-                          {formatDateHKT(event.startDate, { style: "dmyShortMonth" })} HKT
+                          {formatDateHKT(event.startDate)}
                         </div>
                         <div className="text-gray-500 text-sm">
                           {event.sessions.length} session{event.sessions.length !== 1 ? "s" : ""}
