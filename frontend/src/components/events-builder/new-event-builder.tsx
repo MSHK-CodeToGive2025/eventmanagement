@@ -6,14 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { CalendarIcon, MapPin, Link, Save, ArrowLeft, Search, AlertCircle } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { CalendarIcon, MapPin, Link, Search, AlertCircle } from "lucide-react"
 import { format } from "date-fns"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/contexts/auth-context"
@@ -111,7 +107,7 @@ type EventFormValues = z.infer<typeof eventFormSchema>
 
 interface NewEventBuilderProps {
   onClose: () => void
-  onSave: (data: ZubinEvent) => void
+  onSave: (data: any) => void
   eventId?: string | null
   defaultValues?: Partial<ZubinEvent>
 }
@@ -125,16 +121,15 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
   const [loadingForms, setLoadingForms] = useState(true)
   const [shouldRemoveImage, setShouldRemoveImage] = useState(false)
   const [selectedFileInfo, setSelectedFileInfo] = useState<{ name: string; size: string } | null>(null)
-  const [availableUsers, setAvailableUsers] = useState<Array<{_id: string, firstName: string, lastName: string, email: string, role: string}>>([]);
+  const [availableUsers, setAvailableUsers] = useState<Array<{_id: string, firstName: string, lastName: string, email?: string, role: string}>>([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [submitErrorDialog, setSubmitErrorDialog] = useState<{ open: boolean; title: string; message: string; details?: string }>({ open: false, title: "", message: "" });
   const { toast } = useToast()
   const { user } = useAuth()
 
-  // Format today's date for the min attribute of the date input
+  // Format today's date for reference
   const today = new Date()
-  const formattedToday = format(today, "yyyy-MM-dd")
 
   // Fetch registration forms on component mount
   useEffect(() => {
@@ -262,13 +257,16 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
             capacity: eventData.capacity,
             tags: eventData.tags || [],
             reminderTimes: eventData.reminderTimes || [24],
-            defaultReminderMode: eventData.defaultReminderMode || 'template',
+            defaultReminderMode: 'template' as const,
             staffContact: eventData.staffContact || {
               name: "",
               phone: "",
             },
             participants: Array.isArray(eventData.participants) 
-              ? eventData.participants.map((p: any) => typeof p === 'string' ? p : p._id || p.id || p)
+              ? eventData.participants.map((p: any) => {
+                  if (typeof p === 'string') return p;
+                  return p?._id || p?.id || '';
+                })
               : [],
           }
 
@@ -347,9 +345,9 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       formData.append('description', data.description)
       formData.append('category', data.category)
       formData.append('targetGroup', data.targetGroup)
-      formData.append('location[venue]', data.location.venue)
-      formData.append('location[address]', data.location.address)
-      formData.append('location[district]', data.location.district)
+      formData.append('location[venue]', data.location.venue || '')
+      formData.append('location[address]', data.location.address || '')
+      formData.append('location[district]', data.location.district || '')
       formData.append('location[onlineEvent]', data.location.onlineEvent.toString())
       if (data.location.meetingLink) {
         formData.append('location[meetingLink]', data.location.meetingLink)
@@ -422,7 +420,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
 
       console.log('Form data staff contact:', data.staffContact);
       console.log('FormData entries:');
-      for (let [key, value] of formData.entries()) {
+      for (const [key, value] of formData.entries()) {
         console.log(`${key}: ${value}`);
       }
 
@@ -513,27 +511,29 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       
       // Call the onSave callback with the saved event
       onSave(savedEvent)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error submitting form:", error)
       
-      let errorTitle = "Form submission failed"
+      const errorTitle = "Form submission failed"
       let errorMessage = "There was a problem submitting the form. Please try again."
       let details: string | undefined
 
-      if (error.response?.status === 403) {
+      const axiosError = error as { response?: { status?: number; data?: { message?: string; error?: string; errors?: Record<string, string> } }; message?: string };
+
+      if (axiosError.response?.status === 403) {
         errorMessage = "You don't have permission to create or update events."
-      } else if (error.response?.status === 401) {
+      } else if (axiosError.response?.status === 401) {
         errorMessage = "Please log in again to continue."
-      } else if (error.response?.data?.message) {
-        errorMessage = error.response.data.message
-      } else if (error.message) {
-        errorMessage = error.message
+      } else if (axiosError.response?.data?.message) {
+        errorMessage = axiosError.response.data.message
+      } else if (axiosError.message) {
+        errorMessage = axiosError.message
       }
-      if (error.response?.data?.error) {
-        details = String(error.response.data.error)
+      if (axiosError.response?.data?.error) {
+        details = String(axiosError.response.data.error)
       }
-      if (error.response?.data?.errors && typeof error.response.data.errors === "object") {
-        details = Object.entries(error.response.data.errors).map(([k, v]) => `${k}: ${v}`).join("\n")
+      if (axiosError.response?.data?.errors && typeof axiosError.response.data.errors === "object") {
+        details = Object.entries(axiosError.response.data.errors).map(([k, v]) => `${k}: ${v}`).join("\n")
       }
 
       setSubmitErrorDialog({ open: true, title: errorTitle, message: errorMessage, details })

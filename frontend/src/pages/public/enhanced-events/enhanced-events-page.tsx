@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Calendar, Clock, MapPin, Search, Filter, ChevronLeft, ChevronRight, SortAsc, X } from "lucide-react"
+import { Calendar, MapPin, Search, Filter, ChevronLeft, ChevronRight, SortAsc, X } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
@@ -48,8 +48,8 @@ export default function EnhancedEventsPage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [eventsPerPage, setEventsPerPage] = useState(9)
 
-  // Sorting state - options: date-asc, date-desc, title-asc, title-desc (default matches API: latest startDate first)
-  const [sortBy, setSortBy] = useState<string>("date-desc")
+  // Sorting state - options: upcoming, date-asc, date-desc, title-asc, title-desc (default: upcoming events first)
+  const [sortBy, setSortBy] = useState<string>("upcoming")
 
   // Mobile filter visibility state
   const [showFilters, setShowFilters] = useState(false)
@@ -97,9 +97,7 @@ export default function EnhancedEventsPage() {
           updatedBy: event.updatedBy,
           updatedAt: event.updatedAt ? new Date(event.updatedAt) : undefined,
           tags: event.tags,
-          registeredCount: event.registeredCount,
-          assignedParticipants: event.assignedParticipants,
-          invitedParticipants: event.invitedParticipants
+          registeredCount: event.registeredCount
         }))
         
         setEvents(transformedEvents)
@@ -171,6 +169,27 @@ export default function EnhancedEventsPage() {
 
     // Apply sorting based on selected sort option
     switch (sortBy) {
+      case "upcoming": {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const todayTime = today.getTime()
+        result.sort((a, b) => {
+          const aStart = new Date(a.startDate).getTime()
+          const bStart = new Date(b.startDate).getTime()
+          const aEnd = new Date(a.endDate).getTime()
+          const bEnd = new Date(b.endDate).getTime()
+          const aIsPast = aEnd < todayTime
+          const bIsPast = bEnd < todayTime
+          // Past events come last
+          if (!aIsPast && bIsPast) return -1
+          if (aIsPast && !bIsPast) return 1
+          // Both upcoming/ongoing: closest start date first
+          if (!aIsPast && !bIsPast) return aStart - bStart
+          // Both past: most recent first
+          return bStart - aStart
+        })
+        break
+      }
       case "date-asc":
         result.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
         break
@@ -213,7 +232,7 @@ export default function EnhancedEventsPage() {
     setSelectedLocation(null)
     setStartDate(null)
     setEndDate(null)
-    setSortBy("date-desc")
+    setSortBy("upcoming")
     setCurrentPage(1)
   }
 
@@ -317,6 +336,7 @@ export default function EnhancedEventsPage() {
               </div>
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="upcoming">Upcoming First</SelectItem>
               <SelectItem value="date-asc">Date (Earliest)</SelectItem>
               <SelectItem value="date-desc">Date (Latest)</SelectItem>
               <SelectItem value="title-asc">Title (A-Z)</SelectItem>
@@ -683,6 +703,7 @@ export default function EnhancedEventsPage() {
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="upcoming">Upcoming First</SelectItem>
                   <SelectItem value="date-asc">Date (Earliest)</SelectItem>
                   <SelectItem value="date-desc">Date (Latest)</SelectItem>
                   <SelectItem value="title-asc">Title (A-Z)</SelectItem>

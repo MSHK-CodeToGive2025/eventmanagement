@@ -11,7 +11,7 @@ const HKT = 'Asia/Hong_Kong';
  */
 export function formatDateHKT(
   date: Date | string,
-  options: { weekday?: boolean; style?: 'default' | 'dmy' | 'dmyShortMonth' } = {}
+  options: { weekday?: boolean; style?: 'default' | 'dmy' | 'dmyShortMonth' | 'long' } = {}
 ): string {
   const d = date instanceof Date ? date : new Date(date);
   if (options.style === 'dmy') {
@@ -30,14 +30,22 @@ export function formatDateHKT(
       timeZone: HKT,
     });
   }
-  const formatted = d.toLocaleDateString('en-US', {
-    weekday: options.weekday ? 'long' : undefined,
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    timeZone: HKT,
-  });
-  return `${formatted} HKT`;
+  if (options.style === 'long') {
+    const formatted = d.toLocaleDateString('en-US', {
+      weekday: options.weekday ? 'long' : undefined,
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      timeZone: HKT,
+    });
+    return `${formatted} HKT`;
+  }
+
+  // Default: DD-MM-YYYY
+  const day = d.toLocaleDateString('en-GB', { day: '2-digit', timeZone: HKT });
+  const month = d.toLocaleDateString('en-GB', { month: '2-digit', timeZone: HKT });
+  const year = d.toLocaleDateString('en-GB', { year: 'numeric', timeZone: HKT });
+  return `${day}-${month}-${year}`;
 }
 
 /**

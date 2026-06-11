@@ -181,25 +181,45 @@ router.get('/public', async (req, res) => {
   }
 });
 
-// Get published, non-private, non-expired events (for public display)
+// Get published, non-private events for public display.
+// Returns upcoming events first (sorted by startDate ascending — nearest first),
+// followed by completed/past events (sorted by startDate ascending).
 router.get('/public-nonexpired', async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0); // Start of today
-    
-    const startDir = parseStartDateOrder(req.query);
+
+    // Fetch all published, non-private events
     const events = await Event.find({
       status: 'Published',
-      isPrivate: false,
-      endDate: { $gte: today } // endDate is greater than or equal to today
+      isPrivate: false
     })
       .populate('createdBy', 'firstName lastName email')
-      .sort({ startDate: startDir });
-    
-    console.log(`[EVENTS] Found ${events.length} published, non-private, non-expired events`);
-    res.json(events);
+      .lean();
+
+    // Separate upcoming and completed events
+    const upcoming = [];
+    const completed = [];
+    for (const event of events) {
+      const endDate = event.endDate ? new Date(event.endDate) : null;
+      if (endDate && endDate < today) {
+        completed.push(event);
+      } else {
+        upcoming.push(event);
+      }
+    }
+
+    // Sort upcoming events by startDate ascending (nearest first)
+    upcoming.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+    // Sort completed events by startDate ascending as well
+    completed.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+
+    const result = [...upcoming, ...completed];
+
+    console.log(`[EVENTS] Found ${events.length} published events (${upcoming.length} upcoming, ${completed.length} completed)`);
+    res.json(result);
   } catch (error) {
-    console.error('[EVENTS] Error fetching public non-expired events:', error);
+    console.error('[EVENTS] Error fetching public events:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
   }
 });
