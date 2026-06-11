@@ -86,32 +86,21 @@ export default function LandingPage() {
         setLoading(true);
         const publicEvents = await eventService.getPublicNonExpiredEvents();
         
-        // Sort events defensively: upcoming/ongoing first (closest start date first), past events last
-        const sortedEvents = [...publicEvents].sort((a, b) => {
-          const today = new Date();
-          today.setHours(0, 0, 0, 0);
-          const todayTime = today.getTime();
-          
-          const aStart = new Date(a.startDate).getTime();
-          const bStart = new Date(b.startDate).getTime();
-          const aEnd = new Date(a.endDate).getTime();
-          const bEnd = new Date(b.endDate).getTime();
-          
-          const aIsPast = aEnd < todayTime;
-          const bIsPast = bEnd < todayTime;
-          
-          // Past events come last
-          if (!aIsPast && bIsPast) return -1;
-          if (aIsPast && !bIsPast) return 1;
-          
-          // Both active: closest start date first
-          if (!aIsPast && !bIsPast) return aStart - bStart;
-          
-          // Both past: most recent first
-          return bStart - aStart;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const todayTime = today.getTime();
+
+        // Filter out completed/past events (endDate < todayTime)
+        const ongoingOrUpcoming = publicEvents.filter(event => {
+          const endDate = event.endDate ? new Date(event.endDate) : (event.startDate ? new Date(event.startDate) : null);
+          if (!endDate) return true;
+          return endDate.getTime() >= todayTime;
         });
 
-        setEvents(sortedEvents);
+        // Sort upcoming/ongoing events by startDate ascending (closest start date first)
+        ongoingOrUpcoming.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+
+        setEvents(ongoingOrUpcoming);
       } catch (err) {
         console.error('Error fetching events:', err);
         setError('Failed to load events');
@@ -209,7 +198,7 @@ export default function LandingPage() {
   };
 
   // Function to play a character's animation sequence
-  const playCharacterSequence = (character: string) => {
+  const playCharacterSequence = (_character: string) => {
     setAnimationSequence({
       isPlaying: true,
       currentStep: 0,
