@@ -85,7 +85,33 @@ export default function LandingPage() {
       try {
         setLoading(true);
         const publicEvents = await eventService.getPublicNonExpiredEvents();
-        setEvents(publicEvents);
+        
+        // Sort events defensively: upcoming/ongoing first (closest start date first), past events last
+        const sortedEvents = [...publicEvents].sort((a, b) => {
+          const today = new Date();
+          today.setHours(0, 0, 0, 0);
+          const todayTime = today.getTime();
+          
+          const aStart = new Date(a.startDate).getTime();
+          const bStart = new Date(b.startDate).getTime();
+          const aEnd = new Date(a.endDate).getTime();
+          const bEnd = new Date(b.endDate).getTime();
+          
+          const aIsPast = aEnd < todayTime;
+          const bIsPast = bEnd < todayTime;
+          
+          // Past events come last
+          if (!aIsPast && bIsPast) return -1;
+          if (aIsPast && !bIsPast) return 1;
+          
+          // Both active: closest start date first
+          if (!aIsPast && !bIsPast) return aStart - bStart;
+          
+          // Both past: most recent first
+          return bStart - aStart;
+        });
+
+        setEvents(sortedEvents);
       } catch (err) {
         console.error('Error fetching events:', err);
         setError('Failed to load events');
