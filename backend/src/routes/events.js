@@ -186,8 +186,18 @@ router.get('/public', async (req, res) => {
 // followed by completed/past events (sorted by startDate ascending).
 router.get('/public-nonexpired', async (req, res) => {
   try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0); // Start of today
+    // Get current date/time start in Asia/Hong_Kong timezone (since events are HKT-based)
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Hong_Kong',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const parts = formatter.formatToParts(new Date());
+    const year = parts.find(p => p.type === 'year').value;
+    const month = parts.find(p => p.type === 'month').value;
+    const day = parts.find(p => p.type === 'day').value;
+    const today = new Date(`${year}-${month}-${day}T00:00:00+08:00`);
 
     // Fetch all published, non-private events
     const events = await Event.find({
@@ -201,7 +211,7 @@ router.get('/public-nonexpired', async (req, res) => {
     const upcoming = [];
     const completed = [];
     for (const event of events) {
-      const endDate = event.endDate ? new Date(event.endDate) : null;
+      const endDate = event.endDate ? new Date(event.endDate) : (event.startDate ? new Date(event.startDate) : null);
       if (endDate && endDate < today) {
         completed.push(event);
       } else {
