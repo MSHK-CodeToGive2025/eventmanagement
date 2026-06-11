@@ -4,9 +4,6 @@ import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Clock,
-  Users,
-  Share2,
   Calendar,
   MapPin,
   AlertCircle,
@@ -70,8 +67,10 @@ export default function EnhancedEventDetailPage() {
   const [registrationFormRef, setRegistrationFormRef] = useState<HTMLDivElement | null>(null);
   const [showRegistrationStarted, setShowRegistrationStarted] = useState(false);
 
-  // Check if user can register (no active registration exists)
-  const canRegister = !activeRegistration && isAuthenticated && user;
+  const isEventCompleted = event
+    ? new Date(event.endDate || event.startDate).getTime() < new Date().getTime()
+    : false;
+
   const isRegistered = activeRegistration?.status === 'registered';
   const hasCancelledRegistration = userRegistrations.some(
     reg => reg.status === 'cancelled' || reg.status === 'rejected'
@@ -300,15 +299,6 @@ export default function EnhancedEventDetailPage() {
     }
   };
 
-  const resetForm = () => {
-    setSelectedSessions([]);
-    setFormValues({});
-    setErrors({});
-    setRegistrationComplete(false);
-    setCurrentStep(1);
-    setShowRegistrationForm(false);
-  };
-
   const getRegistrationStatusBadge = () => {
     if (!activeRegistration) return null;
 
@@ -394,6 +384,23 @@ export default function EnhancedEventDetailPage() {
                 Browse Other Events
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (isEventCompleted) {
+      return (
+        <Card className="bg-gradient-to-r from-gray-50 to-slate-100 border-gray-200">
+          <CardContent className="p-6 text-center">
+            <XCircle className="h-12 w-12 text-gray-500 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-3 text-gray-700">Event Completed</h3>
+            <p className="text-gray-600 mb-6">
+              This event has ended. Registrations are no longer accepted.
+            </p>
+            <Button onClick={() => navigate('/enhanced-events')} variant="outline">
+              Browse Other Events
+            </Button>
           </CardContent>
         </Card>
       );

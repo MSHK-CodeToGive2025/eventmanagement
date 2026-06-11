@@ -3,6 +3,7 @@ import express from 'express';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import eventRoutes, { setTwilioClientForTesting } from '../events.js';
+import eventRegistrationRoutes from '../eventRegistrations.js';
 import Event from '../../models/Event.js';
 import User from '../../models/User.js';
 import RegistrationForm from '../../models/RegistrationForm.js';
@@ -18,6 +19,7 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 app.use('/api/events', eventRoutes);
+app.use('/api/event-registrations', eventRegistrationRoutes);
 
 let mongod;
 let adminUser, regularUser;
@@ -741,6 +743,68 @@ describe('Events Routes', () => {
       expect(vars['4']).toBe('Staff User');
       expect(vars['5']).toBe('+85211111111');
       expect(call.to).toMatch(/whatsapp:.*85298765432/);
+    });
+  });
+
+  describe('Event Registration and Completed Event Validation', () => {
+    it('POST /api/event-registrations/event/:eventId should register successfully for an upcoming event (V2)', async () => {
+      const response = await request(app)
+        .post(`/api/event-registrations/event/${testEvent._id}`)
+        .set('Authorization', `Bearer ${regularToken}`)
+        .send({
+          sessions: [testEvent.sessions[0]._id.toString()],
+          formResponses: [],
+          attendee: {
+            firstName: 'Regular',
+            lastName: 'User',
+            phone: '+85212345679',
+            email: 'user@example.com'
+          }
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body).toHaveProperty('status', 'registered');
+    });
+
+    it('POST /api/event-registrations/event/:eventId should fail to register for a completed event (V2)', async () => {
+      const completedEvent = new Event({
+        title: 'Completed Event V2',
+        description: 'Test Completed Description V2',
+        category: 'Education & Training',
+        targetGroup: 'All Hong Kong Residents',
+        location: {
+          venue: 'Test Venue',
+          address: 'Test Address',
+          district: 'Central and Western',
+          onlineEvent: false
+        },
+        startDate: new Date(Date.now() - 172800000), // 2 days ago
+        endDate: new Date(Date.now() - 86400000), // 1 day ago
+        isPrivate: false,
+        status: 'Published',
+        registrationFormId: testRegistrationForm._id,
+        sessions: [],
+        capacity: 10,
+        createdBy: adminUser._id
+      });
+      await completedEvent.save();
+
+      const response = await request(app)
+        .post(`/api/event-registrations/event/${completedEvent._id}`)
+        .set('Authorization', `Bearer ${regularToken}`)
+        .send({
+          sessions: [],
+          formResponses: [],
+          attendee: {
+            firstName: 'Regular',
+            lastName: 'User',
+            phone: '+85212345679',
+            email: 'user@example.com'
+          }
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body).toHaveProperty('message', 'Cannot register for a completed event');
     });
   });
 }); 

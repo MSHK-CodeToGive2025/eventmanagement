@@ -70,6 +70,14 @@ router.post('/event/:eventId', auth, async (req, res) => {
       return res.status(400).json({ message: 'Event is not available for registration' });
     }
 
+    // Check if event is completed
+    const now = new Date();
+    const endDate = event.endDate ? new Date(event.endDate) : (event.startDate ? new Date(event.startDate) : null);
+    if (endDate && endDate < now) {
+      console.log('[REGISTRATION] Cannot register for a completed event');
+      return res.status(400).json({ message: 'Cannot register for a completed event' });
+    }
+
     // Check if user is already registered (only active registrations)
     const existingRegistration = await EventRegistration.findOne({
       eventId: req.params.eventId,

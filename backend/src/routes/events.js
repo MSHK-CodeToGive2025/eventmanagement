@@ -559,6 +559,13 @@ router.post('/:id/register', auth, async (req, res) => {
       return res.status(404).json({ message: 'Event not found' });
     }
 
+    // Check if event is completed
+    const now = new Date();
+    const endDate = event.endDate ? new Date(event.endDate) : (event.startDate ? new Date(event.startDate) : null);
+    if (endDate && endDate < now) {
+      return res.status(400).json({ message: 'Cannot register for a completed event' });
+    }
+
     // Check if user is already registered
     if (event.registeredParticipants.some(p => p._id.toString() === req.user.userId)) {
       return res.status(400).json({ message: 'Already registered for this event' });
