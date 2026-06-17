@@ -4,12 +4,12 @@
 
 WhatsApp messaging uses **templates only** (no freeform/body messages) to avoid delivery failures outside the 24-hour session window (error 63016).
 
-1. **Manual messages (Send WhatsApp Event Update in UI)**  
-   - Use the **event update utility template** (`TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID` / `zubin_foundation_event_update_v2`).  
+1. **Manual messages (Send WhatsApp Event Update in UI)**
+   - Use the **event update utility template** (`TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID` / `zubin_foundation_event_update_v3`).
    - Variable 1 = event title (auto-filled), Variable 2 = session (selectable), Variable 3 = your message **plus** the standard disclaimer (appended in the backend), Variable 4 = contact name (auto-filled from event settings), Variable 5 = contact phone (auto-filled from event settings).
 
-2. **Scheduled event reminders**  
-   - Use the **8-variable reminder template** (`TWILIO_WHATSAPP_TEMPLATE_SID` / `zubin_foundation_event_reminder_v2`) when the event's default is "template", or the **event update template** when "custom".  
+2. **Scheduled event reminders**
+   - Use the **8-variable reminder template** (`TWILIO_WHATSAPP_TEMPLATE_SID` / `zubin_foundation_event_reminder_v2`) when the event's default is "template", or the **event update template** when "custom".
    - Reminders are checked **every 5 minutes** in Hong Kong time (Asia/Hong_Kong).
 
 ## Template Configuration
@@ -21,8 +21,8 @@ Add the following variables to your `.env` file:
 ```bash
 # Event reminder template (8 variables): zubin_foundation_event_reminder_v2
 TWILIO_WHATSAPP_TEMPLATE_SID=HX6dcf16072c4b77b1513ef377de2c0879
-# Event update template (5 variables): zubin_foundation_event_update_v2
-TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID=HX1fc0085538023f4de77d3d3cce079387
+# Event update template (5 variables): zubin_foundation_event_update_v3
+TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID=HX33f234ae9ad37b5777fedebd3346feeb
 TWILIO_WHATSAPP_NUMBER=xxx
 ```
 
@@ -57,7 +57,7 @@ We look forward to seeing you!
 
 ### Event Update Template Variables (5 variables)
 
-Template: `zubin_foundation_event_update_v2`
+Template: `zubin_foundation_event_update_v3`
 
 The backend appends the following disclaimer to **variable 3** after the staff-entered message (Twilio-safe, single block of text):
 
@@ -96,10 +96,22 @@ The `sendEventReminder` method supports both modes:
 
 ```javascript
 // Template mode (default) - uses 8-variable reminder template
-await this.sendEventReminder(event, reminderHours, eventType, startDateTime, true);
+await this.sendEventReminder(
+  event,
+  reminderHours,
+  eventType,
+  startDateTime,
+  true,
+);
 
 // Custom message mode - uses event update template
-await this.sendEventReminder(event, reminderHours, eventType, startDateTime, false);
+await this.sendEventReminder(
+  event,
+  reminderHours,
+  eventType,
+  startDateTime,
+  false,
+);
 ```
 
 #### 2. Events Routes (`backend/src/routes/events.js`)
@@ -129,6 +141,7 @@ Both individual and bulk WhatsApp message routes use the event update template:
 ### Debugging
 
 Check the backend logs for:
+
 - Template variable formatting
 - Twilio API responses
 - Message delivery status
