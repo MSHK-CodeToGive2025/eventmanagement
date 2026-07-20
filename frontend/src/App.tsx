@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/auth-context';
+import { ScrollToTop } from './components/layout/scroll-to-top';
 import Dashboard from './pages/Dashboard';
 import CreateEvent from './pages/CreateEvent';
 import EventAdminForm from './components/events/EventAdminForm';
@@ -31,6 +32,7 @@ const App: React.FC = () => {
 
   return (
     <Router>
+      <ScrollToTop />
       <AuthProvider>
         <UserManagementProvider>
         <div className="min-h-screen bg-gray-100">

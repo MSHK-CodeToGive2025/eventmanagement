@@ -10,7 +10,52 @@ import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { formatDateHKT } from "@/utils/dateTimeHKT"
 import { ZubinEvent } from "@/types/event-types"
-import eventService from "@/services/eventService"
+import eventService, { Event } from "@/services/eventService"
+
+/** Start of today in local time — matches backend non-expired filter (endDate >= today). */
+function getStartOfToday(): Date {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  return today
+}
+
+function isUpcomingEvent(event: ZubinEvent, startOfToday: Date): boolean {
+  return new Date(event.endDate).getTime() >= startOfToday.getTime()
+}
+
+function transformApiEvent(event: Event): ZubinEvent {
+  return {
+    _id: event._id,
+    title: event.title,
+    description: event.description,
+    category: event.category,
+    targetGroup: event.targetGroup,
+    location: {
+      venue: event.location.venue,
+      address: event.location.address,
+      district: event.location.district,
+      onlineEvent: event.location.onlineEvent,
+      meetingLink: event.location.meetingLink,
+    },
+    startDate: new Date(event.startDate),
+    endDate: new Date(event.endDate),
+    coverImage: event.coverImage,
+    isPrivate: event.isPrivate,
+    status: event.status,
+    registrationFormId: event.registrationFormId,
+    sessions: event.sessions.map((session) => ({
+      ...session,
+      date: new Date(session.date),
+    })),
+    capacity: event.capacity,
+    createdBy: event.createdBy,
+    createdAt: new Date(event.createdAt),
+    updatedBy: event.updatedBy,
+    updatedAt: event.updatedAt ? new Date(event.updatedAt) : undefined,
+    tags: event.tags,
+    registeredCount: event.registeredCount,
+  }
+}
 
 /**
  * Helper function to extract unique categories from events array
@@ -20,6 +65,34 @@ import eventService from "@/services/eventService"
 const getUniqueCategories = (events: ZubinEvent[]) => {
   const categories = events.map((event) => event.category)
   return [...new Set(categories)]
+}
+
+function sortEventList(result: ZubinEvent[], sortBy: string) {
+  switch (sortBy) {
+    case "upcoming":
+      result.sort(
+        (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+      )
+      break
+    case "date-asc":
+      result.sort(
+        (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+      )
+      break
+    case "date-desc":
+      result.sort(
+        (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+      )
+      break
+    case "title-asc":
+      result.sort((a, b) => a.title.localeCompare(b.title))
+      break
+    case "title-desc":
+      result.sort((a, b) => b.title.localeCompare(a.title))
+      break
+    default:
+      break
+  }
 }
 
 /**
@@ -44,9 +117,13 @@ export default function EnhancedEventsPage() {
   const [endDate, setEndDate] = useState<Date | null>(null)
   const [showImages, setShowImages] = useState(true)
 
-  // Pagination states
+  // Pagination states (upcoming section)
   const [currentPage, setCurrentPage] = useState(1)
   const [eventsPerPage, setEventsPerPage] = useState(9)
+
+  // Pagination states (past events section)
+  const [pastCurrentPage, setPastCurrentPage] = useState(1)
+  const [pastEventsPerPage, setPastEventsPerPage] = useState(9)
 
   // Sorting state - options: upcoming, date-asc, date-desc, title-asc, title-desc (default: upcoming events first)
   const [sortBy, setSortBy] = useState<string>("upcoming")
@@ -56,51 +133,16 @@ export default function EnhancedEventsPage() {
 
   /**
    * Fetch events data on component mount
-   * Fetch published, non-private, non-expired events from backend API
+   * Fetch all published public events; split into upcoming vs past on the client.
    */
   useEffect(() => {
     const fetchEvents = async () => {
       try {
         setLoading(true)
         setError(null)
-        
-        // Fetch published, non-private, non-expired events from backend
-        const fetchedEvents = await eventService.getPublicNonExpiredEvents()
-        
-        // Transform backend events to match ZubinEvent interface
-        const transformedEvents: ZubinEvent[] = fetchedEvents.map(event => ({
-          _id: event._id,
-          title: event.title,
-          description: event.description,
-          category: event.category,
-          targetGroup: event.targetGroup,
-          location: {
-            venue: event.location.venue,
-            address: event.location.address,
-            district: event.location.district,
-            onlineEvent: event.location.onlineEvent,
-            meetingLink: event.location.meetingLink
-          },
-          startDate: new Date(event.startDate),
-          endDate: new Date(event.endDate),
-          coverImage: event.coverImage,
-          isPrivate: event.isPrivate,
-          status: event.status,
-          registrationFormId: event.registrationFormId,
-          sessions: event.sessions.map(session => ({
-            ...session,
-            date: new Date(session.date)
-          })),
-          capacity: event.capacity,
-          createdBy: event.createdBy,
-          createdAt: new Date(event.createdAt),
-          updatedBy: event.updatedBy,
-          updatedAt: event.updatedAt ? new Date(event.updatedAt) : undefined,
-          tags: event.tags,
-          registeredCount: event.registeredCount
-        }))
-        
-        setEvents(transformedEvents)
+
+        const fetchedEvents = await eventService.getPublicEvents()
+        setEvents(fetchedEvents.map(transformApiEvent))
       } catch (error) {
         setError("Failed to fetch events. Please try again later.")
       } finally {
@@ -111,25 +153,40 @@ export default function EnhancedEventsPage() {
     fetchEvents()
   }, [])
 
-  // Get unique categories, target groups, and locations for filter dropdowns using useMemo for performance
-  const categories = useMemo(() => getUniqueCategories(events), [events])
+  const startOfToday = useMemo(() => getStartOfToday(), [])
+
+  const upcomingPool = useMemo(
+    () => events.filter((event) => isUpcomingEvent(event, startOfToday)),
+    [events, startOfToday]
+  )
+
+  const pastEvents = useMemo(() => {
+    const past = events.filter((event) => !isUpcomingEvent(event, startOfToday))
+    past.sort(
+      (a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    )
+    return past
+  }, [events, startOfToday])
+
+  // Filter dropdown options from upcoming events only
+  const categories = useMemo(() => getUniqueCategories(upcomingPool), [upcomingPool])
   const targetGroups = useMemo(() => {
-    const groups = events.map((event) => event.targetGroup)
+    const groups = upcomingPool.map((event) => event.targetGroup)
     return [...new Set(groups)]
-  }, [events])
+  }, [upcomingPool])
   const locations = useMemo(() => {
-    const locs = events.map((event) => event.location)
-    return [...new Set(locs)]
-  }, [events])
+    const venues = upcomingPool
+      .map((event) => event.location.venue)
+      .filter((venue): venue is string => Boolean(venue))
+    return [...new Set(venues)]
+  }, [upcomingPool])
 
   /**
-   * Filter and sort events based on current filter and sort states
-   * Uses useMemo to prevent unnecessary recalculations
+   * Filter and sort upcoming events only (past events live in a separate section).
    */
-  const filteredEvents = useMemo(() => {
-    let result = [...events]
+  const filteredUpcomingEvents = useMemo(() => {
+    let result = [...upcomingPool]
 
-    // Apply search filter across title and description
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
       result = result.filter(
@@ -139,22 +196,18 @@ export default function EnhancedEventsPage() {
       )
     }
 
-    // Apply category filter
     if (selectedCategory) {
       result = result.filter((event) => event.category === selectedCategory)
     }
 
-    // Apply target group filter
     if (selectedTargetGroup) {
       result = result.filter((event) => event.targetGroup === selectedTargetGroup)
     }
 
-    // Apply location filter
     if (selectedLocation) {
       result = result.filter((event) => event.location.venue === selectedLocation)
     }
 
-    // Apply date range filter
     if (startDate) {
       const start = new Date(startDate)
       start.setHours(0, 0, 0, 0)
@@ -167,59 +220,37 @@ export default function EnhancedEventsPage() {
       result = result.filter((event) => new Date(event.startDate) <= end)
     }
 
-    // Apply sorting based on selected sort option
-    switch (sortBy) {
-      case "upcoming": {
-        const today = new Date()
-        today.setHours(0, 0, 0, 0)
-        const todayTime = today.getTime()
-        result.sort((a, b) => {
-          const aStart = new Date(a.startDate).getTime()
-          const bStart = new Date(b.startDate).getTime()
-          const aEnd = new Date(a.endDate).getTime()
-          const bEnd = new Date(b.endDate).getTime()
-          const aIsPast = aEnd < todayTime
-          const bIsPast = bEnd < todayTime
-          // Past events come last
-          if (!aIsPast && bIsPast) return -1
-          if (aIsPast && !bIsPast) return 1
-          // Both upcoming/ongoing: closest start date first
-          if (!aIsPast && !bIsPast) return aStart - bStart
-          // Both past: most recent first
-          return bStart - aStart
-        })
-        break
-      }
-      case "date-asc":
-        result.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime())
-        break
-      case "date-desc":
-        result.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())
-        break
-      case "title-asc":
-        result.sort((a, b) => a.title.localeCompare(b.title))
-        break
-      case "title-desc":
-        result.sort((a, b) => b.title.localeCompare(a.title))
-        break
-    }
-
+    sortEventList(result, sortBy)
     return result
-  }, [events, searchQuery, selectedCategory, selectedTargetGroup, selectedLocation, startDate, endDate, sortBy])
+  }, [
+    upcomingPool,
+    searchQuery,
+    selectedCategory,
+    selectedTargetGroup,
+    selectedLocation,
+    startDate,
+    endDate,
+    sortBy,
+  ])
 
-  // Calculate pagination values
-  const totalPages = Math.ceil(filteredEvents.length / eventsPerPage)
+  const totalPages = Math.ceil(filteredUpcomingEvents.length / eventsPerPage) || 1
   const indexOfLastEvent = currentPage * eventsPerPage
   const indexOfFirstEvent = indexOfLastEvent - eventsPerPage
-  const currentEvents = filteredEvents.slice(indexOfFirstEvent, indexOfLastEvent)
+  const currentEvents = filteredUpcomingEvents.slice(indexOfFirstEvent, indexOfLastEvent)
 
-  /**
-   * Handle page change in pagination
-   * @param pageNumber - The page number to navigate to
-   */
+  const pastTotalPages = Math.ceil(pastEvents.length / pastEventsPerPage) || 1
+  const pastIndexOfLast = pastCurrentPage * pastEventsPerPage
+  const pastIndexOfFirst = pastIndexOfLast - pastEventsPerPage
+  const currentPastEvents = pastEvents.slice(pastIndexOfFirst, pastIndexOfLast)
+
   const paginate = (pageNumber: number) => {
     setCurrentPage(pageNumber)
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  const paginatePast = (pageNumber: number) => {
+    setPastCurrentPage(pageNumber)
+    document.getElementById("past-events")?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
 
   /**
@@ -234,6 +265,7 @@ export default function EnhancedEventsPage() {
     setEndDate(null)
     setSortBy("upcoming")
     setCurrentPage(1)
+    setPastCurrentPage(1)
   }
 
   /**
@@ -408,8 +440,8 @@ export default function EnhancedEventsPage() {
               <SelectContent>
                 <SelectItem value="all">All Locations</SelectItem>
                 {locations.map((location) => (
-                  <SelectItem key={location.venue} value={location.venue}>
-                    {location.venue}
+                  <SelectItem key={location} value={location}>
+                    {location}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -653,8 +685,8 @@ export default function EnhancedEventsPage() {
                 <SelectContent>
                   <SelectItem value="all">All Locations</SelectItem>
                   {locations.map((location) => (
-                    <SelectItem key={location.venue} value={location.venue}>
-                      {location.venue}
+                    <SelectItem key={location} value={location}>
+                      {location}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -820,7 +852,7 @@ export default function EnhancedEventsPage() {
 
       {/* Results Count */}
       <div className="mb-4 text-sm text-gray-500">
-        Showing {currentEvents.length} of {filteredEvents.length} events
+        Showing {currentEvents.length} of {filteredUpcomingEvents.length} upcoming events
         {hasActiveFilters && " (filtered)"}
       </div>
 
@@ -881,7 +913,7 @@ export default function EnhancedEventsPage() {
       ) : (
         // No Results State
         <div className="text-center py-12 bg-gray-50 rounded-lg">
-          <div className="text-gray-500 mb-4">No events found matching your criteria</div>
+          <div className="text-gray-500 mb-4">No upcoming events found matching your criteria</div>
           <Button onClick={resetFilters} variant="outline">
             Clear Filters
           </Button>
@@ -970,6 +1002,160 @@ export default function EnhancedEventsPage() {
           <span>events per page</span>
         </div>
       </div>
+
+      {/* Past events section */}
+      <section id="past-events" className="mt-16 pt-10 border-t border-gray-200">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold mb-2">Past events</h2>
+          <p className="text-gray-600 text-sm">
+            Events that have already ended, sorted with the most recent first.
+          </p>
+        </div>
+
+        <div className="mb-4 text-sm text-gray-500">
+          Showing {currentPastEvents.length} of {pastEvents.length} past events
+        </div>
+
+        {currentPastEvents.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentPastEvents.map((event) => (
+              <Card key={event._id} className="overflow-hidden hover:shadow-md transition-shadow opacity-95">
+                {showImages && (
+                  <div className="relative aspect-square">
+                    <img
+                      src={
+                        eventService.getEventImageUrl(event._id, event) ||
+                        "/placeholder.svg?height=400&width=400&query=event"
+                      }
+                      alt={event.title}
+                      className="object-cover w-full h-full grayscale-[30%]"
+                    />
+                  </div>
+                )}
+                <CardContent className="p-4">
+                  <h3 className="text-xl font-semibold mb-2 line-clamp-1">{event.title}</h3>
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center text-sm text-gray-600">
+                      <Calendar className="h-4 w-4 mr-2 flex-shrink-0" />
+                      <span>
+                        {formatDateHKT(new Date(event.startDate))} -{" "}
+                        {formatDateHKT(new Date(event.endDate))}
+                      </span>
+                    </div>
+                    <div className="flex items-center text-sm text-gray-600">
+                      <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
+                      <span className="line-clamp-1">{event.location.venue}</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <div className="flex flex-wrap gap-2">
+                      <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs">
+                        {event.category}
+                      </span>
+                      <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded-full text-xs">
+                        Past
+                      </span>
+                    </div>
+                    <Button
+                      onClick={() => navigateToEvent(event._id)}
+                      variant="outline"
+                      size="sm"
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-10 bg-gray-50 rounded-lg text-gray-500">
+            No past events to display.
+          </div>
+        )}
+
+        {pastTotalPages > 1 && (
+          <div className="flex justify-center mt-8">
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => paginatePast(Math.max(1, pastCurrentPage - 1))}
+                disabled={pastCurrentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: pastTotalPages }, (_, i) => i + 1)
+                  .filter(
+                    (page) =>
+                      page === 1 ||
+                      page === pastTotalPages ||
+                      (page >= pastCurrentPage - 1 && page <= pastCurrentPage + 1)
+                  )
+                  .map((page, index, array) => {
+                    const showEllipsisBefore = index > 0 && array[index - 1] !== page - 1
+                    const showEllipsisAfter =
+                      index < array.length - 1 && array[index + 1] !== page + 1
+
+                    return (
+                      <div key={page} className="flex items-center">
+                        {showEllipsisBefore && <span className="px-2">...</span>}
+                        <Button
+                          variant={pastCurrentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => paginatePast(page)}
+                          className={
+                            pastCurrentPage === page
+                              ? "bg-yellow-400 hover:bg-yellow-500 text-black"
+                              : ""
+                          }
+                        >
+                          {page}
+                        </Button>
+                        {showEllipsisAfter && <span className="px-2">...</span>}
+                      </div>
+                    )
+                  })}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => paginatePast(Math.min(pastTotalPages, pastCurrentPage + 1))}
+                disabled={pastCurrentPage === pastTotalPages}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <div className="flex justify-center mt-4">
+          <div className="flex items-center space-x-2 text-sm text-gray-500">
+            <span>Show</span>
+            <Select
+              value={pastEventsPerPage.toString()}
+              onValueChange={(value) => {
+                setPastEventsPerPage(Number.parseInt(value))
+                setPastCurrentPage(1)
+              }}
+            >
+              <SelectTrigger className="h-8 w-16">
+                <SelectValue placeholder="9" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="6">6</SelectItem>
+                <SelectItem value="9">9</SelectItem>
+                <SelectItem value="12">12</SelectItem>
+                <SelectItem value="24">24</SelectItem>
+              </SelectContent>
+            </Select>
+            <span>past events per page</span>
+          </div>
+        </div>
+      </section>
     </div>
   )
 }
