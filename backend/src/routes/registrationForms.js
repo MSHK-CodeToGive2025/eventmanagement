@@ -54,11 +54,11 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create registration form (admin/staff only)
+// Create registration form (admin only)
 router.post('/', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
+    if (!user || user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to create forms' });
     }
 
@@ -83,11 +83,11 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Update registration form (admin/staff only)
+// Update registration form (admin only)
 router.put('/:id', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
+    if (!user || user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to update forms' });
     }
 
@@ -135,11 +135,11 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// Toggle form active status (admin/staff only)
+// Toggle form active status (admin only)
 router.patch('/:id/toggle', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
+    if (!user || user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized to toggle form status' });
     }
 

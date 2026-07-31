@@ -5,14 +5,36 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { format } from "date-fns"
 import * as XLSX from "xlsx"
-import { CalendarIcon, MapPin, Tag, Users, FileText, MessageSquare, X, Search, Eye, ArrowLeft, Loader2, Printer, Download } from "lucide-react"
+import {
+  CalendarIcon,
+  MapPin,
+  Tag,
+  Users,
+  MessageSquare,
+  X,
+  Search,
+  Eye,
+  ArrowLeft,
+  Loader2,
+  Printer,
+  Download,
+} from "lucide-react"
 import { formatDateHKT, formatSessionDateTimeHKT, formatDateTimeHKT } from "@/utils/dateTimeHKT"
-import { ZubinEvent, eventCategories, targetGroups } from "@/types/event-types"
+import { ZubinEvent } from "@/types/event-types"
 import RegistrationFormDialog from "@/components/events-builder/registration-form-dialog"
 import WhatsAppMessageDialog from "@/components/events-builder/whatsapp-message-dialog"
 import { RegistrationForm } from "@/types/form-types"
@@ -34,7 +56,6 @@ export default function ManageRegistrations() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("registered");
   const [selectedRegistration, setSelectedRegistration] = useState<EventRegistration | null>(null);
-  const [registrationToReject, setRegistrationToReject] = useState<EventRegistration | null>(null);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
   
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
@@ -48,16 +69,35 @@ export default function ManageRegistrations() {
     const fetchEvent = async () => {
       try {
         const eventData = await eventService.getEvent(id);
-        setEvent(eventData as ZubinEvent);
-      } catch (err: any) {
+
+        // Check if staff user is authorized to manage registrations for this event
+        const creatorObj =
+          typeof eventData.createdBy === "object" && eventData.createdBy !== null
+            ? (eventData.createdBy as { _id?: string; id?: string })
+            : null;
+        const createdById = creatorObj?._id || creatorObj?.id || (typeof eventData.createdBy === "string" ? eventData.createdBy : undefined);
+
+        if (user?.role === "staff" && createdById && createdById !== user._id) {
+          toast({
+            title: "Access Denied",
+            description: "Staff members can only manage registrations for events they have created.",
+            variant: "destructive",
+          });
+          navigate("/manage/events-builder");
+          return;
+        }
+
+        setEvent(eventData as unknown as ZubinEvent);
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load event';
         console.error('Error fetching event:', err);
-        setError(err.message || 'Failed to load event');
+        setError(errorMessage);
         setEvent(null);
         toast({ title: "Error", description: "Failed to load event.", variant: "destructive" });
       }
     };
     fetchEvent();
-  }, [id, toast]);
+  }, [id, user, navigate, toast]);
 
   // Fetch registrations and form data when event is available
   useEffect(() => {
@@ -75,12 +115,13 @@ export default function ManageRegistrations() {
           const formData = await formService.getForm(event.registrationFormId);
           setRegistrationForm(formData);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : 'Failed to load registrations';
         console.error('Error fetching data:', err);
-        setError(err.message || 'Failed to load registrations');
+        setError(errorMessage);
         toast({
           title: "Error",
-          description: err.message || "Failed to load registrations",
+          description: errorMessage,
           variant: "destructive",
         });
       } finally {
@@ -104,11 +145,12 @@ export default function ManageRegistrations() {
   };
 
   // Check if user can send WhatsApp messages (admin, staff, or event creator)
-  const canSendWhatsApp = user && (
-    user.role === 'admin' || 
-    user.role === 'staff' || 
-    (event?.createdBy && event.createdBy._id === user._id)
-  );
+  const eventCreatorId =
+    typeof event?.createdBy === "object" && event.createdBy !== null
+      ? (event.createdBy as { _id?: string; id?: string })._id || (event.createdBy as { _id?: string; id?: string }).id
+      : event?.createdBy;
+  const canSendWhatsApp =
+    user && (user.role === "admin" || user.role === "staff" || (eventCreatorId && eventCreatorId === user._id));
 
   // Get registered participants count
   const registeredParticipantsCount = registrations.filter(reg => reg.status === 'registered').length;
@@ -137,12 +179,12 @@ export default function ManageRegistrations() {
       });
       
       setSelectedRegistration(null);
-      setRegistrationToReject(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Failed to reject registration";
       console.error('Error rejecting registration:', err);
       toast({
         title: "Error",
-        description: err.message || "Failed to reject registration",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -707,7 +749,6 @@ export default function ManageRegistrations() {
                                   <Button
                                     variant="destructive"
                                     size="sm"
-                                    onClick={() => setRegistrationToReject(registration)}
                                   >
                                     <X className="h-4 w-4 mr-2" />
                                     Reject
@@ -723,7 +764,7 @@ export default function ManageRegistrations() {
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel onClick={() => setRegistrationToReject(null)}>
+                                    <AlertDialogCancel>
                                       Cancel
                                     </AlertDialogCancel>
                                     <AlertDialogAction

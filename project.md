@@ -17,11 +17,14 @@ The Zubin Foundation is an integrated service provider for Hong Kong's ethnic mi
 - Full control over the system
 - Access to comprehensive dashboards and analytics
 - User management (create, modify, delete)
-- Event management (create, modify, delete)
+- Registration Form management (create, modify, toggle active status, delete)
+- Event management (create, modify, delete any event)
 - Staff management
 
 ### 3.2 Staff
-- Create and manage events
+- Create new events
+- Edit, delete, and manage registrations for only the events created by themselves (cannot edit/delete or manage registrations for events created by other staff)
+- View registration forms and form details (cannot create, edit, toggle, or delete registration forms)
 - View participant information for their events
 - Send messages and reminders to participants
 - Generate attendance reports
@@ -108,17 +111,25 @@ The Zubin Foundation is an integrated service provider for Hong Kong's ethnic mi
 
 ### 6.3 Events
 - `GET /api/events` - Get all events
-- `POST /api/events` - Create new event
+- `POST /api/events` - Create new event (admin or staff)
 - `GET /api/events/:id` - Get specific event
-- `PUT /api/events/:id` - Update event
-- `DELETE /api/events/:id` - Delete event
+- `PUT /api/events/:id` - Update event (admin, or staff creator of the event)
+- `DELETE /api/events/:id` - Delete event (admin, or staff creator of the event)
 
 ### 6.4 Registrations
-- `GET /api/events/:id/registrations` - Get registrations for event
+- `GET /api/event-registrations/event/:eventId` - Get registrations for event (admin, or staff creator of the event)
 - `POST /api/events/:id/register` - Register for event
 - `DELETE /api/events/:id/unregister` - Cancel registration
 
-### 6.5 Messages
+### 6.5 Registration Forms
+- `GET /api/registration-forms` - Get all registration forms (admin or staff)
+- `POST /api/registration-forms` - Create new registration form (admin only)
+- `GET /api/registration-forms/:id` - Get specific registration form
+- `PUT /api/registration-forms/:id` - Update registration form (admin only)
+- `PATCH /api/registration-forms/:id/toggle` - Toggle form active status (admin only)
+- `DELETE /api/registration-forms/:id` - Delete registration form (admin only)
+
+### 6.6 Messages
 - `POST /api/messages/send` - Send message to participants
 - `POST /api/messages/reminder` - Send event reminder
 

@@ -25,12 +25,23 @@ router.get('/', auth, async (req, res) => {
   }
 });
 
-// Get registrations for a specific event
+// Get registrations for a specific event (admin or event creator)
 router.get('/event/:eventId', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
-      return res.status(403).json({ message: 'Not authorized to view registrations' });
+    if (!user) {
+      return res.status(403).json({ message: 'User not found' });
+    }
+
+    const event = await Event.findById(req.params.eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    const isAdmin = user.role === 'admin';
+    const isCreator = event.createdBy && event.createdBy.toString() === req.user.userId;
+    if (!isAdmin && !isCreator) {
+      return res.status(403).json({ message: 'Not authorized to view registrations for this event' });
     }
 
     const registrations = await EventRegistration.find({ eventId: req.params.eventId })
@@ -135,12 +146,12 @@ router.post('/event/:eventId', auth, async (req, res) => {
   }
 });
 
-// Update registration status (admin/staff only)
+// Update registration status (admin or event creator)
 router.put('/:id/status', auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user || (user.role !== 'admin' && user.role !== 'staff')) {
-      return res.status(403).json({ message: 'Not authorized to update registration status' });
+    if (!user) {
+      return res.status(403).json({ message: 'User not found' });
     }
 
     const { status } = req.body;
@@ -150,23 +161,31 @@ router.put('/:id/status', auth, async (req, res) => {
       return res.status(400).json({ message: 'Invalid status' });
     }
 
+    const registration = await EventRegistration.findById(req.params.id);
+    if (!registration) {
+      return res.status(404).json({ message: 'Registration not found' });
+    }
+
+    const event = await Event.findById(registration.eventId);
+    const isAdmin = user.role === 'admin';
+    const isCreator = event && event.createdBy && event.createdBy.toString() === req.user.userId;
+    if (!isAdmin && !isCreator) {
+      return res.status(403).json({ message: 'Not authorized to update registration status for this event' });
+    }
+
     const updateData = { status };
     if (status === 'cancelled' || status === 'rejected') {
       updateData.cancelledAt = new Date();
     }
 
-    const registration = await EventRegistration.findByIdAndUpdate(
+    const updatedRegistration = await EventRegistration.findByIdAndUpdate(
       req.params.id,
       updateData,
       { new: true }
     ).populate('eventId', 'title startDate endDate registrationFormId sessions')
      .populate('userId', 'firstName lastName email mobile');
 
-    if (!registration) {
-      return res.status(404).json({ message: 'Registration not found' });
-    }
-
-    res.json(registration);
+    res.json(updatedRegistration);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
   }

@@ -488,12 +488,10 @@ router.put("/:id", auth, upload.single("image"), async (req, res) => {
       event.createdBy.toString() === req.user.userId,
     );
 
-    // Admin, staff, or event creator can update
-    if (
-      user.role !== "admin" &&
-      user.role !== "staff" &&
-      event.createdBy.toString() !== req.user.userId
-    ) {
+    // Admin or event creator can update
+    const isAdmin = user.role === "admin";
+    const isCreator = event.createdBy && event.createdBy.toString() === req.user.userId;
+    if (!isAdmin && !isCreator) {
       console.log("[EVENTS] Authorization failed - user not authorized");
       return res
         .status(403)
@@ -632,13 +630,10 @@ router.delete("/:id", auth, async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Admin, staff, or event creator can delete
-    if (
-      !user ||
-      (user.role !== "admin" &&
-        user.role !== "staff" &&
-        event.createdBy.toString() !== req.user.userId)
-    ) {
+    // Admin or event creator can delete
+    const isAdmin = user && user.role === "admin";
+    const isCreator = event.createdBy && event.createdBy.toString() === req.user.userId;
+    if (!user || (!isAdmin && !isCreator)) {
       return res
         .status(403)
         .json({ message: "Not authorized to delete this event" });
@@ -818,11 +813,10 @@ router.post(
         return res.status(404).json({ message: "Event not found" });
       }
 
-      // Admin, staff, or event creator can upload images
+      // Admin or event creator can upload images
       if (
         !user ||
         (user.role !== "admin" &&
-          user.role !== "staff" &&
           event.createdBy.toString() !== req.user.userId)
       ) {
         return res
@@ -878,11 +872,10 @@ router.put(
         return res.status(404).json({ message: "Event not found" });
       }
 
-      // Admin, staff, or event creator can update images
+      // Admin or event creator can update images
       if (
         !user ||
         (user.role !== "admin" &&
-          user.role !== "staff" &&
           event.createdBy.toString() !== req.user.userId)
       ) {
         return res
@@ -934,11 +927,10 @@ router.delete("/:id/cover-image", auth, async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Admin, staff, or event creator can delete images
+    // Admin or event creator can delete images
     if (
       !user ||
       (user.role !== "admin" &&
-        user.role !== "staff" &&
         event.createdBy.toString() !== req.user.userId)
     ) {
       return res
@@ -1232,10 +1224,9 @@ router.post("/:id/participants", auth, async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Check authorization: admin, staff, or event creator
+    // Check authorization: admin or event creator
     if (
       user.role !== "admin" &&
-      user.role !== "staff" &&
       event.createdBy.toString() !== req.user.userId
     ) {
       return res
@@ -1283,10 +1274,9 @@ router.delete("/:id/participants", auth, async (req, res) => {
       return res.status(404).json({ message: "Event not found" });
     }
 
-    // Check authorization: admin, staff, or event creator
+    // Check authorization: admin or event creator
     if (
       user.role !== "admin" &&
-      user.role !== "staff" &&
       event.createdBy.toString() !== req.user.userId
     ) {
       return res

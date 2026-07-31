@@ -13,7 +13,7 @@ export default function NewFormPage() {
   }
 
   return (
-    <RouteGuard requiredRoles={["admin", "staff"]}>
+    <RouteGuard requiredRoles={["admin"]}>
       <div className="container mx-auto px-4 py-8">
         <SimplifiedFormBuilder onClose={handleClose} />
         {/* <EnhancedFormBuilder onClose={handleClose} onSave={handleSave} /> */}

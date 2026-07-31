@@ -9,11 +9,22 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 
+interface SimpleEventFormState {
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  capacity: number;
+  category: string;
+}
+
 const CreateEvent: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState<EventFormData>({
+  const [formData, setFormData] = useState<SimpleEventFormState>({
     title: '',
     description: '',
     date: '',
@@ -24,7 +35,7 @@ const CreateEvent: React.FC = () => {
     category: ''
   });
 
-  const handleInputChange = (field: keyof EventFormData, value: string | number) => {
+  const handleInputChange = (field: keyof SimpleEventFormState, value: string | number) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -35,8 +46,36 @@ const CreateEvent: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
+    const payload: EventFormData = {
+      title: formData.title,
+      description: formData.description,
+      category: formData.category || 'other',
+      targetGroup: 'General',
+      location: {
+        venue: formData.location,
+        address: formData.location,
+        district: 'General',
+        onlineEvent: false,
+      },
+      startDate: formData.date ? new Date(`${formData.date}T${formData.startTime || '00:00'}`).toISOString() : new Date().toISOString(),
+      endDate: formData.date ? new Date(`${formData.date}T${formData.endTime || '23:59'}`).toISOString() : new Date().toISOString(),
+      isPrivate: false,
+      status: 'Published',
+      registrationFormId: '',
+      capacity: formData.capacity,
+      sessions: [
+        {
+          title: formData.title || 'Main Session',
+          date: formData.date,
+          startTime: formData.startTime,
+          endTime: formData.endTime,
+          capacity: formData.capacity,
+        },
+      ],
+    };
+
     try {
-      await eventService.createEvent(formData);
+      await eventService.createEvent(payload);
       toast({
         title: "Success",
         description: "Event created successfully!",
@@ -150,7 +189,7 @@ const CreateEvent: React.FC = () => {
                     id="capacity"
                     type="number"
                     value={formData.capacity}
-                    onChange={(e) => handleInputChange('capacity', parseInt(e.target.value))}
+                    onChange={(e) => handleInputChange('capacity', parseInt(e.target.value) || 0)}
                     min="1"
                     required
                   />
@@ -189,4 +228,4 @@ const CreateEvent: React.FC = () => {
   );
 };
 
-export default CreateEvent; 
+export default CreateEvent;

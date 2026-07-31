@@ -233,12 +233,14 @@ export default function EnhancedFormsList() {
             </p>
           )}
         </div>
-        <Button asChild className="whitespace-nowrap">
-          <Link to="/manage/forms/new">
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Create New Form
-          </Link>
-        </Button>
+        {user?.role === 'admin' && (
+          <Button asChild className="whitespace-nowrap">
+            <Link to="/manage/forms/new">
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Create New Form
+            </Link>
+          </Button>
+        )}
       </div>
 
       {/* Search and Filter Bar */}
@@ -371,19 +373,21 @@ export default function EnhancedFormsList() {
                           </TooltipContent>
                         </Tooltip>
 
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" asChild>
-                              <Link to={`/manage/forms/${form._id}/edit`}>
-                                <Edit className="h-4 w-4" />
-                                <span className="sr-only">Edit</span>
-                              </Link>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Edit this form</p>
-                          </TooltipContent>
-                        </Tooltip>
+                        {user?.role === 'admin' && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="sm" asChild>
+                                <Link to={`/manage/forms/${form._id}/edit`}>
+                                  <Edit className="h-4 w-4" />
+                                  <span className="sr-only">Edit</span>
+                                </Link>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Edit this form</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
 
 
 

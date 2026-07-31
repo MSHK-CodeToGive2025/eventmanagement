@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
-import { User, UserRole, type CreateUserData, type UpdateUserData } from "@/types/user-types"
+import { User, UserRole, UserStatus, type CreateUserData, type UpdateUserData } from "@/types/user-types"
 import { UserService } from "@/services/user-service"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "./auth-context"
@@ -29,8 +29,8 @@ interface UserManagementContextType {
   removeUser: (id: string) => Promise<boolean>
   /** Function to search users by query string */
   searchForUsers: (query: string) => Promise<void>
-  /** Function to filter users by role, status, and phone */
-  filterUsersList: (filters: { role?: UserRole; status?: boolean; phone?: string }) => Promise<void>
+  /** Function to filter users by role, status, department, and phone */
+  filterUsersList: (filters: { role?: UserRole; status?: UserStatus | boolean; department?: string; phone?: string }) => Promise<void>
   /** Function to set the currently selected user */
   setSelectedUser: (user: User | null) => void
   /** Function to change a user's password */
@@ -219,15 +219,24 @@ export function UserManagementProvider({ children }: { children: ReactNode }) {
    */
   const filterUsersList = async (filters: {
     role?: UserRole
-    status?: boolean
+    status?: UserStatus | boolean
+    department?: string
     phone?: string
   }): Promise<void> => {
     try {
       setLoading(true)
       setError(null)
+      let isActive: boolean | undefined = undefined
+      if (typeof filters.status === "boolean") {
+        isActive = filters.status
+      } else if (filters.status === "active") {
+        isActive = true
+      } else if (filters.status === "inactive" || filters.status === "suspended") {
+        isActive = false
+      }
       const result = await userService.searchUsers({
         role: filters.role,
-        isActive: filters.status,
+        isActive,
         phone: filters.phone
       })
       setUsers(result.users)

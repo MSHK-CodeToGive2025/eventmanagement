@@ -44,6 +44,7 @@ import { ZubinEvent, eventCategories, targetGroups, eventStatuses } from "@/type
 import { useNavigate } from "react-router-dom"
 import eventService from "@/services/eventService"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/auth-context"
 
 // Define the interface for the filter state
 interface FilterState {
@@ -68,6 +69,7 @@ interface EnhancedEventsListProps {
 export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: EnhancedEventsListProps) {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
 
   // State for events data
   const [events, setEvents] = useState<ZubinEvent[]>([])
@@ -95,6 +97,20 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [eventToDelete, setEventToDelete] = useState<string | null>(null)
   const [isFilterOpen, setIsFilterOpen] = useState(false)
+
+  // Check if current user can edit an event (Admin can edit any event; staff can only edit their own events)
+  const canEditEvent = (event: ZubinEvent) => {
+    if (!user) return false
+    if (user.role === "admin") return true
+    if (user.role === "staff") {
+      const createdById =
+        typeof event.createdBy === "object" && event.createdBy !== null
+          ? (event.createdBy as any)._id || (event.createdBy as any).id
+          : event.createdBy
+      return createdById === user._id
+    }
+    return false
+  }
 
   // Fetch events from backend
   const fetchEvents = async () => {
@@ -402,7 +418,7 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
 
         // Provide more specific error messages
         if (error.message?.includes("403")) {
-          errorMessage = "Access denied. Only administrators can delete events."
+          errorMessage = "Access denied. You do not have permission to delete this event."
         } else if (error.message?.includes("401")) {
           errorMessage = "Authentication required. Please log in again."
         } else if (error.message) {
@@ -841,14 +857,18 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
                             <Eye className="h-4 w-4 mr-2" />
                             View
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => onEditEvent(event._id)}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => navigate(`/manage/events/${event._id}/registrations`, { state: { event } })}>
-                            <Users className="h-4 w-4 mr-2" />
-                            Manage Registrations
-                          </DropdownMenuItem>
+                          {canEditEvent(event) && (
+                            <DropdownMenuItem onClick={() => onEditEvent(event._id)}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                          )}
+                          {canEditEvent(event) && (
+                            <DropdownMenuItem onClick={() => navigate(`/manage/events/${event._id}/registrations`, { state: { event } })}>
+                              <Users className="h-4 w-4 mr-2" />
+                              Manage Registrations
+                            </DropdownMenuItem>
+                          )}
                           {/* 
                         <DropdownMenuItem
                           onClick={() => (window.location.href = `/manage/events/${event._id}/reminders`)}
@@ -857,10 +877,12 @@ export default function EnhancedEventsList({ onEditEvent, refreshTrigger }: Enha
                           Send WhatsApp Reminders
                         </DropdownMenuItem>
                         */}
-                          <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteClick(event._id)}>
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
+                          {canEditEvent(event) && (
+                            <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteClick(event._id)}>
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

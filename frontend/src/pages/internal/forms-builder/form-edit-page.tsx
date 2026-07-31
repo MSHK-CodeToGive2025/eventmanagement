@@ -6,6 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ArrowLeft } from "lucide-react"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
+import RouteGuard from "@/components/route-guard"
 import SimplifiedFormBuilder from "@/components/forms-builder/simplified-form-builder"
 
 export default function FormEditPage() {
@@ -98,26 +99,28 @@ export default function FormEditPage() {
   const defaultSections = transformToBuilderFormat(form)
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <Button variant="outline" asChild className="mb-4">
-          <Link to="/manage/forms">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Forms
-          </Link>
-        </Button>
-        <h1 className="text-3xl font-bold">Edit Form: {form.title}</h1>
-      </div>
+    <RouteGuard requiredRoles={["admin"]}>
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-6">
+          <Button variant="outline" asChild className="mb-4">
+            <Link to="/manage/forms">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Forms
+            </Link>
+          </Button>
+          <h1 className="text-3xl font-bold">Edit Form: {form.title}</h1>
+        </div>
 
-      <SimplifiedFormBuilder
-        onClose={handleClose}
-        formId={id}
-        defaultValues={{
-          title: form.title,
-          description: form.description || "",
-        }}
-        defaultSections={defaultSections}
-      />
-    </div>
+        <SimplifiedFormBuilder
+          onClose={handleClose}
+          formId={id}
+          defaultValues={{
+            title: form.title,
+            description: form.description || "",
+          }}
+          defaultSections={defaultSections}
+        />
+      </div>
+    </RouteGuard>
   )
 } 

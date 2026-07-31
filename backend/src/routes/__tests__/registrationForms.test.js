@@ -48,7 +48,7 @@ describe('Registration Forms Routes', () => {
       password: 'password123',
       firstName: 'Admin',
       lastName: 'User',
-      mobile: '1234567890',
+      mobile: '+85212345670',
       email: 'admin@example.com',
       role: 'admin'
     });
@@ -59,7 +59,7 @@ describe('Registration Forms Routes', () => {
       password: 'password123',
       firstName: 'Staff',
       lastName: 'User',
-      mobile: '1234567891',
+      mobile: '+85212345671',
       email: 'staff@example.com',
       role: 'staff'
     });
@@ -70,7 +70,7 @@ describe('Registration Forms Routes', () => {
       password: 'password123',
       firstName: 'Participant',
       lastName: 'User',
-      mobile: '1234567892',
+      mobile: '+85212345672',
       email: 'participant@example.com',
       role: 'participant'
     });
@@ -284,7 +284,7 @@ describe('Registration Forms Routes', () => {
       expect(response.body).toHaveProperty('createdBy');
     });
 
-    it('should create a new form for staff user', async () => {
+    it('should return 403 for staff user', async () => {
       const formData = {
         title: 'Staff Form',
         description: 'Staff Form Description',
@@ -297,9 +297,8 @@ describe('Registration Forms Routes', () => {
         .set('Authorization', `Bearer ${staffToken}`)
         .send(formData);
 
-      expect(response.status).toBe(201);
-      expect(response.body).toHaveProperty('title', 'Staff Form');
-      expect(response.body).toHaveProperty('isActive', false);
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('message', 'Not authorized to create forms');
     });
 
     it('should return 403 for participant user', async () => {
@@ -393,7 +392,7 @@ describe('Registration Forms Routes', () => {
       expect(response.body).toHaveProperty('updatedBy');
     });
 
-    it('should update a form for staff user', async () => {
+    it('should return 403 for staff user', async () => {
       const form = new RegistrationForm({
         title: 'Staff Form',
         description: 'Staff Description',
@@ -412,8 +411,8 @@ describe('Registration Forms Routes', () => {
         .set('Authorization', `Bearer ${staffToken}`)
         .send(updateData);
 
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('title', 'Updated Staff Form');
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('message', 'Not authorized to update forms');
     });
 
     it('should return 403 for participant user', async () => {
@@ -533,7 +532,7 @@ describe('Registration Forms Routes', () => {
       expect(response.body).toHaveProperty('updatedBy');
     });
 
-    it('should toggle form active status for staff user', async () => {
+    it('should return 403 for staff user', async () => {
       const form = new RegistrationForm({
         title: 'Staff Toggle Form',
         description: 'Staff Toggle Form Description',
@@ -547,8 +546,8 @@ describe('Registration Forms Routes', () => {
         .patch(`/api/registration-forms/${form._id}/toggle`)
         .set('Authorization', `Bearer ${staffToken}`);
 
-      expect(response.status).toBe(200);
-      expect(response.body).toHaveProperty('isActive', true);
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('message', 'Not authorized to toggle form status');
     });
 
     it('should return 403 for participant user', async () => {

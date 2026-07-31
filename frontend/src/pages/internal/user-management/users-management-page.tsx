@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react"
 import { useUserManagement } from "@/contexts/user-management-context"
-import { User } from "@/types/user-types"
+import { User, CreateUserData } from "@/types/user-types"
 import RouteGuard from "@/components/route-guard"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { UserList } from "@/components/users/user-list"
-import { UserForm } from "@/components/users/user-form"
+import { UserForm, type UserFormValues } from "@/components/users/user-form"
 import { UserDetails } from "@/components/users/user-details"
 import { DeleteUserDialog } from "@/components/users/delete-user-dialog"
 import { PasswordChangeForm } from "@/components/users/password-change-form"
@@ -65,10 +65,10 @@ export default function UsersManagementPage() {
   const [sortField, setSortField] = useState<string>("name")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  const handleAddUser = async (userData: Partial<User>): Promise<void> => {
+  const handleAddUser = async (userData: UserFormValues): Promise<void> => {
     console.log('[USERS MANAGEMENT PAGE] handleAddUser called with:', userData);
     try {
-      const success = await addUser(userData)
+      const success = await addUser(userData as CreateUserData)
       console.log('[USERS MANAGEMENT PAGE] addUser result:', success);
       if (success) {
         setCurrentView(UserView.LIST)

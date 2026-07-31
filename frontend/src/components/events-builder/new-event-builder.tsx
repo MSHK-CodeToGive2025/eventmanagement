@@ -231,6 +231,21 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
         try {
           setIsSubmitting(true)
           const eventData = await eventService.getEvent(eventId)
+
+          // Check if staff user is authorized to edit this event
+          const createdById =
+            typeof eventData.createdBy === "object" && eventData.createdBy !== null
+              ? (eventData.createdBy as any)._id || (eventData.createdBy as any).id
+              : eventData.createdBy
+          if (user?.role === "staff" && createdById && createdById !== user._id) {
+            toast({
+              title: "Access Denied",
+              description: "Staff members can only edit events they have created.",
+              variant: "destructive",
+            })
+            onClose()
+            return
+          }
           
           // Transform the event data to match form structure
           const formData = {

@@ -52,7 +52,7 @@ interface UserListProps {
   /** Callback when search is performed */
   onSearch: (query: string, searchFields?: string[]) => Promise<void>
   /** Callback when filters are applied */
-  onFilter: (filters: { role?: UserRole; status?: UserStatus; department?: string; phone?: string }) => Promise<void>
+  onFilter: (filters: { role?: UserRole; status?: UserStatus | boolean; department?: string; phone?: string }) => Promise<void>
   /** Callback when a user is viewed */
   onView: (user: User) => void
   /** Callback when a user is edited */
@@ -69,6 +69,8 @@ interface UserListProps {
   itemsPerPage?: number
   /** Callback when page changes */
   onPageChange?: (page: number) => void
+  /** Callback when items per page changes */
+  onItemsPerPageChange?: (count: number) => void
   /** Field to sort by */
   sortField?: string
   /** Sort direction */
@@ -91,6 +93,7 @@ export function UserList({
   currentPage = 1,
   itemsPerPage = 10,
   onPageChange,
+  onItemsPerPageChange,
   sortField = "username",
   sortDirection = "asc",
   onSort,

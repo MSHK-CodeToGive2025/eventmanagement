@@ -9,8 +9,10 @@ import { RichTextDisplay } from "@/components/ui/rich-text-display"
 import { formService } from "@/services/formService"
 import { RegistrationForm } from "@/types/form-types"
 import { formatDateHKT } from "@/utils/dateTimeHKT"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function FormDetailPage() {
+  const { user } = useAuth()
   const { id } = useParams<{ id: string }>()
   const [form, setForm] = useState<RegistrationForm | null>(null)
   const [loading, setLoading] = useState(true)
@@ -87,12 +89,14 @@ export default function FormDetailPage() {
               </div>
             )}
           </div>
-          <Button asChild>
-            <Link to={`/manage/forms/${id}/edit`}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Form
-            </Link>
-          </Button>
+          {user?.role === 'admin' && (
+            <Button asChild>
+              <Link to={`/manage/forms/${id}/edit`}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit Form
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
 

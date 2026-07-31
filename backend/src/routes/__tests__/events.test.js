@@ -22,8 +22,8 @@ app.use('/api/events', eventRoutes);
 app.use('/api/event-registrations', eventRegistrationRoutes);
 
 let mongod;
-let adminUser, regularUser;
-let adminToken, regularToken;
+let adminUser, regularUser, staffUser;
+let adminToken, regularToken, staffToken;
 let testEvent, testRegistrationForm;
 let testEventNoImage;
 
@@ -74,6 +74,18 @@ describe('Events Routes', () => {
     });
     await regularUser.save();
 
+    // Create staff user
+    staffUser = new User({
+      username: 'staff',
+      password: 'staff123',
+      firstName: 'Staff',
+      lastName: 'User',
+      mobile: '+85212345680',
+      email: 'staff@example.com',
+      role: 'staff'
+    });
+    await staffUser.save();
+
     // Generate tokens
     adminToken = jwt.sign(
       { userId: adminUser._id },
@@ -83,6 +95,12 @@ describe('Events Routes', () => {
 
     regularToken = jwt.sign(
       { userId: regularUser._id },
+      process.env.JWT_SECRET || 'test-secret',
+      { expiresIn: '24h' }
+    );
+
+    staffToken = jwt.sign(
+      { userId: staffUser._id },
       process.env.JWT_SECRET || 'test-secret',
       { expiresIn: '24h' }
     );
@@ -197,7 +215,8 @@ describe('Events Routes', () => {
   describe('GET /api/events/:id', () => {
     it('should return a single event', async () => {
       const response = await request(app)
-        .get(`/api/events/${testEvent._id}`);
+        .get(`/api/events/${testEvent._id}`)
+        .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(200);
       expect(response.body.title).toBe('Test Event');
@@ -208,7 +227,8 @@ describe('Events Routes', () => {
     it('should return 404 for non-existent event', async () => {
       const nonExistentId = new mongoose.Types.ObjectId();
       const response = await request(app)
-        .get(`/api/events/${nonExistentId}`);
+        .get(`/api/events/${nonExistentId}`)
+        .set('Authorization', `Bearer ${adminToken}`);
 
       expect(response.status).toBe(404);
       expect(response.body).toHaveProperty('message', 'Event not found');
@@ -358,6 +378,59 @@ describe('Events Routes', () => {
       expect(response.status).toBe(403);
       expect(response.body).toHaveProperty('message', 'Not authorized to update this event');
     });
+
+    it('should return 403 for staff user trying to edit event created by someone else', async () => {
+      const response = await request(app)
+        .put(`/api/events/${testEvent._id}`)
+        .set('Authorization', `Bearer ${staffToken}`)
+        .send({
+          title: 'Staff Unauthorized Edit'
+        });
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('message', 'Not authorized to update this event');
+    });
+
+    it('should allow staff user to edit event created by themselves', async () => {
+      const staffEvent = new Event({
+        title: 'Staff Created Event',
+        description: 'Description',
+        category: 'Education & Training',
+        targetGroup: 'All Hong Kong Residents',
+        location: {
+          venue: 'Venue',
+          address: 'Address',
+          district: 'Central and Western',
+          onlineEvent: false
+        },
+        startDate: new Date(Date.now() + 86400000),
+        endDate: new Date(Date.now() + 86400000 + 7200000),
+        isPrivate: false,
+        status: 'Published',
+        registrationFormId: testRegistrationForm._id,
+        sessions: [
+          {
+            title: 'Session 1',
+            description: 'Session Description',
+            date: new Date(Date.now() + 86400000),
+            startTime: '10:00',
+            endTime: '12:00'
+          }
+        ],
+        createdBy: staffUser._id
+      });
+      await staffEvent.save();
+
+      const response = await request(app)
+        .put(`/api/events/${staffEvent._id}`)
+        .set('Authorization', `Bearer ${staffToken}`)
+        .send({
+          title: 'Staff Updated Own Event'
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.title).toBe('Staff Updated Own Event');
+    });
   });
 
   describe('DELETE /api/events/:id', () => {
@@ -381,6 +454,53 @@ describe('Events Routes', () => {
 
       expect(response.status).toBe(403);
       expect(response.body).toHaveProperty('message', 'Not authorized to delete this event');
+    });
+
+    it('should return 403 for staff user trying to delete event created by someone else', async () => {
+      const response = await request(app)
+        .delete(`/api/events/${testEvent._id}`)
+        .set('Authorization', `Bearer ${staffToken}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body).toHaveProperty('message', 'Not authorized to delete this event');
+    });
+
+    it('should allow staff user to delete event created by themselves', async () => {
+      const staffEvent = new Event({
+        title: 'Staff Event To Delete',
+        description: 'Description',
+        category: 'Education & Training',
+        targetGroup: 'All Hong Kong Residents',
+        location: {
+          venue: 'Venue',
+          address: 'Address',
+          district: 'Central and Western',
+          onlineEvent: false
+        },
+        startDate: new Date(Date.now() + 86400000),
+        endDate: new Date(Date.now() + 86400000 + 7200000),
+        isPrivate: false,
+        status: 'Published',
+        registrationFormId: testRegistrationForm._id,
+        sessions: [
+          {
+            title: 'Session 1',
+            description: 'Session Description',
+            date: new Date(Date.now() + 86400000),
+            startTime: '10:00',
+            endTime: '12:00'
+          }
+        ],
+        createdBy: staffUser._id
+      });
+      await staffEvent.save();
+
+      const response = await request(app)
+        .delete(`/api/events/${staffEvent._id}`)
+        .set('Authorization', `Bearer ${staffToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('message', 'Event deleted successfully');
     });
   });
 
