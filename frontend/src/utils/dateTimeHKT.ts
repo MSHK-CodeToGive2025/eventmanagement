@@ -65,7 +65,7 @@ export function formatTimeHKT(date: Date): string {
 /**
  * Format date and time in HKT (e.g. "Mar 4, 2026, 2:45 PM HKT").
  */
-export function formatDateTimeHKT(date: Date): string {
+export function formatDateTimeHKT(date: Date | string): string {
   const d = date instanceof Date ? date : new Date(date);
   const datePart = formatDateHKT(d);
   const timePart = d.toLocaleTimeString('en-US', {

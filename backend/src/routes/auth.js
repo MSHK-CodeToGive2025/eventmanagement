@@ -32,7 +32,8 @@ router.post('/register', validatePhoneNumberMiddleware, async (req, res) => {
       lastName,
       mobile,
       email,
-      role: userRole
+      role: userRole,
+      lastLogin: new Date()
     });
 
     await user.save();
@@ -51,7 +52,8 @@ router.post('/register', validatePhoneNumberMiddleware, async (req, res) => {
         username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role
+        role: user.role,
+        lastLogin: user.lastLogin
       }
     });
   } catch (error) {
@@ -80,6 +82,10 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
+    // Record last login timestamp
+    user.lastLogin = new Date();
+    await user.save();
+
     // Create JWT token
     const token = jwt.sign(
       { userId: user._id },
@@ -89,7 +95,8 @@ router.post('/login', async (req, res) => {
     console.log('[AUTH] Login successful:', { 
       userId: user._id, 
       username: user.username, 
-      role: user.role 
+      role: user.role,
+      lastLogin: user.lastLogin
     });
 
     res.json({
@@ -99,7 +106,8 @@ router.post('/login', async (req, res) => {
         username: user.username,
         firstName: user.firstName,
         lastName: user.lastName,
-        role: user.role
+        role: user.role,
+        lastLogin: user.lastLogin
       }
     });
   } catch (error) {

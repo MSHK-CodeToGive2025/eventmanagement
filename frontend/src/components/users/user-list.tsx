@@ -21,7 +21,7 @@ import type React from "react"
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { formatDateHKT } from "@/utils/dateTimeHKT"
+import { formatDateHKT, formatDateTimeHKT } from "@/utils/dateTimeHKT"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -138,6 +138,11 @@ export function UserList({
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return "Never"
     return formatDateHKT(date)
+  }
+
+  const formatDateTime = (date: Date | string | undefined) => {
+    if (!date) return "Never"
+    return formatDateTimeHKT(date)
   }
 
   const getRoleBadgeColor = (role: string) => {
@@ -359,7 +364,7 @@ export function UserList({
                       {user.isActive ? "Active" : "Inactive"}
                     </Badge>
                   </TableCell>
-                  <TableCell>{formatDate(user.lastLogin)}</TableCell>
+                  <TableCell>{formatDateTime(user.lastLogin)}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>

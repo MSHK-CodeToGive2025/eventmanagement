@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { User } from "@/types/user-types"
 import { Edit, Trash2, Key, RefreshCw } from "lucide-react"
-import { formatDateHKT } from "@/utils/dateTimeHKT"
+import { formatDateHKT, formatDateTimeHKT } from "@/utils/dateTimeHKT"
 
 interface UserDetailsProps {
   user: User
@@ -123,7 +123,7 @@ export function UserDetails({
             </div>
             <div>
               <h3 className="text-sm font-medium text-gray-500">Last Login</h3>
-              <p className="mt-1">{user.lastLogin ? formatDate(user.lastLogin.toString()) : "Never"}</p>
+              <p className="mt-1">{user.lastLogin ? formatDateTimeHKT(user.lastLogin.toString()) : "Never"}</p>
             </div>
           </div>
         </CardContent>
