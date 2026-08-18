@@ -19,7 +19,7 @@ export interface StaffContact {
 export interface Session {
   _id: string;
   title: string;
-  description?: string; 
+  description?: string;
   date: Date;
   startTime: string;
   endTime: string;
@@ -75,58 +75,53 @@ export interface ZubinEvent {
 
 // Event categories
 export const eventCategories = [
-  "Education & Training",
-  "Cultural Exchange",
-  "Health & Wellness",
-  "Career Development",
-  "Community Building",
-  "Language Learning",
-  "Social Integration",
-  "Youth Programs",
+  'Education & Training',
+  'Cultural Exchange',
+  'Health & Wellness',
+  'Career Development',
+  'Community Building',
+  'Language Learning',
+  'Social Integration',
+  'Youth Programs',
   "Women's Empowerment",
-  "Other",
+  'Other',
 ] as const;
 
 // Target groups
 export const targetGroups = [
-  "All Hong Kong Residents",
-  "Ethnic Minorities",
-  "South Asian Community",
-  "Women",
-  "Youth (13-25)",
-  "Children (0-12)",
-  "Seniors (65+)",
-  "Professionals",
-  "Newcomers to Hong Kong",
-  "Other",
+  'All Hong Kong Residents',
+  'Ethnically Diverse Individuals',
+  'South Asian Community',
+  'Women',
+  'Youth',
+  'Children',
+  'Seniors',
+  'Professionals',
+  'Newcomers to Hong Kong',
+  'Other',
 ] as const;
 
 // Event status options
-export const eventStatuses = [
-  "Draft",
-  "Published",
-  "Cancelled",
-  "Completed",
-] as const;
+export const eventStatuses = ['Draft', 'Published', 'Cancelled', 'Completed'] as const;
 
 // Hong Kong districts
 export const hongKongDistricts = [
-  "Central and Western",
-  "Eastern",
-  "Islands",
-  "Kowloon City",
-  "Kwai Tsing",
-  "Kwun Tong",
-  "North",
-  "Sai Kung",
-  "Sha Tin",
-  "Sham Shui Po",
-  "Southern",
-  "Tai Po",
-  "Tsuen Wan",
-  "Tuen Mun",
-  "Wan Chai",
-  "Wong Tai Sin",
-  "Yau Tsim Mong",
-  "Yuen Long",
-] as const; 
+  'Central and Western',
+  'Eastern',
+  'Islands',
+  'Kowloon City',
+  'Kwai Tsing',
+  'Kwun Tong',
+  'North',
+  'Sai Kung',
+  'Sha Tin',
+  'Sham Shui Po',
+  'Southern',
+  'Tai Po',
+  'Tsuen Wan',
+  'Tuen Mun',
+  'Wan Chai',
+  'Wong Tai Sin',
+  'Yau Tsim Mong',
+  'Yuen Long',
+] as const;

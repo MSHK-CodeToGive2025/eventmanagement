@@ -34,12 +34,12 @@ const eventSchema = new mongoose.Schema({
     required: true,
     enum: [
       "All Hong Kong Residents",
-      "Ethnic Minorities",
+      "Ethnically Diverse Individuals",
       "South Asian Community",
       "Women",
-      "Youth (13-25)",
-      "Children (0-12)",
-      "Seniors (65+)",
+      "Youth",
+      "Children",
+      "Seniors",
       "Professionals",
       "Newcomers to Hong Kong",
       "Other"
