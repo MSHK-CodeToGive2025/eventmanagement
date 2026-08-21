@@ -13,7 +13,7 @@ export function sanitizeContentVariable(val) {
 }
 
 /**
- * Builds template variable 3: user/system message body.
+ * Builds template variable 4: user/system message body.
  * Newlines in the user message are flattened to spaces for Twilio compliance.
  */
 export function buildEventUpdateMessageBodyVariable(userMessage) {

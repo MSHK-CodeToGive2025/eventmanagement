@@ -963,10 +963,10 @@ router.delete("/:id/cover-image", auth, async (req, res) => {
 
 // Send WhatsApp message to registered participant (requires auth)
 // Uses the event update utility template (zubin_foundation_event_update_v3).
-// Variables: 1=event title, 2=session, 3=message body (includes post-body disclaimer), 4=contact name, 5=contact phone.
+// Variables: 1=firstName, 2=event title, 3=session, 4=message body, 5=contact name, 6=contact phone.
 router.post("/send-whatsapp-reminder", async (req, res) => {
   try {
-    const { to, message, eventTitle, session, contactName, contactPhone } =
+    const { to, message, eventTitle, session, contactName, contactPhone, firstName } =
       req.body;
 
     if (!message || !message.trim()) {
@@ -1003,11 +1003,12 @@ router.post("/send-whatsapp-reminder", async (req, res) => {
       from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
       contentSid: process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID,
       contentVariables: JSON.stringify({
-        1: eventTitle || "Event Update",
-        2: session || " ",
-        3: buildEventUpdateMessageBodyVariable(message),
-        4: contactName || " ",
-        5: contactPhone || " ",
+        1: firstName || " ",
+        2: eventTitle || "Event Update",
+        3: session || " ",
+        4: buildEventUpdateMessageBodyVariable(message),
+        5: contactName || " ",
+        6: contactPhone || " ",
       }),
       to: `whatsapp:${to}`,
     });
@@ -1121,7 +1122,7 @@ router.post("/:id/send-whatsapp", auth, async (req, res) => {
     const messageBodyForTemplate =
       buildEventUpdateMessageBodyVariable(messageText);
     console.log(
-      `[WhatsApp] Template variables: 1="${titleForTemplate}" 2="${sessionForTemplate}" 3="${messageBodyForTemplate}" 4="${contactName}" 5="${contactPhone}"`,
+      `[WhatsApp] Template variables: 1=firstName 2="${titleForTemplate}" 3="${sessionForTemplate}" 4="${messageBodyForTemplate}" 5="${contactName}" 6="${contactPhone}"`,
     );
     console.log(
       `[WhatsApp] Number of registered participants: ${registrations.length}`,
@@ -1162,15 +1163,17 @@ router.post("/:id/send-whatsapp", auth, async (req, res) => {
             continue;
           }
 
+          const recipientFirstName = registration.attendee.firstName || ' ';
           await twilioClient.messages.create({
             from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
             contentSid: process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID,
             contentVariables: JSON.stringify({
-              1: titleForTemplate,
-              2: sessionForTemplate,
-              3: messageBodyForTemplate,
-              4: contactName,
-              5: contactPhone,
+              1: recipientFirstName,
+              2: titleForTemplate,
+              3: sessionForTemplate,
+              4: messageBodyForTemplate,
+              5: contactName,
+              6: contactPhone,
             }),
             to: `whatsapp:${formattedNumber}`,
           });

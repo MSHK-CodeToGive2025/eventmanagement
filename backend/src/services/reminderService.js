@@ -314,8 +314,9 @@ class ReminderService {
 
             // WhatsApp: only templates (no freeform body) to avoid 63016 outside 24h window.
             if (useTemplate && process.env.TWILIO_WHATSAPP_TEMPLATE_SID) {
-              const templateVariables = this.createTemplateVariables(event, reminderHours, eventType, startDateTime);
-              console.log(`[REMINDER SERVICE] Using 8-var reminder template SID: ${process.env.TWILIO_WHATSAPP_TEMPLATE_SID}`);
+              const firstName = registration.attendee.firstName || '';
+              const templateVariables = this.createTemplateVariables(event, reminderHours, eventType, startDateTime, firstName);
+              console.log(`[REMINDER SERVICE] Using 9-var reminder template SID: ${process.env.TWILIO_WHATSAPP_TEMPLATE_SID}`);
               await twilioClient.messages.create({
                 from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
                 contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
@@ -323,23 +324,25 @@ class ReminderService {
                 to: `whatsapp:${formattedNumber}`
               });
             } else if (process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID) {
-              // Event set to "custom" reminder: send full reminder text as variable 3 via event update template.
-              // Variables: 1=event title, 2=session, 3=message body (includes post-body disclaimer), 4=contact name, 5=contact phone.
+              // Event set to "custom" reminder: send full reminder text as variable 4 via event update template.
+              // Variables: 1=firstName, 2=event title, 3=session, 4=message body, 5=contact name, 6=contact phone.
               const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
               const isSession = eventType.startsWith('session:');
               const sessionTitle = isSession ? eventType.replace('session: ', '') : ' ';
               const contactName = (event.staffContact && event.staffContact.name) ? event.staffContact.name : ' ';
               const contactPhone = (event.staffContact && event.staffContact.phone) ? event.staffContact.phone : ' ';
+              const firstName = registration.attendee.firstName || ' ';
               console.log(`[REMINDER SERVICE] Using event update template for reminder to ${formattedNumber}`);
               await twilioClient.messages.create({
                 from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
                 contentSid: process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID,
                 contentVariables: JSON.stringify({
-                  "1": this.sanitizeContentVariable(event.title),
-                  "2": this.sanitizeContentVariable(sessionTitle),
-                  "3": buildEventUpdateMessageBodyVariable(message),
-                  "4": this.sanitizeContentVariable(contactName),
-                  "5": this.sanitizeContentVariable(contactPhone)
+                  "1": this.sanitizeContentVariable(firstName),
+                  "2": this.sanitizeContentVariable(event.title),
+                  "3": this.sanitizeContentVariable(sessionTitle),
+                  "4": buildEventUpdateMessageBodyVariable(message),
+                  "5": this.sanitizeContentVariable(contactName),
+                  "6": this.sanitizeContentVariable(contactPhone)
                 }),
                 to: `whatsapp:${formattedNumber}`
               });
@@ -441,18 +444,20 @@ class ReminderService {
   // Template structure:
   // 🔔 Event Reminder from The Zubin Foundation
   //
-  // 📢 Event: {{1}}
-  // 📋 Session: {{2}}
+  // Dear {{1}},
   //
-  // ⏰ The session will start in {{3}}
-  // 📅 Date: {{4}}
-  // 🕐 Time: {{5}}
-  // 📍 Location: {{6}}
-  // 👤 Contact: {{7}}
-  // 📞 Phone: {{8}}
+  // 📢 Event: {{2}}
+  // 📋 Session: {{3}}
+  //
+  // ⏰ The session will start in {{4}}
+  // 📅 Date: {{5}}
+  // 🕐 Time: {{6}}
+  // 📍 Location: {{7}}
+  // 👤 Contact: {{8}}
+  // 📞 Phone: {{9}}
   //
   // We look forward to seeing you!
-  createTemplateVariables(event, reminderHours, eventType, startDateTime) {
+  createTemplateVariables(event, reminderHours, eventType, startDateTime, firstName) {
     const eventStartTime = startDateTime;
     const formattedDate = formatDateHKT(eventStartTime);
     const formattedTime = formatTimeHKT(eventStartTime);
@@ -469,23 +474,26 @@ class ReminderService {
     const isSession = eventType.startsWith('session:');
     const sessionTitle = isSession ? eventType.replace('session: ', '') : null;
 
-    // Variable 1: Event title
+    // Variable 1: First name (Dear {{1}})
+    const firstNameText = firstName || '';
+
+    // Variable 2: Event title
     const eventTitle = event.title;
     
-    // Variable 2: Session title (empty for main event, or session name for sessions)
-    // Note: Template shows "📋 Session: {{2}}" - if empty, it will show "📋 Session: "
+    // Variable 3: Session title (empty for main event, or session name for sessions)
+    // Note: Template shows "📋 Session: {{3}}" - if empty, it will show "📋 Session: "
     const sessionTitleText = isSession ? sessionTitle : '';
     
-    // Variable 3: Time until event
+    // Variable 4: Time until event
     const timeUntilEvent = timeText;
     
-    // Variable 4: Date
+    // Variable 5: Date
     const dateText = formattedDate;
     
-    // Variable 5: Time
+    // Variable 6: Time
     const timeText2 = formattedTime;
     
-    // Variable 6: Location (Twilio rejects empty string - use space)
+    // Variable 7: Location (Twilio rejects empty string - use space)
     let locationText = '';
     if (isSession) {
       const session = event.sessions.find(s => s.title === sessionTitle);
@@ -503,14 +511,15 @@ class ReminderService {
 
     // Twilio 21656: no null/empty; sanitize newlines/tabs and >4 spaces
     return {
-      "1": this.sanitizeContentVariable(eventTitle),
-      "2": this.sanitizeContentVariable(sessionTitleText),
-      "3": this.sanitizeContentVariable(timeUntilEvent),
-      "4": this.sanitizeContentVariable(dateText),
-      "5": this.sanitizeContentVariable(timeText2),
-      "6": this.sanitizeContentVariable(locationText),
-      "7": this.sanitizeContentVariable(contactName),
-      "8": this.sanitizeContentVariable(contactPhone)
+      "1": this.sanitizeContentVariable(firstNameText),
+      "2": this.sanitizeContentVariable(eventTitle),
+      "3": this.sanitizeContentVariable(sessionTitleText),
+      "4": this.sanitizeContentVariable(timeUntilEvent),
+      "5": this.sanitizeContentVariable(dateText),
+      "6": this.sanitizeContentVariable(timeText2),
+      "7": this.sanitizeContentVariable(locationText),
+      "8": this.sanitizeContentVariable(contactName),
+      "9": this.sanitizeContentVariable(contactPhone)
     };
   }
 
