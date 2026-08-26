@@ -312,42 +312,62 @@ class ReminderService {
 
             console.log(`[REMINDER SERVICE] 📱 Sending reminder to ${formattedNumber} for ${eventType}`);
 
+            const hasMultipleSessions = Array.isArray(event.sessions) && event.sessions.length > 1;
+
+            const reminderTemplateSid = hasMultipleSessions
+              ? (process.env.TWILIO_WHATSAPP_EVENT_REMINDER_MULTIPLE_SESSION_TEMPLATE_SID || process.env.TWILIO_WHATSAPP_TEMPLATE_SID)
+              : (process.env.TWILIO_WHATSAPP_EVENT_REMINDER_SINGLE_SESSION_TEMPLATE_SID || process.env.TWILIO_WHATSAPP_TEMPLATE_SID);
+
+            const updateTemplateSid = hasMultipleSessions
+              ? (process.env.TWILIO_WHATSAPP_EVENT_UPDATE_MULTIPLE_SESSION_TEMPLATE_SID || process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID)
+              : (process.env.TWILIO_WHATSAPP_EVENT_UPDATE_SINGLE_SESSION_TEMPLATE_SID || process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID);
+
             // WhatsApp: only templates (no freeform body) to avoid 63016 outside 24h window.
-            if (useTemplate && process.env.TWILIO_WHATSAPP_TEMPLATE_SID) {
+            if (useTemplate && reminderTemplateSid) {
               const firstName = registration.attendee.firstName || '';
-              const templateVariables = this.createTemplateVariables(event, reminderHours, eventType, startDateTime, firstName);
-              console.log(`[REMINDER SERVICE] Using 9-var reminder template SID: ${process.env.TWILIO_WHATSAPP_TEMPLATE_SID}`);
+              const templateVariables = this.createTemplateVariables(event, reminderHours, eventType, startDateTime, firstName, hasMultipleSessions);
+              console.log(`[REMINDER SERVICE] Using reminder template SID (${hasMultipleSessions ? 'multiple' : 'single'} session): ${reminderTemplateSid}`);
               await twilioClient.messages.create({
                 from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-                contentSid: process.env.TWILIO_WHATSAPP_TEMPLATE_SID,
+                contentSid: reminderTemplateSid,
                 contentVariables: JSON.stringify(templateVariables),
                 to: `whatsapp:${formattedNumber}`
               });
-            } else if (process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID) {
-              // Event set to "custom" reminder: send full reminder text as variable 4 via event update template.
-              // Variables: 1=firstName, 2=event title, 3=session, 4=message body, 5=contact name, 6=contact phone.
+            } else if (updateTemplateSid) {
+              // Event set to "custom" reminder: send full reminder text via event update template.
               const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
               const isSession = eventType.startsWith('session:');
               const sessionTitle = isSession ? eventType.replace('session: ', '') : ' ';
               const contactName = (event.staffContact && event.staffContact.name) ? event.staffContact.name : ' ';
               const contactPhone = (event.staffContact && event.staffContact.phone) ? event.staffContact.phone : ' ';
               const firstName = registration.attendee.firstName || ' ';
-              console.log(`[REMINDER SERVICE] Using event update template for reminder to ${formattedNumber}`);
+              console.log(`[REMINDER SERVICE] Using event update template (${hasMultipleSessions ? 'multiple' : 'single'} session) for reminder to ${formattedNumber}`);
+
+              const updateVariables = hasMultipleSessions
+                ? {
+                    "1": this.sanitizeContentVariable(firstName),
+                    "2": this.sanitizeContentVariable(event.title),
+                    "3": this.sanitizeContentVariable(sessionTitle),
+                    "4": buildEventUpdateMessageBodyVariable(message),
+                    "5": this.sanitizeContentVariable(contactName),
+                    "6": this.sanitizeContentVariable(contactPhone)
+                  }
+                : {
+                    "1": this.sanitizeContentVariable(firstName),
+                    "2": this.sanitizeContentVariable(event.title),
+                    "4": buildEventUpdateMessageBodyVariable(message),
+                    "5": this.sanitizeContentVariable(contactName),
+                    "6": this.sanitizeContentVariable(contactPhone)
+                  };
+
               await twilioClient.messages.create({
                 from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-                contentSid: process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID,
-                contentVariables: JSON.stringify({
-                  "1": this.sanitizeContentVariable(firstName),
-                  "2": this.sanitizeContentVariable(event.title),
-                  "3": this.sanitizeContentVariable(sessionTitle),
-                  "4": buildEventUpdateMessageBodyVariable(message),
-                  "5": this.sanitizeContentVariable(contactName),
-                  "6": this.sanitizeContentVariable(contactPhone)
-                }),
+                contentSid: updateTemplateSid,
+                contentVariables: JSON.stringify(updateVariables),
                 to: `whatsapp:${formattedNumber}`
               });
             } else {
-              console.error(`[REMINDER SERVICE] No template SID configured; set TWILIO_WHATSAPP_TEMPLATE_SID or TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID`);
+              console.error(`[REMINDER SERVICE] No template SID configured; set TWILIO_WHATSAPP_EVENT_REMINDER_SINGLE_SESSION_TEMPLATE_SID / TWILIO_WHATSAPP_EVENT_REMINDER_MULTIPLE_SESSION_TEMPLATE_SID or TWILIO_WHATSAPP_TEMPLATE_SID`);
               throw new Error('WhatsApp template not configured for reminders');
             }
 
@@ -440,12 +460,9 @@ class ReminderService {
     return s.trim() === '' ? ' ' : s;
   }
 
-  // Create template variables for WhatsApp template (zubin_foundation_event_reminder_v2)
-  // Template structure:
-  // 🔔 Event Reminder from The Zubin Foundation
-  //
+  // Create template variables for WhatsApp reminder template
+  // Multiple session template structure (9 variables):
   // Dear {{1}},
-  //
   // 📢 Event: {{2}}
   // 📋 Session: {{3}}
   //
@@ -456,8 +473,17 @@ class ReminderService {
   // 👤 Contact: {{8}}
   // 📞 Phone: {{9}}
   //
-  // We look forward to seeing you!
-  createTemplateVariables(event, reminderHours, eventType, startDateTime, firstName) {
+  // Single session template structure (8 variables - {{3}} removed, remaining numbering preserved):
+  // Dear {{1}},
+  // 📢 Event: {{2}}
+  //
+  // ⏰ The session will start in {{4}}
+  // 📅 Date: {{5}}
+  // 🕐 Time: {{6}}
+  // 📍 Location: {{7}}
+  // 👤 Contact: {{8}}
+  // 📞 Phone: {{9}}
+  createTemplateVariables(event, reminderHours, eventType, startDateTime, firstName, hasMultipleSessions = null) {
     const eventStartTime = startDateTime;
     const formattedDate = formatDateHKT(eventStartTime);
     const formattedTime = formatTimeHKT(eventStartTime);
@@ -474,14 +500,17 @@ class ReminderService {
     const isSession = eventType.startsWith('session:');
     const sessionTitle = isSession ? eventType.replace('session: ', '') : null;
 
+    const isMultiple = hasMultipleSessions !== null
+      ? hasMultipleSessions
+      : (Array.isArray(event.sessions) && event.sessions.length > 1);
+
     // Variable 1: First name (Dear {{1}})
     const firstNameText = firstName || '';
 
     // Variable 2: Event title
     const eventTitle = event.title;
     
-    // Variable 3: Session title (empty for main event, or session name for sessions)
-    // Note: Template shows "📋 Session: {{3}}" - if empty, it will show "📋 Session: "
+    // Variable 3: Session title (only used in multiple sessions template)
     const sessionTitleText = isSession ? sessionTitle : '';
     
     // Variable 4: Time until event
@@ -496,7 +525,7 @@ class ReminderService {
     // Variable 7: Location (Twilio rejects empty string - use space)
     let locationText = '';
     if (isSession) {
-      const session = event.sessions.find(s => s.title === sessionTitle);
+      const session = event.sessions && event.sessions.find(s => s.title === sessionTitle);
       if (session && session.location && session.location.venue) {
         locationText = session.location.venue;
       } else if (event.location) {
@@ -509,18 +538,30 @@ class ReminderService {
     const contactName = event.staffContact && event.staffContact.name ? event.staffContact.name : '';
     const contactPhone = event.staffContact && event.staffContact.phone ? event.staffContact.phone : '';
 
-    // Twilio 21656: no null/empty; sanitize newlines/tabs and >4 spaces
-    return {
-      "1": this.sanitizeContentVariable(firstNameText),
-      "2": this.sanitizeContentVariable(eventTitle),
-      "3": this.sanitizeContentVariable(sessionTitleText),
-      "4": this.sanitizeContentVariable(timeUntilEvent),
-      "5": this.sanitizeContentVariable(dateText),
-      "6": this.sanitizeContentVariable(timeText2),
-      "7": this.sanitizeContentVariable(locationText),
-      "8": this.sanitizeContentVariable(contactName),
-      "9": this.sanitizeContentVariable(contactPhone)
-    };
+    if (isMultiple) {
+      return {
+        "1": this.sanitizeContentVariable(firstNameText),
+        "2": this.sanitizeContentVariable(eventTitle),
+        "3": this.sanitizeContentVariable(sessionTitleText),
+        "4": this.sanitizeContentVariable(timeUntilEvent),
+        "5": this.sanitizeContentVariable(dateText),
+        "6": this.sanitizeContentVariable(timeText2),
+        "7": this.sanitizeContentVariable(locationText),
+        "8": this.sanitizeContentVariable(contactName),
+        "9": this.sanitizeContentVariable(contactPhone)
+      };
+    } else {
+      return {
+        "1": this.sanitizeContentVariable(firstNameText),
+        "2": this.sanitizeContentVariable(eventTitle),
+        "4": this.sanitizeContentVariable(timeUntilEvent),
+        "5": this.sanitizeContentVariable(dateText),
+        "6": this.sanitizeContentVariable(timeText2),
+        "7": this.sanitizeContentVariable(locationText),
+        "8": this.sanitizeContentVariable(contactName),
+        "9": this.sanitizeContentVariable(contactPhone)
+      };
+    }
   }
 
   // Mark reminder as sent

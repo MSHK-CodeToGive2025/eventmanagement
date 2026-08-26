@@ -5,11 +5,13 @@
 WhatsApp messaging uses **templates only** (no freeform/body messages) to avoid delivery failures outside the 24-hour session window (error 63016).
 
 1. **Manual messages (Send WhatsApp Event Update in UI)**
-   - Use the **event update utility template** (`TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID` / `zubin_foundation_event_update_v3`).
-   - Variable 1 = event title (auto-filled), Variable 2 = session (selectable), Variable 3 = your message **plus** the standard disclaimer (appended in the backend), Variable 4 = contact name (auto-filled from event settings), Variable 5 = contact phone (auto-filled from event settings).
+   - Single session events use **`TWILIO_WHATSAPP_EVENT_UPDATE_SINGLE_SESSION_TEMPLATE_SID`** (5 variables: 1=firstName, 2=event title, 4=message, 5=contact name, 6=contact phone - {{3}} omitted).
+   - Multiple session events use **`TWILIO_WHATSAPP_EVENT_UPDATE_MULTIPLE_SESSION_TEMPLATE_SID`** (6 variables: 1=firstName, 2=event title, 3=session, 4=message, 5=contact name, 6=contact phone).
+   - Falls back to `TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID` if specific SID is not set.
 
 2. **Scheduled event reminders**
-   - Use the **8-variable reminder template** (`TWILIO_WHATSAPP_TEMPLATE_SID` / `zubin_foundation_event_reminder_v2`) when the event's default is "template", or the **event update template** when "custom".
+   - Single session events use **`TWILIO_WHATSAPP_EVENT_REMINDER_SINGLE_SESSION_TEMPLATE_SID`** (8 variables: 1=firstName, 2=event title, 4=timeUntil, 5=date, 6=time, 7=location, 8=contact name, 9=contact phone - {{3}} omitted).
+   - Multiple session events use **`TWILIO_WHATSAPP_EVENT_REMINDER_MULTIPLE_SESSION_TEMPLATE_SID`** (9 variables: 1=firstName, 2=event title, 3=session, 4=timeUntil, 5=date, 6=time, 7=location, 8=contact name, 9=contact phone).
    - Reminders are checked **every 5 minutes** in Hong Kong time (Asia/Hong_Kong).
 
 ## Template Configuration
@@ -19,72 +21,106 @@ WhatsApp messaging uses **templates only** (no freeform/body messages) to avoid 
 Add the following variables to your `.env` file:
 
 ```bash
-# Event reminder template (8 variables): zubin_foundation_event_reminder_v2
-TWILIO_WHATSAPP_TEMPLATE_SID=HX6dcf16072c4b77b1513ef377de2c0879
-# Event update template (5 variables): zubin_foundation_event_update_v3
-TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID=HX33f234ae9ad37b5777fedebd3346feeb
-TWILIO_WHATSAPP_NUMBER=xxx
+# Event reminder single session template (8 variables): zubin_foundation_event_reminder_single_session_v3
+TWILIO_WHATSAPP_EVENT_REMINDER_SINGLE_SESSION_TEMPLATE_SID=HXb7700b60a9fce26f582b44a5db78dc22
+# Event reminder multiple sessions template (9 variables): zubin_foundation_event_reminder_multiple_sessions_v3
+TWILIO_WHATSAPP_EVENT_REMINDER_MULTIPLE_SESSION_TEMPLATE_SID=HX2444217df35bf5af73648b0b2ab9463c
+
+# Event update single session template (5 variables): zubin_foundation_event_update_single_session_v3
+TWILIO_WHATSAPP_EVENT_UPDATE_SINGLE_SESSION_TEMPLATE_SID=HX4fdb80d8928f6962f8df1bd04b127303
+# Event update multiple sessions template (6 variables): zubin_foundation_event_update_multiple_sessions_v3
+TWILIO_WHATSAPP_EVENT_UPDATE_MULTIPLE_SESSION_TEMPLATE_SID=HX240c7c10a582fa8b2e081d4fc2c84da1
+
+TWILIO_WHATSAPP_NUMBER=whatsapp:+1xxxxxxxxxxx
 ```
 
-### Reminder Template Variables (8 variables)
-
-Template: `zubin_foundation_event_reminder_v2`
+### Multiple Session Reminder Template Variables (9 variables)
 
 ```
-🔔 Event Reminder from The Zubin Foundation
+Dear {{1}},
+📢 Event: {{2}}
+📋 Session: {{3}}
 
-📢 Event: {{1}}
-📋 Session: {{2}}
-
-⏰ The session will start in {{3}}
-📅 Date: {{4}}
-🕐 Time: {{5}}
-📍 Location: {{6}}
-👤 Contact: {{7}}
-📞 Phone: {{8}}
-
-We look forward to seeing you!
+⏰ The session will start in {{4}}
+📅 Date: {{5}}
+🕐 Time: {{6}}
+📍 Location: {{7}}
+👤 Contact: {{8}}
+📞 Phone: {{9}}
 ```
 
-- **Variable 1**: Event title
-- **Variable 2**: Session title (space for main events)
-- **Variable 3**: Time until event (e.g., "2 hours", "1 day")
-- **Variable 4**: Date (formatted as "Monday, January 15, 2024 HKT")
-- **Variable 5**: Time (formatted as "2:30 PM HKT")
-- **Variable 6**: Location (venue and district)
-- **Variable 7**: Contact name
-- **Variable 8**: Contact phone
+- **Variable 1**: First name
+- **Variable 2**: Event title
+- **Variable 3**: Session title
+- **Variable 4**: Time until event
+- **Variable 5**: Date
+- **Variable 6**: Time
+- **Variable 7**: Location
+- **Variable 8**: Contact name
+- **Variable 9**: Contact phone
 
-### Event Update Template Variables (5 variables)
-
-Template: `zubin_foundation_event_update_v3`
-
-The backend appends the following disclaimer to **variable 3** after the staff-entered message (Twilio-safe, single block of text):
-
-`Please do not reply to this message. For further information, kindly contact the number above.`
-
-**Twilio / Meta template body:** Remove any static footer such as `Reply STOP to unsubscribe.` from the approved template. Otherwise recipients would see both the old STOP line and the new disclaimer inside variable 3.
-
-Example layout (static text in Twilio; `{{3}}` already includes the disclaimer from the API):
+### Single Session Reminder Template Variables (8 variables, {{3}} removed)
 
 ```
-📢 *The Zubin Foundation Event Update*
+Dear {{1}},
+📢 Event: {{2}}
 
-*Event:* {{1}}
-*Session:* {{2}}
+⏰ The session will start in {{4}}
+📅 Date: {{5}}
+🕐 Time: {{6}}
+📍 Location: {{7}}
+👤 Contact: {{8}}
+📞 Phone: {{9}}
+```
 
-{{3}}
+- **Variable 1**: First name
+- **Variable 2**: Event title
+- **Variable 4**: Time until event
+- **Variable 5**: Date
+- **Variable 6**: Time
+- **Variable 7**: Location
+- **Variable 8**: Contact name
+- **Variable 9**: Contact phone
+
+### Multiple Session Event Update Template Variables (6 variables)
+
+```
+Dear {{1}},
+*Event:* {{2}}
+*Session:* {{3}}
+
+{{4}}
 
 For query,
-👤 Contact: {{4}}
-📞 Phone: {{5}}
+👤 Contact: {{5}}
+📞 Phone: {{6}}
 ```
 
-- **Variable 1**: Event title
-- **Variable 2**: Session title (space if not applicable)
-- **Variable 3**: Message body **including** the post-body disclaimer (combined server-side)
-- **Variable 4**: Contact name
-- **Variable 5**: Contact phone
+- **Variable 1**: First name
+- **Variable 2**: Event title
+- **Variable 3**: Session title
+- **Variable 4**: Message body
+- **Variable 5**: Contact name
+- **Variable 6**: Contact phone
+
+### Single Session Event Update Template Variables (5 variables, {{3}} removed)
+
+```
+Dear {{1}},
+*Event:* {{2}}
+
+{{4}}
+
+For query,
+👤 Contact: {{5}}
+📞 Phone: {{6}}
+```
+
+- **Variable 1**: First name
+- **Variable 2**: Event title
+- **Variable 4**: Message body
+- **Variable 5**: Contact name
+- **Variable 6**: Contact phone
 
 ## Implementation Details
 

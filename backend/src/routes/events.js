@@ -962,11 +962,12 @@ router.delete("/:id/cover-image", auth, async (req, res) => {
 });
 
 // Send WhatsApp message to registered participant (requires auth)
-// Uses the event update utility template (zubin_foundation_event_update_v3).
-// Variables: 1=firstName, 2=event title, 3=session, 4=message body, 5=contact name, 6=contact phone.
+// Uses the event update utility template.
+// Multiple sessions: 1=firstName, 2=event title, 3=session, 4=message body, 5=contact name, 6=contact phone.
+// Single session: 1=firstName, 2=event title, 4=message body, 5=contact name, 6=contact phone ({{3}} removed).
 router.post("/send-whatsapp-reminder", async (req, res) => {
   try {
-    const { to, message, eventTitle, session, contactName, contactPhone, firstName } =
+    const { to, message, eventTitle, session, contactName, contactPhone, firstName, hasMultipleSessions: explicitMultiple } =
       req.body;
 
     if (!message || !message.trim()) {
@@ -974,7 +975,7 @@ router.post("/send-whatsapp-reminder", async (req, res) => {
         .status(400)
         .json({
           success: false,
-          error: "Message content is required (template variable 3)",
+          error: "Message content is required (template variable 4)",
         });
     }
 
@@ -991,25 +992,43 @@ router.post("/send-whatsapp-reminder", async (req, res) => {
       });
     }
 
-    if (!process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID) {
+    const hasMultiple = explicitMultiple !== undefined
+      ? Boolean(explicitMultiple)
+      : (session != null && String(session).trim() !== "" && String(session).trim() !== "All sessions");
+
+    const templateSid = hasMultiple
+      ? (process.env.TWILIO_WHATSAPP_EVENT_UPDATE_MULTIPLE_SESSION_TEMPLATE_SID || process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID)
+      : (process.env.TWILIO_WHATSAPP_EVENT_UPDATE_SINGLE_SESSION_TEMPLATE_SID || process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID);
+
+    if (!templateSid) {
       return res.status(503).json({
         success: false,
         error: "Event update template not configured",
-        message: "TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID is required",
+        message: "TWILIO_WHATSAPP_EVENT_UPDATE_SINGLE_SESSION_TEMPLATE_SID or TWILIO_WHATSAPP_EVENT_UPDATE_MULTIPLE_SESSION_TEMPLATE_SID is required",
       });
     }
 
+    const contentVariables = hasMultiple
+      ? {
+          1: firstName || " ",
+          2: eventTitle || "Event Update",
+          3: session || " ",
+          4: buildEventUpdateMessageBodyVariable(message),
+          5: contactName || " ",
+          6: contactPhone || " ",
+        }
+      : {
+          1: firstName || " ",
+          2: eventTitle || "Event Update",
+          4: buildEventUpdateMessageBodyVariable(message),
+          5: contactName || " ",
+          6: contactPhone || " ",
+        };
+
     const result = await twilioClient.messages.create({
       from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-      contentSid: process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID,
-      contentVariables: JSON.stringify({
-        1: firstName || " ",
-        2: eventTitle || "Event Update",
-        3: session || " ",
-        4: buildEventUpdateMessageBodyVariable(message),
-        5: contactName || " ",
-        6: contactPhone || " ",
-      }),
+      contentSid: templateSid,
+      contentVariables: JSON.stringify(contentVariables),
       to: `whatsapp:${to}`,
     });
 
@@ -1030,8 +1049,9 @@ router.post("/send-whatsapp-reminder", async (req, res) => {
 });
 
 // Send WhatsApp message to all registered participants (requires auth)
-// Uses the event update utility template (zubin_foundation_event_update_v3).
-// Variables: 1=event title, 2=session, 3=message body (includes post-body disclaimer), 4=contact name, 5=contact phone.
+// Uses the event update utility template.
+// Multiple sessions: 1=firstName, 2=event title, 3=session, 4=message body, 5=contact name, 6=contact phone.
+// Single session: 1=firstName, 2=event title, 4=message body, 5=contact name, 6=contact phone ({{3}} removed).
 router.post("/:id/send-whatsapp", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
@@ -1071,22 +1091,28 @@ router.post("/:id/send-whatsapp", auth, async (req, res) => {
     const { title, message, session } = req.body;
     if (!message || !String(message).trim()) {
       console.error(
-        "[WhatsApp] Message content is required (template variable 3)",
+        "[WhatsApp] Message content is required (template variable 4)",
       );
       return res
         .status(400)
         .json({
-          message: "Message content is required (used as template variable 3)",
+          message: "Message content is required (used as template variable 4)",
         });
     }
 
-    if (!process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID) {
+    const hasMultipleSessions = Array.isArray(event.sessions) && event.sessions.length > 1;
+
+    const templateSid = hasMultipleSessions
+      ? (process.env.TWILIO_WHATSAPP_EVENT_UPDATE_MULTIPLE_SESSION_TEMPLATE_SID || process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID)
+      : (process.env.TWILIO_WHATSAPP_EVENT_UPDATE_SINGLE_SESSION_TEMPLATE_SID || process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID);
+
+    if (!templateSid) {
       console.error("[WhatsApp] Event update template not configured");
       return res
         .status(503)
         .json({
           message:
-            "WhatsApp event update template is not configured (TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID)",
+            "WhatsApp event update template is not configured (TWILIO_WHATSAPP_EVENT_UPDATE_SINGLE_SESSION_TEMPLATE_SID / TWILIO_WHATSAPP_EVENT_UPDATE_MULTIPLE_SESSION_TEMPLATE_SID / TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID)",
         });
     }
 
@@ -1117,13 +1143,10 @@ router.post("/:id/send-whatsapp", auth, async (req, res) => {
     const optedOutNumbers = new Set(optedOutUsers.map((u) => u.mobile));
 
     console.log(
-      `[WhatsApp] Starting message send for event: ${event.title} (${event._id})`,
+      `[WhatsApp] Starting message send for event: ${event.title} (${event._id}), multipleSessions: ${hasMultipleSessions}`,
     );
     const messageBodyForTemplate =
       buildEventUpdateMessageBodyVariable(messageText);
-    console.log(
-      `[WhatsApp] Template variables: 1=firstName 2="${titleForTemplate}" 3="${sessionForTemplate}" 4="${messageBodyForTemplate}" 5="${contactName}" 6="${contactPhone}"`,
-    );
     console.log(
       `[WhatsApp] Number of registered participants: ${registrations.length}`,
     );
@@ -1164,17 +1187,27 @@ router.post("/:id/send-whatsapp", auth, async (req, res) => {
           }
 
           const recipientFirstName = registration.attendee.firstName || ' ';
+          const contentVariables = hasMultipleSessions
+            ? {
+                1: recipientFirstName,
+                2: titleForTemplate,
+                3: sessionForTemplate,
+                4: messageBodyForTemplate,
+                5: contactName,
+                6: contactPhone,
+              }
+            : {
+                1: recipientFirstName,
+                2: titleForTemplate,
+                4: messageBodyForTemplate,
+                5: contactName,
+                6: contactPhone,
+              };
+
           await twilioClient.messages.create({
             from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
-            contentSid: process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID,
-            contentVariables: JSON.stringify({
-              1: recipientFirstName,
-              2: titleForTemplate,
-              3: sessionForTemplate,
-              4: messageBodyForTemplate,
-              5: contactName,
-              6: contactPhone,
-            }),
+            contentSid: templateSid,
+            contentVariables: JSON.stringify(contentVariables),
             to: `whatsapp:${formattedNumber}`,
           });
 

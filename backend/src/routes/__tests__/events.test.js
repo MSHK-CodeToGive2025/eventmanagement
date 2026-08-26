@@ -785,14 +785,23 @@ describe('Events Routes', () => {
   });
 
   describe('WhatsApp templates (event update)', () => {
-    const updateTemplateSid = 'HXupdate_test_sid_123';
+    const singleUpdateSid = 'HXupdate_single_test_sid_123';
+    const multiUpdateSid = 'HXupdate_multi_test_sid_456';
     let twilioCreateCalls;
     let mockTwilioCreate;
-    let savedEnv;
+    let savedSingleEnv;
+    let savedMultiEnv;
+    let savedFallbackEnv;
 
     beforeEach(() => {
-      savedEnv = process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID;
-      process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID = updateTemplateSid;
+      savedSingleEnv = process.env.TWILIO_WHATSAPP_EVENT_UPDATE_SINGLE_SESSION_TEMPLATE_SID;
+      savedMultiEnv = process.env.TWILIO_WHATSAPP_EVENT_UPDATE_MULTIPLE_SESSION_TEMPLATE_SID;
+      savedFallbackEnv = process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID;
+
+      process.env.TWILIO_WHATSAPP_EVENT_UPDATE_SINGLE_SESSION_TEMPLATE_SID = singleUpdateSid;
+      process.env.TWILIO_WHATSAPP_EVENT_UPDATE_MULTIPLE_SESSION_TEMPLATE_SID = multiUpdateSid;
+      process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID = singleUpdateSid;
+
       twilioCreateCalls = [];
       mockTwilioCreate = (payload) => {
         twilioCreateCalls.push(payload);
@@ -803,10 +812,12 @@ describe('Events Routes', () => {
 
     afterEach(() => {
       setTwilioClientForTesting(null);
-      process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID = savedEnv;
+      process.env.TWILIO_WHATSAPP_EVENT_UPDATE_SINGLE_SESSION_TEMPLATE_SID = savedSingleEnv;
+      process.env.TWILIO_WHATSAPP_EVENT_UPDATE_MULTIPLE_SESSION_TEMPLATE_SID = savedMultiEnv;
+      process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID = savedFallbackEnv;
     });
 
-    it('send-whatsapp-reminder uses event update template with 5 variables', async () => {
+    it('send-whatsapp-reminder uses multiple session template when session is specified', async () => {
       const response = await request(app)
         .post('/api/events/send-whatsapp-reminder')
         .send({
@@ -815,27 +826,58 @@ describe('Events Routes', () => {
           eventTitle: 'My Event Title',
           session: 'Session 1',
           contactName: 'John',
-          contactPhone: '+85200000000'
+          contactPhone: '+85200000000',
+          firstName: 'Alice'
         });
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('success', true);
       expect(twilioCreateCalls.length).toBe(1);
       const call = twilioCreateCalls[0];
-      expect(call.contentSid).toBe(updateTemplateSid);
+      expect(call.contentSid).toBe(multiUpdateSid);
       const vars = typeof call.contentVariables === 'string' ? JSON.parse(call.contentVariables) : call.contentVariables;
       expect(vars).toEqual({
-        '1': 'My Event Title',
-        '2': 'Session 1',
-        '3': buildEventUpdateMessageBodyVariable('Hello participants'),
-        '4': 'John',
-        '5': '+85200000000'
+        '1': 'Alice',
+        '2': 'My Event Title',
+        '3': 'Session 1',
+        '4': buildEventUpdateMessageBodyVariable('Hello participants'),
+        '5': 'John',
+        '6': '+85200000000'
       });
       expect(call.to).toBe('whatsapp:+85212345678');
     });
 
-    it('POST :id/send-whatsapp uses event update template with 5 variables for each participant', async () => {
-      // Add staffContact to the event
+    it('send-whatsapp-reminder uses single session template (no var 3) when no session is specified', async () => {
+      const response = await request(app)
+        .post('/api/events/send-whatsapp-reminder')
+        .send({
+          to: '+85212345678',
+          message: 'Hello participants',
+          eventTitle: 'Single Event Title',
+          contactName: 'John',
+          contactPhone: '+85200000000',
+          firstName: 'Bob'
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('success', true);
+      expect(twilioCreateCalls.length).toBe(1);
+      const call = twilioCreateCalls[0];
+      expect(call.contentSid).toBe(singleUpdateSid);
+      const vars = typeof call.contentVariables === 'string' ? JSON.parse(call.contentVariables) : call.contentVariables;
+      expect(vars['3']).toBeUndefined();
+      expect(vars).toEqual({
+        '1': 'Bob',
+        '2': 'Single Event Title',
+        '4': buildEventUpdateMessageBodyVariable('Hello participants'),
+        '5': 'John',
+        '6': '+85200000000'
+      });
+      expect(call.to).toBe('whatsapp:+85212345678');
+    });
+
+    it('POST :id/send-whatsapp uses single session template when event has <= 1 session', async () => {
+      // testEvent has 1 session by default
       await Event.findByIdAndUpdate(testEvent._id, {
         staffContact: { name: 'Staff User', phone: '+85211111111' }
       });
@@ -849,19 +891,50 @@ describe('Events Routes', () => {
       const response = await request(app)
         .post(`/api/events/${testEvent._id}/send-whatsapp`)
         .set('Authorization', `Bearer ${adminToken}`)
-        .send({ title: 'Test Event', message: 'Custom message here', session: 'Session A' });
+        .send({ title: 'Test Event', message: 'Custom message here' });
 
       expect(response.status).toBe(200);
       expect(response.body).toHaveProperty('successful', 1);
       expect(twilioCreateCalls.length).toBe(1);
       const call = twilioCreateCalls[0];
-      expect(call.contentSid).toBe(updateTemplateSid);
+      expect(call.contentSid).toBe(singleUpdateSid);
       const vars = typeof call.contentVariables === 'string' ? JSON.parse(call.contentVariables) : call.contentVariables;
-      expect(vars['1']).toBe('Test Event');
-      expect(vars['2']).toBe('Session A');
-      expect(vars['3']).toBe(buildEventUpdateMessageBodyVariable('Custom message here'));
-      expect(vars['4']).toBe('Staff User');
-      expect(vars['5']).toBe('+85211111111');
+      expect(vars['1']).toBe('Test');
+      expect(vars['2']).toBe('Test Event');
+      expect(vars['3']).toBeUndefined();
+      expect(vars['4']).toBe(buildEventUpdateMessageBodyVariable('Custom message here'));
+      expect(vars['5']).toBe('Staff User');
+      expect(vars['6']).toBe('+85211111111');
+      expect(call.to).toMatch(/whatsapp:.*85298765432/);
+    });
+
+    it('POST :id/send-whatsapp uses multiple session template when event has > 1 sessions', async () => {
+      // Add a second session to testEvent
+      await Event.findByIdAndUpdate(testEvent._id, {
+        staffContact: { name: 'Staff User', phone: '+85211111111' },
+        sessions: [
+          { title: 'Session 1', date: new Date(), startTime: '10:00', endTime: '11:00' },
+          { title: 'Session 2', date: new Date(), startTime: '14:00', endTime: '15:00' }
+        ]
+      });
+
+      const response = await request(app)
+        .post(`/api/events/${testEvent._id}/send-whatsapp`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ title: 'Test Event', message: 'Custom message here', session: 'Session 1' });
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('successful', 1);
+      expect(twilioCreateCalls.length).toBe(1);
+      const call = twilioCreateCalls[0];
+      expect(call.contentSid).toBe(multiUpdateSid);
+      const vars = typeof call.contentVariables === 'string' ? JSON.parse(call.contentVariables) : call.contentVariables;
+      expect(vars['1']).toBe('Test');
+      expect(vars['2']).toBe('Test Event');
+      expect(vars['3']).toBe('Session 1');
+      expect(vars['4']).toBe(buildEventUpdateMessageBodyVariable('Custom message here'));
+      expect(vars['5']).toBe('Staff User');
+      expect(vars['6']).toBe('+85211111111');
       expect(call.to).toMatch(/whatsapp:.*85298765432/);
     });
   });
