@@ -25,7 +25,7 @@ export function Navigation() {
   const [isManagementOpen, setIsManagementOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const location = useLocation()
-  const { isAuthenticated, user, logout } = useAuth()
+  const { isAuthenticated, user, loading } = useAuth()
 
   // Check if user has management access
   const hasManagementAccess = user?.role === 'admin' || user?.role === 'staff'
@@ -196,7 +196,7 @@ export function Navigation() {
             {/*
             <LanguageSelector />
             */}
-            {!isAuthenticated ? (
+            {loading ? null : !isAuthenticated ? (
               <>
                 <Button variant="ghost" size="sm" asChild>
                   <Link to="/sign-in">Sign In</Link>
@@ -350,7 +350,7 @@ export function Navigation() {
                 <span className="text-sm text-gray-500">Select Language</span>
               </div>
               */}
-              {!isAuthenticated && (
+              {!loading && !isAuthenticated && (
                 <div className="flex flex-col space-y-2">
                   <Button variant="outline" asChild onClick={closeMenu}>
                     <Link to="/sign-in">Sign In</Link>

@@ -5,9 +5,11 @@ import { ArrowRight, Calendar, Users, Heart, Play, Pause, MapPin } from 'lucide-
 import { useState, useEffect, useRef } from 'react';
 import eventService, { Event } from '@/services/eventService';
 import { formatDateHKT } from '@/utils/dateTimeHKT';
+import { useAuth } from '@/contexts/auth-context';
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
   // State to track which elements have been clicked
   const [clickedElements, setClickedElements] = useState<{
     person1: boolean;
@@ -339,9 +341,11 @@ export default function LandingPage() {
                     Explore Events <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-                <Link to="/sign-up">
-                  <Button variant="outline">Sign Up</Button>
-                </Link>
+                {!isAuthenticated && (
+                  <Link to="/sign-up">
+                    <Button variant="outline">Sign Up</Button>
+                  </Link>
+                )}
               </div>
             </div>
             <div
@@ -1016,10 +1020,10 @@ export default function LandingPage() {
                 Sign up for events, manage your registrations, and track your participation.
               </p>
               <Link
-                to="/sign-up"
+                to={isAuthenticated ? "/enhanced-events" : "/sign-up"}
                 className="text-yellow-500 hover:text-yellow-600 font-medium inline-flex items-center"
               >
-                Sign Up Now <ArrowRight className="ml-1 h-4 w-4" />
+                {isAuthenticated ? "Browse Events" : "Sign Up Now"} <ArrowRight className="ml-1 h-4 w-4" />
               </Link>
             </div>
 
@@ -1050,13 +1054,20 @@ export default function LandingPage() {
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4 text-black">Ready to Join Our Events?</h2>
           <p className="text-black/80 max-w-2xl mx-auto mb-8">
-            Create an account to register for events, connect with our community, and stay updated
-            on our initiatives.
+            {isAuthenticated
+              ? "Discover upcoming events, connect with our community, and stay updated on our initiatives."
+              : "Create an account to register for events, connect with our community, and stay updated on our initiatives."}
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Link to="/sign-up">
-              <Button className="bg-black hover:bg-black/80 text-white">Sign Up Now</Button>
-            </Link>
+            {!isAuthenticated ? (
+              <Link to="/sign-up">
+                <Button className="bg-black hover:bg-black/80 text-white">Sign Up Now</Button>
+              </Link>
+            ) : (
+              <Link to="/enhanced-events">
+                <Button className="bg-black hover:bg-black/80 text-white">View Upcoming Events</Button>
+              </Link>
+            )}
             <Link to="/enhanced-events">
               <Button
                 variant="outline"

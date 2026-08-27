@@ -1,6 +1,6 @@
 import type React from "react"
-import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import { Link, useNavigate, useLocation } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,7 +13,8 @@ import { useAuth } from "@/contexts/auth-context"
 
 export default function SignIn() {
   const navigate = useNavigate()
-  const { login } = useAuth()
+  const location = useLocation()
+  const { login, isAuthenticated, loading } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false)
@@ -22,6 +23,14 @@ export default function SignIn() {
     password: "",
     // TODO: Add rememberMe: false when implementing cookie functionality
   })
+
+  const from = (location.state as any)?.from?.pathname || "/"
+
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      navigate(from, { replace: true })
+    }
+  }, [isAuthenticated, loading, navigate, from])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -51,12 +60,20 @@ export default function SignIn() {
         username: formData.username,
         password: formData.password,
       })
-      navigate("/")
+      navigate(from, { replace: true })
     } catch (err: any) {
       setError(err.message || "Failed to sign in. Please try again.")
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (loading || isAuthenticated) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+      </div>
+    )
   }
 
   return (

@@ -1,19 +1,19 @@
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { AlertCircle, CheckCircle2, Info } from "lucide-react"
+import { AlertCircle, CheckCircle2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { validatePhoneNumberForForm, formatPhoneNumberForDisplay } from "@/lib/phone-utils"
+import { validatePhoneNumberForForm } from "@/lib/phone-utils"
 import { PhoneInput } from "@/components/ui/phone-input"
 
 export default function SignUp() {
   const navigate = useNavigate()
-  const { register } = useAuth()
+  const { register, isAuthenticated, loading } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -26,6 +26,12 @@ export default function SignUp() {
     password: "",
     confirmPassword: "",
   })
+
+  useEffect(() => {
+    if (!loading && isAuthenticated && !success) {
+      navigate("/", { replace: true })
+    }
+  }, [isAuthenticated, loading, navigate, success])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -117,6 +123,14 @@ export default function SignUp() {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  if (loading || (isAuthenticated && !success)) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500"></div>
+      </div>
+    )
   }
 
   return (
