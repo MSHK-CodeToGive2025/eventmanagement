@@ -192,7 +192,7 @@ class ReminderService {
           const sessionDate = new Date(`${dateStr}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00+08:00`);
           
           console.log(`[REMINDER SERVICE] Session "${session.title}" date=${dateStr} startTime="${session.startTime}" -> ${sessionDate.toISOString()} (HKT ${hours}:${String(minutes).padStart(2,'0')})`);
-          const sessionResult = await this.processSingleEventReminder(event, sessionDate, now, `session: ${session.title}`);
+          const sessionResult = await this.processSingleEventReminder(event, sessionDate, now, `session: ${session.title}`, session);
           if (sessionResult && sessionResult.reminderSent) {
             remindersSent++;
           }
@@ -211,7 +211,7 @@ class ReminderService {
   }
 
   // Process reminder for a single event or session
-  async processSingleEventReminder(event, startDateTime, now, eventType) {
+  async processSingleEventReminder(event, startDateTime, now, eventType, session = null) {
     try {
       const timeUntilEvent = startDateTime.getTime() - now.getTime();
       const hoursUntilEvent = timeUntilEvent / (1000 * 60 * 60);
@@ -220,15 +220,11 @@ class ReminderService {
 
       let reminderSent = false;
 
-      // Check each configured reminder time (coerce to number - form/API may send strings)
-      const reminderTimesList = Array.isArray(event.reminderTimes) ? event.reminderTimes : [24];
+      // Check each configured reminder time (deduplicate and ensure positive numbers)
+      const rawReminderTimes = Array.isArray(event.reminderTimes) ? event.reminderTimes : [24];
+      const reminderTimesList = [...new Set(rawReminderTimes.map(Number))].filter(h => Number.isFinite(h) && h > 0);
       console.log(`[REMINDER SERVICE] Total reminder times to check: ${reminderTimesList.length}`);
-      for (const raw of reminderTimesList) {
-        const reminderHours = Number(raw);
-        if (!Number.isFinite(reminderHours) || reminderHours <= 0) {
-          console.log(`[REMINDER SERVICE] Skipping invalid reminder time: ${raw}`);
-          continue;
-        }
+      for (const reminderHours of reminderTimesList) {
         const halfWindow = Math.min(0.5, Math.max(0.05, reminderHours / 2));
         const windowStart = reminderHours - halfWindow;
         const windowEnd = reminderHours + halfWindow;
@@ -237,18 +233,45 @@ class ReminderService {
         
         if (hoursUntilEvent >= windowStart && hoursUntilEvent <= windowEnd) {
           console.log(`[REMINDER SERVICE] ✅ ${reminderHours}h reminder MATCHES criteria for ${eventType}`);
+          const sessionTitle = eventType.startsWith('session:') ? eventType.replace('session: ', '') : '';
           const reminderKey = eventType === 'main event'
             ? `main_${reminderHours}`
-            : `session_${eventType.replace('session: ', '')}_${reminderHours}`;
+            : `session_${sessionTitle}_${reminderHours}`;
+          
           console.log(`[REMINDER SERVICE] Reminder key: ${reminderKey}`);
           console.log(`[REMINDER SERVICE] Already sent reminders: ${(event.remindersSent || []).join(', ')}`);
-          if (!(event.remindersSent || []).includes(reminderKey)) {
-            console.log(`[REMINDER SERVICE] 🚀 Sending ${reminderHours}h reminder for ${eventType}: ${event.title}`);
-            await this.sendEventReminder(event, reminderHours, eventType, startDateTime);
-            reminderSent = true;
-          } else {
-            console.log(`[REMINDER SERVICE] ⏭️ ${reminderHours}h reminder already sent for ${eventType}: ${event.title}`);
+          
+          // In-memory check first
+          if ((event.remindersSent || []).includes(reminderKey)) {
+            console.log(`[REMINDER SERVICE] ⏭️ ${reminderHours}h reminder already in sent list for ${eventType}: ${event.title}`);
+            continue;
           }
+
+          // Atomic DB check & lock: Atomically add reminderKey to DB if not already present.
+          // This prevents duplicate execution from concurrent server processes (e.g. docker + local)
+          const lockedEvent = await Event.findOneAndUpdate(
+            {
+              _id: event._id,
+              remindersSent: { $ne: reminderKey }
+            },
+            {
+              $addToSet: { remindersSent: reminderKey }
+            },
+            { new: true }
+          );
+
+          if (!lockedEvent) {
+            console.log(`[REMINDER SERVICE] ⏭️ ${reminderHours}h reminder already sent or being processed by another instance for ${eventType}: ${event.title}`);
+            continue;
+          }
+
+          // Update local in-memory event.remindersSent so subsequent loop checks know it's sent
+          if (!event.remindersSent) event.remindersSent = [];
+          event.remindersSent.push(reminderKey);
+
+          console.log(`[REMINDER SERVICE] 🚀 Sending ${reminderHours}h reminder for ${eventType}: ${event.title}`);
+          await this.sendEventReminder(event, reminderHours, eventType, startDateTime, null, session);
+          reminderSent = true;
         } else {
           console.log(`[REMINDER SERVICE] ❌ ${reminderHours}h reminder does NOT match criteria for ${eventType}`);
         }
@@ -262,7 +285,7 @@ class ReminderService {
   }
 
   // Send reminder for a specific event
-  async sendEventReminder(event, reminderHours, eventType, startDateTime, useTemplate = null) {
+  async sendEventReminder(event, reminderHours, eventType, startDateTime, useTemplate = null, session = null) {
     try {
       // If useTemplate is not specified, use the event's default setting
       if (useTemplate === null) {
@@ -270,7 +293,6 @@ class ReminderService {
       }
       
       console.log(`[REMINDER SERVICE] 📤 Starting to send ${reminderHours}h reminder for ${eventType}: ${event.title}`);
-      console.log(`[REMINDER SERVICE] Using template: ${useTemplate ? 'Yes' : 'No'} (${event.defaultReminderMode} default)`);
       
       // Get all registered participants for this event
       const registrations = await EventRegistration.find({
@@ -278,12 +300,36 @@ class ReminderService {
         status: 'registered'
       });
 
-      console.log(`[REMINDER SERVICE] Found ${registrations.length} registered participants for event: ${event.title}`);
+      console.log(`[REMINDER SERVICE] Found ${registrations.length} total registered participants for event: ${event.title}`);
 
       if (registrations.length === 0) {
         console.log(`[REMINDER SERVICE] ⚠️ No registered participants for event: ${event.title}`);
-        // Still mark as sent to avoid repeated processing
-        await this.markReminderSent(event._id, reminderHours, eventType, startDateTime);
+        return;
+      }
+
+      // Filter registrations for this specific session if this is a multi-session event
+      const isSession = eventType.startsWith('session:');
+      const sessionTitle = isSession ? eventType.replace('session: ', '') : null;
+      const targetSession = session || (event.sessions && event.sessions.find(s => s.title === sessionTitle));
+      const targetSessionId = targetSession && targetSession._id ? String(targetSession._id) : null;
+
+      const relevantRegistrations = registrations.filter(reg => {
+        // If event is single session or main event, all registered participants apply
+        if (!isSession || !event.sessions || event.sessions.length <= 1) {
+          return true;
+        }
+        // If multi-session event: check if participant registered for this session
+        if (Array.isArray(reg.sessions) && reg.sessions.length > 0) {
+          return reg.sessions.some(sId => (targetSessionId && String(sId) === targetSessionId) || (sessionTitle && String(sId) === sessionTitle));
+        }
+        // If participant has no specific session array, include by default
+        return true;
+      });
+
+      console.log(`[REMINDER SERVICE] ${relevantRegistrations.length} participant(s) match session for reminder: ${eventType}`);
+
+      if (relevantRegistrations.length === 0) {
+        console.log(`[REMINDER SERVICE] ⚠️ No registered participants for session: ${eventType}`);
         return;
       }
 
@@ -296,19 +342,29 @@ class ReminderService {
 
       const failedNumbers = [];
       const successfulNumbers = [];
+      const sentPhonesInBatch = new Set();
 
-      // Send reminder to each participant
-      for (const registration of registrations) {
+      // Send reminder to each participant (deduplicating by phone in this batch)
+      for (const registration of relevantRegistrations) {
         if (registration.attendee && registration.attendee.phone) {
+          const rawPhone = registration.attendee.phone;
+
           // Skip users who opted out
-          if (optedOutNumbers.has(registration.attendee.phone)) {
-            console.log(`[REMINDER SERVICE] Skipping opted-out user: ${registration.attendee.phone}`);
+          if (optedOutNumbers.has(rawPhone)) {
+            console.log(`[REMINDER SERVICE] Skipping opted-out user: ${rawPhone}`);
             continue;
           }
 
           try {
             // Format phone number for Twilio WhatsApp compliance
-            const formattedNumber = formatForWhatsApp(registration.attendee.phone);
+            const formattedNumber = formatForWhatsApp(rawPhone);
+
+            // Deduplicate phone numbers within the batch
+            if (sentPhonesInBatch.has(formattedNumber)) {
+              console.log(`[REMINDER SERVICE] Skipping duplicate phone number in batch: ${formattedNumber}`);
+              continue;
+            }
+            sentPhonesInBatch.add(formattedNumber);
 
             console.log(`[REMINDER SERVICE] 📱 Sending reminder to ${formattedNumber} for ${eventType}`);
 
@@ -336,8 +392,7 @@ class ReminderService {
             } else if (updateTemplateSid) {
               // Event set to "custom" reminder: send full reminder text via event update template.
               const message = this.createReminderMessage(event, reminderHours, eventType, startDateTime);
-              const isSession = eventType.startsWith('session:');
-              const sessionTitle = isSession ? eventType.replace('session: ', '') : ' ';
+              const sessionTitleStr = isSession ? sessionTitle : ' ';
               const contactName = (event.staffContact && event.staffContact.name) ? event.staffContact.name : ' ';
               const contactPhone = (event.staffContact && event.staffContact.phone) ? event.staffContact.phone : ' ';
               const firstName = registration.attendee.firstName || ' ';
@@ -347,7 +402,7 @@ class ReminderService {
                 ? {
                     "1": this.sanitizeContentVariable(firstName),
                     "2": this.sanitizeContentVariable(event.title),
-                    "3": this.sanitizeContentVariable(sessionTitle),
+                    "3": this.sanitizeContentVariable(sessionTitleStr),
                     "4": buildEventUpdateMessageBodyVariable(message),
                     "5": this.sanitizeContentVariable(contactName),
                     "6": this.sanitizeContentVariable(contactPhone)
@@ -385,10 +440,6 @@ class ReminderService {
 
       console.log(`[REMINDER SERVICE] 📊 ${reminderHours}h reminder completed for ${eventType}: ${event.title}`);
       console.log(`[REMINDER SERVICE] ✅ Successful: ${successfulNumbers.length}, ❌ Failed: ${failedNumbers.length}`);
-
-      // Mark reminder as sent regardless of failures
-      await this.markReminderSent(event._id, reminderHours, eventType, startDateTime);
-
     } catch (error) {
       console.error(`[REMINDER SERVICE] Error sending reminder for event ${event.title}:`, error);
     }

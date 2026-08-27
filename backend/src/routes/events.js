@@ -1137,6 +1137,21 @@ router.post("/:id/send-whatsapp", auth, async (req, res) => {
       status: "registered",
     });
 
+    const isSpecificSession = session != null && String(session).trim() !== "" && String(session).trim() !== "All sessions";
+    const selectedSessionTitle = isSpecificSession ? String(session).trim() : null;
+    const matchedSession = selectedSessionTitle && event.sessions ? event.sessions.find(s => s.title === selectedSessionTitle) : null;
+    const selectedSessionId = matchedSession && matchedSession._id ? String(matchedSession._id) : null;
+
+    const relevantRegistrations = registrations.filter(reg => {
+      if (!isSpecificSession || !event.sessions || event.sessions.length <= 1) {
+        return true;
+      }
+      if (Array.isArray(reg.sessions) && reg.sessions.length > 0) {
+        return reg.sessions.some(sId => (selectedSessionId && String(sId) === selectedSessionId) || (selectedSessionTitle && String(sId) === selectedSessionTitle));
+      }
+      return true;
+    });
+
     const optedOutUsers = await User.find({ whatsappOptOut: true }).select(
       "mobile",
     );
@@ -1148,7 +1163,7 @@ router.post("/:id/send-whatsapp", auth, async (req, res) => {
     const messageBodyForTemplate =
       buildEventUpdateMessageBodyVariable(messageText);
     console.log(
-      `[WhatsApp] Number of registered participants: ${registrations.length}`,
+      `[WhatsApp] Number of registered participants: ${relevantRegistrations.length} (total: ${registrations.length})`,
     );
     if (optedOutNumbers.size > 0) {
       console.log(
@@ -1159,30 +1174,39 @@ router.post("/:id/send-whatsapp", auth, async (req, res) => {
     const failedNumbers = [];
     const successfulNumbers = [];
     const skippedOptOut = [];
+    const sentPhonesInBatch = new Set();
 
-    for (const registration of registrations) {
+    for (const registration of relevantRegistrations) {
       if (registration.attendee && registration.attendee.phone) {
-        if (optedOutNumbers.has(registration.attendee.phone)) {
+        const rawPhone = registration.attendee.phone;
+
+        if (optedOutNumbers.has(rawPhone)) {
           console.log(
             `[WhatsApp] Skipping opted-out user: ${registration.attendee.firstName} ${registration.attendee.lastName}`,
           );
-          skippedOptOut.push(registration.attendee.phone);
+          skippedOptOut.push(rawPhone);
           continue;
         }
 
         try {
+          const formattedNumber = formatForWhatsApp(rawPhone);
+
+          // Deduplicate phone numbers within the batch
+          if (sentPhonesInBatch.has(formattedNumber)) {
+            console.log(`[WhatsApp] Skipping duplicate phone number in batch: ${formattedNumber}`);
+            continue;
+          }
+          sentPhonesInBatch.add(formattedNumber);
+
           console.log(
-            `[WhatsApp] Sending to ${registration.attendee.firstName} ${registration.attendee.lastName} (${registration.attendee.phone})`,
-          );
-          const formattedNumber = formatForWhatsApp(
-            registration.attendee.phone,
+            `[WhatsApp] Sending to ${registration.attendee.firstName} ${registration.attendee.lastName} (${formattedNumber})`,
           );
 
           if (!twilioClient) {
             console.error(
               "Twilio client not initialized, cannot send WhatsApp message",
             );
-            failedNumbers.push(registration.attendee.phone);
+            failedNumbers.push(rawPhone);
             continue;
           }
 
@@ -1215,10 +1239,10 @@ router.post("/:id/send-whatsapp", auth, async (req, res) => {
           successfulNumbers.push(formattedNumber);
         } catch (error) {
           console.error(
-            `[WhatsApp] Failed to send to ${registration.attendee.phone}:`,
+            `[WhatsApp] Failed to send to ${rawPhone}:`,
             error.message,
           );
-          failedNumbers.push(registration.attendee.phone);
+          failedNumbers.push(rawPhone);
         }
       } else {
         console.log(
