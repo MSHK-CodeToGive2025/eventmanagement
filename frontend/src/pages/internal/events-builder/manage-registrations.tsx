@@ -32,11 +32,13 @@ import {
   Loader2,
   Printer,
   Download,
+  Upload,
 } from "lucide-react"
 import { formatDateHKT, formatSessionDateTimeHKT, formatDateTimeHKT } from "@/utils/dateTimeHKT"
 import { ZubinEvent } from "@/types/event-types"
 import RegistrationFormDialog from "@/components/events-builder/registration-form-dialog"
 import WhatsAppMessageDialog from "@/components/events-builder/whatsapp-message-dialog"
+import { BulkRegistrationDialog } from "@/components/events-builder/bulk-registration-dialog"
 import { RegistrationForm } from "@/types/form-types"
 import registrationService, { EventRegistration } from "@/services/registrationService"
 import { formService } from "@/services/formService"
@@ -57,6 +59,7 @@ export default function ManageRegistrations() {
   const [statusFilter, setStatusFilter] = useState<"all" | "registered" | "cancelled" | "rejected">("registered");
   const [selectedRegistration, setSelectedRegistration] = useState<EventRegistration | null>(null);
   const [showWhatsAppDialog, setShowWhatsAppDialog] = useState(false);
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false);
   
   const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
   const [registrationForm, setRegistrationForm] = useState<RegistrationForm | null>(null);
@@ -98,6 +101,16 @@ export default function ManageRegistrations() {
     };
     fetchEvent();
   }, [id, user, navigate, toast]);
+
+  const fetchRegistrations = async () => {
+    if (!event?._id) return;
+    try {
+      const registrationsData = await registrationService.getEventRegistrations(event._id);
+      setRegistrations(registrationsData);
+    } catch (err: unknown) {
+      console.error('Error refreshing registrations:', err);
+    }
+  };
 
   // Fetch registrations and form data when event is available
   useEffect(() => {
@@ -649,6 +662,14 @@ export default function ManageRegistrations() {
                 Export Excel
               </Button>
               <Button
+                onClick={() => setBulkUploadOpen(true)}
+                variant="outline"
+                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-indigo-200"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
+              <Button
                 onClick={handlePrint}
                 variant="outline"
                 className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200"
@@ -810,6 +831,17 @@ export default function ManageRegistrations() {
           sessions={event.sessions}
           staffContact={event.staffContact}
           onSendMessage={handleSendWhatsAppMessage}
+        />
+      )}
+
+      {/* Bulk Registration Dialog */}
+      {event && (
+        <BulkRegistrationDialog
+          open={bulkUploadOpen}
+          onOpenChange={setBulkUploadOpen}
+          eventId={event._id}
+          eventTitle={event.title}
+          onSuccess={fetchRegistrations}
         />
       )}
     </div>

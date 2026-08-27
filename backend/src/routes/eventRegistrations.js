@@ -3,6 +3,14 @@ import auth from '../middleware/auth.js';
 import EventRegistration from '../models/EventRegistration.js';
 import Event from '../models/Event.js';
 import User from '../models/User.js';
+import {
+  validateFirstName,
+  validateLastName,
+  validateAndNormalizeMobile,
+  validateAndNormalizeEmail,
+  escapeRegex,
+  generateCredentials
+} from '../utils/bulkUploadUtils.js';
 
 const router = express.Router();
 
@@ -143,6 +151,207 @@ router.post('/event/:eventId', auth, async (req, res) => {
     res.status(201).json(populatedRegistration);
   } catch (error) {
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Bulk upload event registrations (admin and staff can upload; supports mixed new and existing users)
+router.post('/event/:eventId/bulk-upload', auth, async (req, res) => {
+  try {
+    const requestingUser = await User.findById(req.user.userId);
+    if (!requestingUser) {
+      return res.status(403).json({ message: 'User not found' });
+    }
+
+    const event = await Event.findById(req.params.eventId);
+    if (!event) {
+      return res.status(404).json({ message: 'Event not found' });
+    }
+
+    const isAdmin = requestingUser.role === 'admin';
+    const isStaff = requestingUser.role === 'staff';
+    const isCreator = event.createdBy && event.createdBy.toString() === req.user.userId;
+
+    if (!isAdmin && !isStaff && !isCreator) {
+      return res.status(403).json({ message: 'Unauthorized: Only admin and staff can bulk register attendees' });
+    }
+
+    const participants = req.body.participants || req.body.users;
+    if (!Array.isArray(participants) || participants.length === 0) {
+      return res.status(400).json({ message: 'Request body must include a non-empty participants array' });
+    }
+
+    // Determine default sessions from event if available
+    const defaultSessions = Array.isArray(event.sessions)
+      ? event.sessions.map(s => (s.id || (s._id ? s._id.toString() : ''))).filter(Boolean)
+      : [];
+
+    const successfulRegistrations = [];
+    const skippedRegistrations = [];
+    const errors = [];
+    let newRegistrationsCount = 0;
+
+    for (let i = 0; i < participants.length; i++) {
+      const row = participants[i];
+      const rowNumber = row.rowNumber || (i + 1);
+      const rowErrors = [];
+
+      try {
+        // 1. Validate First Name
+        const fnResult = validateFirstName(row.firstName);
+        if (!fnResult.valid) rowErrors.push(fnResult.error);
+
+        // 2. Validate Last Name ("Nil" supported)
+        const lnResult = validateLastName(row.lastName);
+        if (!lnResult.valid) rowErrors.push(lnResult.error);
+
+        // 3. Validate Mobile (accepts mobile or phone)
+        const mobileResult = validateAndNormalizeMobile(row.mobile || row.phone);
+        if (!mobileResult.valid) rowErrors.push(mobileResult.error);
+
+        // 4. Validate Email
+        const emailResult = validateAndNormalizeEmail(row.email);
+        if (!emailResult.valid) rowErrors.push(emailResult.error);
+
+        if (rowErrors.length > 0) {
+          errors.push({
+            row: rowNumber,
+            data: row,
+            errors: rowErrors
+          });
+          continue;
+        }
+
+        const firstName = fnResult.value;
+        const lastName = lnResult.value;
+        const normalizedMobile = mobileResult.normalizedMobile;
+        const phone8 = mobileResult.phone8;
+        const email = emailResult.email;
+
+        // Check if user already exists based on triplet (firstName + lastName + mobile)
+        let targetUser = await User.findOne({
+          firstName: { $regex: new RegExp(`^${escapeRegex(firstName)}$`, 'i') },
+          lastName: { $regex: new RegExp(`^${escapeRegex(lastName)}$`, 'i') },
+          mobile: normalizedMobile
+        });
+
+        let isNewUser = false;
+        let tempPassword = '';
+
+        // Path A: Create new user if not found
+        if (!targetUser) {
+          // Check if optional email already in use
+          if (email) {
+            const emailUser = await User.findOne({ email });
+            if (emailUser) {
+              errors.push({
+                row: rowNumber,
+                data: row,
+                errors: ['Email is already in use by another user in the system']
+              });
+              continue;
+            }
+          }
+
+          const creds = await generateCredentials(firstName, phone8, User);
+          tempPassword = creds.tempPassword;
+
+          targetUser = new User({
+            username: creds.username,
+            password: creds.tempPassword, // Hashes on save
+            firstName,
+            lastName,
+            mobile: normalizedMobile,
+            email, // undefined if omitted
+            role: 'participant',
+            isActive: true,
+            whatsappOptOut: false
+          });
+
+          await targetUser.save();
+          isNewUser = true;
+        }
+
+        // Check if already registered for this specific event
+        const existingRegistration = await EventRegistration.findOne({
+          eventId: event._id,
+          userId: targetUser._id,
+          status: 'registered'
+        });
+
+        if (existingRegistration) {
+          skippedRegistrations.push({
+            row: rowNumber,
+            data: row,
+            userId: targetUser._id,
+            username: targetUser.username,
+            reason: 'Already registered for this event'
+          });
+          continue;
+        }
+
+        // Create new EventRegistration (Path A or Path B)
+        const newRegistration = new EventRegistration({
+          eventId: event._id,
+          userId: targetUser._id,
+          attendee: {
+            firstName: targetUser.firstName,
+            lastName: targetUser.lastName,
+            phone: targetUser.mobile,
+            email: targetUser.email || undefined
+          },
+          sessions: defaultSessions,
+          formResponses: [],
+          status: 'registered'
+        });
+
+        await newRegistration.save();
+        newRegistrationsCount++;
+
+        successfulRegistrations.push({
+          id: newRegistration._id,
+          userId: targetUser._id,
+          row: rowNumber,
+          firstName: targetUser.firstName,
+          lastName: targetUser.lastName,
+          mobile: targetUser.mobile,
+          email: targetUser.email || '',
+          username: targetUser.username,
+          tempPassword: isNewUser ? tempPassword : '',
+          isNewUser,
+          role: targetUser.role,
+          status: 'registered'
+        });
+
+      } catch (rowErr) {
+        console.error(`[EVENT REG BULK] Error processing row ${rowNumber}:`, rowErr);
+        errors.push({
+          row: rowNumber,
+          data: row,
+          errors: [rowErr.message || 'Failed to process event registration']
+        });
+      }
+    }
+
+    // Increment registered count on Event
+    if (newRegistrationsCount > 0) {
+      await Event.findByIdAndUpdate(event._id, {
+        $inc: { registeredCount: newRegistrationsCount }
+      });
+    }
+
+    res.json({
+      total: participants.length,
+      successful: successfulRegistrations.length,
+      skipped: skippedRegistrations.length,
+      failed: errors.length,
+      successfulRegistrations,
+      skippedRegistrations,
+      errors
+    });
+
+  } catch (error) {
+    console.error('[EVENT REG BULK] Server error:', error);
+    res.status(500).json({ message: 'Server error during event bulk upload', error: error.message });
   }
 });
 

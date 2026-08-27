@@ -45,7 +45,7 @@ describe('Users Routes', () => {
       password: 'admin123',
       firstName: 'Admin',
       lastName: 'User',
-      mobile: '1234567890',
+      mobile: '+85212345678',
       email: 'admin@example.com',
       role: 'admin'
     });
@@ -57,7 +57,7 @@ describe('Users Routes', () => {
       password: 'user123',
       firstName: 'Regular',
       lastName: 'User',
-      mobile: '1234567891',
+      mobile: '+85212345679',
       email: 'user@example.com',
       role: 'participant'
     });
@@ -95,7 +95,7 @@ describe('Users Routes', () => {
         .set('Authorization', `Bearer ${regularToken}`);
 
       expect(response.status).toBe(403);
-      expect(response.body).toHaveProperty('message', 'Unauthorized: Only admin can view all users');
+      expect(response.body).toHaveProperty('message', 'Unauthorized: Only admin and staff can view users');
     });
 
     it('should return 401 without token', async () => {
@@ -113,7 +113,7 @@ describe('Users Routes', () => {
         password: 'newuser123',
         firstName: 'New',
         lastName: 'User',
-        mobile: '1234567892',
+        mobile: '+85212345672',
         email: 'newuser@example.com',
         role: 'participant'
       };
@@ -146,7 +146,7 @@ describe('Users Routes', () => {
           password: 'test123',
           firstName: 'Test',
           lastName: 'User',
-          mobile: '1234567890'
+          mobile: '+85212345670'
         });
 
       expect(response.status).toBe(403);
@@ -162,11 +162,11 @@ describe('Users Routes', () => {
           password: 'test123',
           firstName: 'Test',
           lastName: 'User',
-          mobile: '1234567890'
+          mobile: '+85212345670'
         });
 
       expect(response.status).toBe(400);
-      expect(response.body).toHaveProperty('message', 'User already exists');
+      expect(response.body).toHaveProperty('message', 'Username already exists');
     });
   });
 
@@ -176,7 +176,7 @@ describe('Users Routes', () => {
         firstName: 'Updated',
         lastName: 'Name',
         email: 'updated@example.com',
-        mobile: '9876543210',
+        mobile: '+85298765432',
         role: 'staff'
       };
 
@@ -200,16 +200,16 @@ describe('Users Routes', () => {
       expect(updatedUser.email).toBe(updateData.email);
     });
 
-    it('should return 403 for non-admin users', async () => {
+    it('should return 403 when non-admin tries to update another user', async () => {
       const response = await request(app)
-        .put(`/api/users/${regularUser._id}`)
+        .put(`/api/users/${adminUser._id}`)
         .set('Authorization', `Bearer ${regularToken}`)
         .send({
-          firstName: 'Updated'
+          firstName: 'Hacked'
         });
 
       expect(response.status).toBe(403);
-      expect(response.body).toHaveProperty('message', 'Unauthorized: Only admin can update users');
+      expect(response.body).toHaveProperty('message', 'Unauthorized: You can only update your own profile');
     });
 
     it('should return 404 for non-existent user', async () => {
@@ -257,6 +257,150 @@ describe('Users Routes', () => {
 
       expect(response.status).toBe(404);
       expect(response.body).toHaveProperty('message', 'User not found');
+    });
+  });
+
+  describe('POST /api/users/bulk', () => {
+    let staffUser, staffToken;
+
+    beforeEach(async () => {
+      staffUser = new User({
+        username: 'staffuser',
+        password: 'staffpassword',
+        firstName: 'Staff',
+        lastName: 'Member',
+        mobile: '+85298765432',
+        role: 'staff'
+      });
+      await staffUser.save();
+
+      staffToken = jwt.sign(
+        { userId: staffUser._id },
+        process.env.JWT_SECRET || 'test-secret',
+        { expiresIn: '24h' }
+      );
+    });
+
+    it('should allow admin to bulk upload participants and staff', async () => {
+      const response = await request(app)
+        .post('/api/users/bulk')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          users: [
+            {
+              firstName: 'john',
+              lastName: 'deo',
+              mobile: '25409588',
+              email: 'JOHN.DEO@EXAMPLE.COM',
+              role: 'Participant'
+            },
+            {
+              firstName: 'sarah',
+              lastName: 'nil',
+              mobile: '+85225409588',
+              role: 'Staff'
+            }
+          ]
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.total).toBe(2);
+      expect(response.body.successful).toBe(2);
+      expect(response.body.failed).toBe(0);
+
+      // Verify Title Case name & lowercase username/password
+      const john = await User.findOne({ username: 'john25409588' });
+      expect(john).not.toBeNull();
+      expect(john.firstName).toBe('John');
+      expect(john.lastName).toBe('Deo');
+      expect(john.email).toBe('john.deo@example.com');
+      expect(john.mobile).toBe('+85225409588');
+      expect(john.role).toBe('participant');
+      expect(john.isActive).toBe(true);
+
+      // Verify Nil last name handling
+      const sarah = await User.findOne({ username: 'sarah25409588' });
+      expect(sarah).not.toBeNull();
+      expect(sarah.firstName).toBe('Sarah');
+      expect(sarah.lastName).toBe('Nil');
+      expect(sarah.role).toBe('staff');
+    });
+
+    it('should skip duplicate users based on (firstName, lastName, mobile)', async () => {
+      // First insert John Deo
+      await request(app)
+        .post('/api/users/bulk')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          users: [
+            { firstName: 'John', lastName: 'Deo', mobile: '25409588' }
+          ]
+        });
+
+      // Try uploading again with different casing
+      const response = await request(app)
+        .post('/api/users/bulk')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          users: [
+            { firstName: 'JOHN', lastName: 'DEO', mobile: '+85225409588' }
+          ]
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.successful).toBe(0);
+      expect(response.body.skipped).toBe(1);
+      expect(response.body.skippedUsers[0].reason).toBe('User already exists in system');
+    });
+
+    it('should allow staff to bulk upload participants only', async () => {
+      const response = await request(app)
+        .post('/api/users/bulk')
+        .set('Authorization', `Bearer ${staffToken}`)
+        .send({
+          users: [
+            { firstName: 'Alice', lastName: 'Wong', mobile: '23456789', role: 'participant' },
+            { firstName: 'Bob', lastName: 'Chan', mobile: '34567890', role: 'staff' },
+            { firstName: 'Charlie', lastName: 'Lee', mobile: '45678901', role: 'admin' }
+          ]
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.successful).toBe(1);
+      expect(response.body.failed).toBe(2);
+
+      // Verify error messages
+      expect(response.body.errors[0].errors).toContain('Staff users are only permitted to create Participant accounts');
+      expect(response.body.errors[1].errors).toContain('Admin accounts cannot be created via bulk upload');
+    });
+
+    it('should validate names and numbers with clear errors', async () => {
+      const response = await request(app)
+        .post('/api/users/bulk')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          users: [
+            { firstName: 'John123', lastName: 'Doe', mobile: '999' }
+          ]
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.failed).toBe(1);
+      expect(response.body.errors[0].errors).toContain('First Name must contain only characters, no numbers');
+      expect(response.body.errors[0].errors).toContain('Mobile number must be a valid 8-digit Hong Kong number (e.g. 25409588 or +85225409588)');
+    });
+
+    it('should return 403 for participant users', async () => {
+      const response = await request(app)
+        .post('/api/users/bulk')
+        .set('Authorization', `Bearer ${regularToken}`)
+        .send({
+          users: [
+            { firstName: 'Test', lastName: 'User', mobile: '25409588' }
+          ]
+        });
+
+      expect(response.status).toBe(403);
     });
   });
 }); 

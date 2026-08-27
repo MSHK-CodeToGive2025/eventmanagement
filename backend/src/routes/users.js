@@ -2,6 +2,15 @@ import express from 'express';
 import User from '../models/User.js';
 import auth from '../middleware/auth.js';
 import { validatePhoneNumberMiddleware } from '../utils/phoneUtils.js';
+import {
+  validateFirstName,
+  validateLastName,
+  validateAndNormalizeMobile,
+  validateRole,
+  validateAndNormalizeEmail,
+  escapeRegex,
+  generateCredentials
+} from '../utils/bulkUploadUtils.js';
 
 const router = express.Router();
 
@@ -35,6 +44,150 @@ router.get('/', auth, async (req, res) => {
   } catch (error) {
     console.error('[USERS] Error fetching users:', error);
     res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
+// Bulk upload users (admin and staff can upload; permissions & validations enforced per row)
+router.post('/bulk', auth, async (req, res) => {
+  try {
+    const requestingUser = await User.findById(req.user.userId);
+    if (!requestingUser || (requestingUser.role !== 'admin' && requestingUser.role !== 'staff')) {
+      return res.status(403).json({ message: 'Unauthorized: Only admin and staff can perform bulk upload' });
+    }
+
+    const { users } = req.body;
+    if (!Array.isArray(users) || users.length === 0) {
+      return res.status(400).json({ message: 'Request body must include a non-empty users array' });
+    }
+
+    const successfulUsers = [];
+    const skippedUsers = [];
+    const errors = [];
+
+    for (let i = 0; i < users.length; i++) {
+      const row = users[i];
+      const rowNumber = row.rowNumber || (i + 1);
+      const rowErrors = [];
+
+      try {
+        // 1. Validate First Name
+        const fnResult = validateFirstName(row.firstName);
+        if (!fnResult.valid) rowErrors.push(fnResult.error);
+
+        // 2. Validate Last Name ("Nil" supported)
+        const lnResult = validateLastName(row.lastName);
+        if (!lnResult.valid) rowErrors.push(lnResult.error);
+
+        // 3. Validate Mobile
+        const mobileResult = validateAndNormalizeMobile(row.mobile);
+        if (!mobileResult.valid) rowErrors.push(mobileResult.error);
+
+        // 4. Validate Role
+        const roleResult = validateRole(row.role, requestingUser.role);
+        if (!roleResult.valid) rowErrors.push(roleResult.error);
+
+        // 5. Validate Email
+        const emailResult = validateAndNormalizeEmail(row.email);
+        if (!emailResult.valid) rowErrors.push(emailResult.error);
+
+        // If validation errors exist, record failure and continue
+        if (rowErrors.length > 0) {
+          errors.push({
+            row: rowNumber,
+            data: row,
+            errors: rowErrors
+          });
+          continue;
+        }
+
+        const firstName = fnResult.value;
+        const lastName = lnResult.value;
+        const normalizedMobile = mobileResult.normalizedMobile;
+        const phone8 = mobileResult.phone8;
+        const role = roleResult.role;
+        const email = emailResult.email;
+
+        // Check if user already exists based on triplet (firstName + lastName + mobile)
+        const existingUser = await User.findOne({
+          firstName: { $regex: new RegExp(`^${escapeRegex(firstName)}$`, 'i') },
+          lastName: { $regex: new RegExp(`^${escapeRegex(lastName)}$`, 'i') },
+          mobile: normalizedMobile
+        });
+
+        if (existingUser) {
+          skippedUsers.push({
+            row: rowNumber,
+            data: row,
+            reason: 'User already exists in system'
+          });
+          continue;
+        }
+
+        // Check if email already in use (if provided)
+        if (email) {
+          const emailUser = await User.findOne({ email });
+          if (emailUser) {
+            errors.push({
+              row: rowNumber,
+              data: row,
+              errors: ['Email is already in use by another user in the system']
+            });
+            continue;
+          }
+        }
+
+        // Generate unique credentials: [lowercase firstName][8-digit mobile]
+        const { username, tempPassword } = await generateCredentials(firstName, phone8, User);
+
+        // Create and save user
+        const newUser = new User({
+          username,
+          password: tempPassword, // Mongoose pre('save') hook will hash this
+          firstName,
+          lastName,
+          mobile: normalizedMobile,
+          email, // undefined if not provided to respect sparse unique index
+          role,
+          isActive: true,
+          whatsappOptOut: false
+        });
+
+        await newUser.save();
+
+        successfulUsers.push({
+          id: newUser._id,
+          row: rowNumber,
+          firstName,
+          lastName,
+          mobile: normalizedMobile,
+          email: email || '',
+          username,
+          tempPassword,
+          role,
+          isActive: true
+        });
+      } catch (rowErr) {
+        console.error(`[USERS BULK] Error processing row ${rowNumber}:`, rowErr);
+        errors.push({
+          row: rowNumber,
+          data: row,
+          errors: [rowErr.message || 'Failed to process user record']
+        });
+      }
+    }
+
+    res.json({
+      total: users.length,
+      successful: successfulUsers.length,
+      skipped: skippedUsers.length,
+      failed: errors.length,
+      successfulUsers,
+      skippedUsers,
+      errors
+    });
+  } catch (error) {
+    console.error('[USERS BULK] Server error:', error);
+    res.status(500).json({ message: 'Server error during bulk upload', error: error.message });
   }
 });
 

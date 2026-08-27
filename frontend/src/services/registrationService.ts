@@ -111,6 +111,16 @@ const registrationService = {
       return [];
     }
   },
+
+  // Bulk upload event registrations (admin/staff only)
+  async bulkUploadRegistrations(eventId: string, participants: any[]): Promise<any> {
+    const response = await axios.post(
+      `${API_URL}/event-registrations/event/${eventId}/bulk-upload`,
+      { participants },
+      { headers: authHeader() }
+    );
+    return response.data;
+  },
 };
 
 export default registrationService; 

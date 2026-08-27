@@ -7,6 +7,7 @@ import { UserList } from "@/components/users/user-list"
 import { UserForm, type UserFormValues } from "@/components/users/user-form"
 import { UserDetails } from "@/components/users/user-details"
 import { DeleteUserDialog } from "@/components/users/delete-user-dialog"
+import { BulkUploadDialog } from "@/components/users/bulk-upload-dialog"
 import { PasswordChangeForm } from "@/components/users/password-change-form"
 import { PasswordResetForm } from "@/components/users/password-reset-form"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -54,6 +55,7 @@ export default function UsersManagementPage() {
 
   const [currentView, setCurrentView] = useState<UserView>(UserView.LIST)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [bulkUploadOpen, setBulkUploadOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<User | null>(null)
   const [activeTab, setActiveTab] = useState("details")
 
@@ -237,6 +239,7 @@ export default function UsersManagementPage() {
               onEdit={isAdmin ? editUserView : () => {}}
               onDelete={isAdmin ? openDeleteDialog : () => {}}
               onAddNew={isAdmin ? () => setCurrentView(UserView.CREATE) : () => {}}
+              onBulkUpload={() => setBulkUploadOpen(true)}
               onChangePassword={changePasswordView}
               currentPage={currentPage}
               itemsPerPage={itemsPerPage}
@@ -307,6 +310,13 @@ export default function UsersManagementPage() {
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
           onConfirm={handleDeleteUser}
+        />
+
+        <BulkUploadDialog
+          open={bulkUploadOpen}
+          onOpenChange={setBulkUploadOpen}
+          onSuccess={fetchUsers}
+          currentUserRole={currentUser?.role}
         />
       </div>
     </RouteGuard>

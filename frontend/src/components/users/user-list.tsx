@@ -42,7 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Eye, Edit, Trash2, MoreHorizontal, UserPlus, Key, Search } from "lucide-react"
+import { Eye, Edit, Trash2, MoreHorizontal, UserPlus, Key, Search, Upload } from "lucide-react"
 import { UserStatus, UserRole, User } from "@/types/user-types"
 import { PaginationControls } from "@/components/ui/pagination-controls"
 
@@ -61,6 +61,8 @@ interface UserListProps {
   onDelete: (user: User) => void
   /** Callback when adding a new user */
   onAddNew: () => void
+  /** Callback for bulk upload */
+  onBulkUpload?: () => void
   /** Callback when changing a user's password */
   onChangePassword: (user: User) => void
   /** Current page number */
@@ -89,6 +91,7 @@ export function UserList({
   onEdit,
   onDelete,
   onAddNew,
+  onBulkUpload,
   onChangePassword,
   currentPage = 1,
   itemsPerPage = 10,
@@ -230,12 +233,20 @@ export function UserList({
           </div>
           <Button type="submit">Search</Button>
         </form>
-        {showAdminActions && (
-          <Button onClick={onAddNew}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add New User
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {onBulkUpload && (
+            <Button variant="outline" onClick={onBulkUpload} className="gap-2">
+              <Upload className="h-4 w-4 text-primary" />
+              Bulk Upload
+            </Button>
+          )}
+          {showAdminActions && (
+            <Button onClick={onAddNew}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Add New User
+            </Button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-4 items-end">

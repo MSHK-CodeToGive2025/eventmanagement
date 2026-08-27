@@ -140,6 +140,19 @@ export class UserService {
     });
   }
 
+  async bulkUploadUsers(users: any[]): Promise<any> {
+    const token = localStorage.getItem('token');
+    return this.makeRequest<any>({
+      method: 'POST',
+      url: `${API_URL}/users/bulk`,
+      headers: {
+        Authorization: token ? `Bearer ${token}` : '',
+        'Content-Type': 'application/json'
+      },
+      data: { users }
+    });
+  }
+
   async resetUserPassword(id: string): Promise<{ temporaryPassword: string; user: any }> {
     const response = await this.makeRequest<{ temporaryPassword: string; user: any }>({
       method: 'POST',
