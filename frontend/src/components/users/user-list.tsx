@@ -235,8 +235,8 @@ export function UserList({
         </form>
         <div className="flex items-center gap-2">
           {onBulkUpload && (
-            <Button variant="outline" onClick={onBulkUpload} className="gap-2">
-              <Upload className="h-4 w-4 text-primary" />
+            <Button onClick={onBulkUpload}>
+              <Upload className="mr-2 h-4 w-4" />
               Bulk Upload
             </Button>
           )}
