@@ -63,6 +63,7 @@ router.post('/bulk', auth, async (req, res) => {
     const successfulUsers = [];
     const skippedUsers = [];
     const errors = [];
+    const seenStaffAdminEmails = new Set();
 
     for (let i = 0; i < users.length; i++) {
       const row = users[i];
@@ -123,17 +124,33 @@ router.post('/bulk', auth, async (req, res) => {
           continue;
         }
 
-        // Check if email already in use (if provided)
-        if (email) {
-          const emailUser = await User.findOne({ email });
-          if (emailUser) {
+        // Check email uniqueness: staff and admin emails must be unique and cannot be repeated
+        // Participant emails can be repeated
+        if (email && (role === 'staff' || role === 'admin')) {
+          if (seenStaffAdminEmails.has(email)) {
             errors.push({
               row: rowNumber,
               data: row,
-              errors: ['Email is already in use by another user in the system']
+              errors: ['Staff and admin email must be unique and cannot be repeated in upload']
             });
             continue;
           }
+
+          const existingStaffAdmin = await User.findOne({
+            email,
+            role: { $in: ['admin', 'staff'] }
+          });
+
+          if (existingStaffAdmin) {
+            errors.push({
+              row: rowNumber,
+              data: row,
+              errors: ['Staff and admin email must be unique and is already in use by another staff/admin user']
+            });
+            continue;
+          }
+
+          seenStaffAdminEmails.add(email);
         }
 
         // Generate unique credentials: [lowercase firstName][8-digit mobile]
@@ -146,7 +163,7 @@ router.post('/bulk', auth, async (req, res) => {
           firstName,
           lastName,
           mobile: normalizedMobile,
-          email, // undefined if not provided to respect sparse unique index
+          email, // undefined if not provided
           role,
           isActive: true,
           whatsappOptOut: false
@@ -210,11 +227,16 @@ router.post('/', auth, validatePhoneNumberMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'Username already exists' });
     }
 
-    // Check if email already exists (if email is provided)
-    if (email) {
-      const existingEmailUser = await User.findOne({ email });
+    const targetRole = role || 'participant';
+
+    // Staff and admin emails must be unique
+    if (email && (targetRole === 'admin' || targetRole === 'staff')) {
+      const existingEmailUser = await User.findOne({
+        email: email.trim().toLowerCase(),
+        role: { $in: ['admin', 'staff'] }
+      });
       if (existingEmailUser) {
-        return res.status(400).json({ message: 'Email address already exists' });
+        return res.status(400).json({ message: 'Email address already exists for a staff or admin account' });
       }
     }
 
@@ -224,8 +246,8 @@ router.post('/', auth, validatePhoneNumberMiddleware, async (req, res) => {
       firstName,
       lastName,
       mobile,
-      email,
-      role: role || 'participant'
+      email: email ? email.trim().toLowerCase() : undefined,
+      role: targetRole
     });
 
     await newUser.save();
@@ -237,11 +259,11 @@ router.post('/', auth, validatePhoneNumberMiddleware, async (req, res) => {
     
     // Handle MongoDB duplicate key errors
     if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern)[0];
+      const field = Object.keys(error.keyPattern || {})[0];
       if (field === 'username') {
         return res.status(400).json({ message: 'Username already exists' });
       } else if (field === 'email') {
-        return res.status(400).json({ message: 'Email address already exists' });
+        return res.status(400).json({ message: 'Email address already exists for a staff or admin account' });
       } else {
         return res.status(400).json({ message: `${field} already exists` });
       }
@@ -269,10 +291,28 @@ router.put('/:id', auth, validatePhoneNumberMiddleware, async (req, res) => {
 
     const { firstName, lastName, email, mobile, role, isActive } = req.body;
     
+    // Determine target role for email uniqueness check
+    const existingTargetUser = await User.findById(req.params.id);
+    if (!existingTargetUser) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    const finalRole = isOwnProfile ? existingTargetUser.role : (role || existingTargetUser.role);
+
+    if (email && (finalRole === 'admin' || finalRole === 'staff')) {
+      const existingEmailUser = await User.findOne({
+        email: email.trim().toLowerCase(),
+        _id: { $ne: req.params.id },
+        role: { $in: ['admin', 'staff'] }
+      });
+      if (existingEmailUser) {
+        return res.status(400).json({ message: 'Email address already exists for a staff or admin account' });
+      }
+    }
+
     // If user is updating their own profile, don't allow role changes
     const updateData = isOwnProfile 
-      ? { firstName, lastName, email, mobile }
-      : { firstName, lastName, email, mobile, role, isActive };
+      ? { firstName, lastName, email: email ? email.trim().toLowerCase() : undefined, mobile }
+      : { firstName, lastName, email: email ? email.trim().toLowerCase() : undefined, mobile, role, isActive };
 
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,

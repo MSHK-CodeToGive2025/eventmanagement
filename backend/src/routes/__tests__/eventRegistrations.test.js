@@ -6,6 +6,7 @@ import eventRegistrationsRoutes from '../eventRegistrations.js';
 import User from '../../models/User.js';
 import Event from '../../models/Event.js';
 import EventRegistration from '../../models/EventRegistration.js';
+import RegistrationForm from '../../models/RegistrationForm.js';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
 
@@ -18,7 +19,7 @@ app.use('/api/event-registrations', eventRegistrationsRoutes);
 let mongod;
 let adminUser, staffUser, regularUser;
 let adminToken, staffToken, regularToken;
-let testEvent;
+let testForm, testEvent;
 
 describe('Event Registrations Bulk Upload', () => {
   beforeAll(async () => {
@@ -36,6 +37,7 @@ describe('Event Registrations Bulk Upload', () => {
     await User.deleteMany({});
     await Event.deleteMany({});
     await EventRegistration.deleteMany({});
+    await RegistrationForm.deleteMany({});
 
     adminUser = new User({
       username: 'admin',
@@ -74,16 +76,33 @@ describe('Event Registrations Bulk Upload', () => {
     staffToken = jwt.sign({ userId: staffUser._id }, process.env.JWT_SECRET || 'test-secret', { expiresIn: '24h' });
     regularToken = jwt.sign({ userId: regularUser._id }, process.env.JWT_SECRET || 'test-secret', { expiresIn: '24h' });
 
+    testForm = new RegistrationForm({
+      title: 'Default Form',
+      createdBy: adminUser._id,
+      sections: [{
+        title: 'Personal Info',
+        order: 0,
+        fields: [{
+          label: 'Name',
+          type: 'text',
+          order: 0
+        }]
+      }]
+    });
+    await testForm.save();
+
     testEvent = new Event({
       title: 'Community Career Workshop',
       description: 'A great workshop for the community',
       category: 'Career Development',
       targetGroup: 'All Hong Kong Residents',
       eventType: 'Single Session',
+      registrationFormId: testForm._id,
       location: {
         venue: 'Community Centre',
         address: '100 Nathan Road',
-        district: 'Eastern'
+        district: 'Eastern',
+        onlineEvent: false
       },
       status: 'Published',
       startDate: new Date(Date.now() + 86400000),
@@ -110,8 +129,8 @@ describe('Event Registrations Bulk Upload', () => {
         participants: [
           // Path B: Existing user in system
           { firstName: 'existing', lastName: 'person', mobile: '22334455' },
-          // Path A: Brand new user with "Nil" last name
-          { firstName: 'sarah', lastName: 'nil', mobile: '25409588', email: 'SARAH@EXAMPLE.COM' },
+          // Path A: Brand new user with "Nil" last name and same email as existing user
+          { firstName: 'sarah', lastName: 'nil', mobile: '25409588', email: 'existing@example.com' },
           // Invalid row: bad mobile
           { firstName: 'Invalid', lastName: 'Mobile', mobile: '123' }
         ]
@@ -130,12 +149,12 @@ describe('Event Registrations Bulk Upload', () => {
     expect(regExisting).not.toBeNull();
     expect(regExisting.status).toBe('registered');
 
-    // Verify new user was created with Title Case and auto credentials
+    // Verify new user was created with Title Case and auto credentials even with shared participant email
     const newUser = await User.findOne({ username: 'sarah25409588' });
     expect(newUser).not.toBeNull();
     expect(newUser.firstName).toBe('Sarah');
     expect(newUser.lastName).toBe('Nil');
-    expect(newUser.email).toBe('sarah@example.com');
+    expect(newUser.email).toBe('existing@example.com');
     expect(newUser.role).toBe('participant');
 
     // Verify new user is registered for the event

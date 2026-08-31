@@ -29,9 +29,7 @@ const userSchema = new mongoose.Schema({
   email: {
     type: String,
     trim: true,
-    lowercase: true,
-    unique: true,
-    sparse: true // Allows multiple documents without email field
+    lowercase: true
   },
   role: {
     type: String,
@@ -68,6 +66,19 @@ const userSchema = new mongoose.Schema({
     default: false
   }
 });
+
+// Partial unique index: emails must be unique for admin and staff roles (participants can share emails)
+userSchema.index(
+  { email: 1 },
+  {
+    unique: true,
+    sparse: true,
+    partialFilterExpression: {
+      role: { $in: ['admin', 'staff'] },
+      email: { $type: 'string', $gt: '' }
+    }
+  }
+);
 
 // Hash password before saving
 userSchema.pre('save', async function(next) {

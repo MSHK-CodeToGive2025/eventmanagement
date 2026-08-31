@@ -237,21 +237,8 @@ router.post('/event/:eventId/bulk-upload', auth, async (req, res) => {
         let isNewUser = false;
         let tempPassword = '';
 
-        // Path A: Create new user if not found
+        // Path A: Create new user if not found (participants can share emails)
         if (!targetUser) {
-          // Check if optional email already in use
-          if (email) {
-            const emailUser = await User.findOne({ email });
-            if (emailUser) {
-              errors.push({
-                row: rowNumber,
-                data: row,
-                errors: ['Email is already in use by another user in the system']
-              });
-              continue;
-            }
-          }
-
           const creds = await generateCredentials(firstName, phone8, User);
           tempPassword = creds.tempPassword;
 

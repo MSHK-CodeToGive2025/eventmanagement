@@ -156,7 +156,10 @@ export function downloadEventRegistrationSampleTemplate(format: 'xlsx' | 'csv' =
 /**
  * Parses an uploaded Excel (.xlsx, .xls) or .csv file
  */
-export async function parseSpreadsheetFile(file: File): Promise<ParsedUserRow[]> {
+export async function parseSpreadsheetFile(
+  file: File,
+  contextType: 'users' | 'events' = 'users'
+): Promise<ParsedUserRow[]> {
   const buffer = await file.arrayBuffer();
   const workbook = XLSX.read(buffer, { type: 'array' });
   const firstSheetName = workbook.SheetNames[0];
@@ -206,9 +209,17 @@ export async function parseSpreadsheetFile(file: File): Promise<ParsedUserRow[]>
       lastName = 'Nil';
     }
 
-    // Default role to "participant" if empty
-    if (!role) {
-      role = 'participant';
+    // Role handling: Event attendees are always participants
+    let cleanRole = 'participant';
+    if (contextType === 'events') {
+      cleanRole = 'participant';
+    } else if (role && role.trim()) {
+      const lower = role.trim().toLowerCase();
+      if (['participant', 'staff'].includes(lower)) {
+        cleanRole = lower;
+      } else {
+        cleanRole = lower;
+      }
     }
 
     // Basic client-side checks for preview badges
@@ -234,15 +245,52 @@ export async function parseSpreadsheetFile(file: File): Promise<ParsedUserRow[]>
       }
     }
 
+    // Email format validation
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        clientErrors.push('Invalid email format (e.g. user@example.com)');
+      }
+    }
+
+    // Role validation (for User Management uploads only)
+    if (contextType === 'users' && role && role.trim()) {
+      const lower = role.trim().toLowerCase();
+      if (!['participant', 'staff'].includes(lower)) {
+        clientErrors.push("Invalid role: must be 'participant' or 'staff'");
+      }
+    }
+
     parsedRows.push({
       rowNumber,
       firstName,
       lastName,
       mobile,
       email: email || undefined,
-      role,
+      role: cleanRole,
       clientErrors: clientErrors.length > 0 ? clientErrors : undefined
     });
+  });
+
+  // Second pass: Detect duplicate staff emails within the uploaded spreadsheet file
+  const staffEmailCounts = new Map<string, number>();
+  parsedRows.forEach((row) => {
+    if (row.role === 'staff' && row.email) {
+      const lowerEmail = row.email.toLowerCase();
+      staffEmailCounts.set(lowerEmail, (staffEmailCounts.get(lowerEmail) || 0) + 1);
+    }
+  });
+
+  parsedRows.forEach((row) => {
+    if (row.role === 'staff' && row.email) {
+      const lowerEmail = row.email.toLowerCase();
+      if ((staffEmailCounts.get(lowerEmail) || 0) > 1) {
+        row.clientErrors = row.clientErrors || [];
+        if (!row.clientErrors.includes('Duplicate email for staff role in file')) {
+          row.clientErrors.push('Duplicate email for staff role in file');
+        }
+      }
+    }
   });
 
   return parsedRows;

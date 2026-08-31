@@ -81,7 +81,7 @@ export function BulkUploadDialog({
     setParsing(true);
 
     try {
-      const rows = await parseSpreadsheetFile(selectedFile);
+      const rows = await parseSpreadsheetFile(selectedFile, 'users');
       setParsedRows(rows);
     } catch (err: any) {
       console.error('Error parsing file:', err);
@@ -117,13 +117,16 @@ export function BulkUploadDialog({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  const readyRows = parsedRows.filter((r) => !r.clientErrors || r.clientErrors.length === 0);
+  const clientErrorCount = parsedRows.length - readyRows.length;
+
   const handleUpload = async () => {
-    if (parsedRows.length === 0) return;
+    if (readyRows.length === 0) return;
     setUploading(true);
 
     try {
-      // Clean payload for backend
-      const payload = parsedRows.map((r) => ({
+      // Clean payload for backend (only upload valid rows)
+      const payload = readyRows.map((r) => ({
         rowNumber: r.rowNumber,
         firstName: r.firstName,
         lastName: r.lastName,
@@ -144,8 +147,6 @@ export function BulkUploadDialog({
       setUploading(false);
     }
   };
-
-  const clientErrorCount = parsedRows.filter((r) => r.clientErrors && r.clientErrors.length > 0).length;
 
   return (
     <>
@@ -358,7 +359,7 @@ export function BulkUploadDialog({
                     <div>
                       <p className="text-xs font-semibold text-slate-800 truncate max-w-sm">{file.name}</p>
                       <p className="text-[11px] text-slate-500">
-                        {(file.size / 1024).toFixed(1)} KB • {parsedRows.length} rows detected
+                        {(file.size / 1024).toFixed(1)} KB • {parsedRows.length} rows detected ({readyRows.length} ready{clientErrorCount > 0 ? `, ${clientErrorCount} need fix` : ''})
                       </p>
                     </div>
                   </div>
@@ -379,54 +380,79 @@ export function BulkUploadDialog({
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
                     <div>
-                      <span className="font-semibold">{clientErrorCount} row(s) have formatting issues.</span> You can still proceed with upload; the system will import all valid rows and provide a downloadable report for any failed entries.
+                      <span className="font-semibold">{clientErrorCount} row(s) have formatting issues.</span> All valid entries ({readyRows.length}) will be imported, and any failed entries will be excluded.
                     </div>
                   </div>
                 )}
 
                 {/* Parsed Rows Preview Table */}
-                <div className="border rounded-lg overflow-hidden max-h-56 overflow-y-auto">
+                <div className="border rounded-lg overflow-hidden max-h-64 overflow-y-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b sticky top-0">
+                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b sticky top-0 z-10">
                       <tr>
-                        <th className="py-2 px-3 w-12">#</th>
-                        <th className="py-2 px-3">First Name</th>
-                        <th className="py-2 px-3">Last Name</th>
-                        <th className="py-2 px-3">Mobile Number</th>
-                        <th className="py-2 px-3">Email</th>
-                        <th className="py-2 px-3">Role</th>
-                        <th className="py-2 px-3 text-right">Status</th>
+                        <th className="py-2.5 px-3 w-10">#</th>
+                        <th className="py-2.5 px-3">First Name</th>
+                        <th className="py-2.5 px-3">Last Name</th>
+                        <th className="py-2.5 px-3">Mobile Number</th>
+                        <th className="py-2.5 px-3">Email</th>
+                        <th className="py-2.5 px-3">Role</th>
+                        <th className="py-2.5 px-3 text-right min-w-[180px]">Status & Validation</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {parsedRows.map((row) => (
-                        <tr key={row.rowNumber} className="hover:bg-slate-50/80">
-                          <td className="py-2 px-3 font-mono text-slate-400">{row.rowNumber}</td>
-                          <td className="py-2 px-3 font-medium text-slate-800">{row.firstName || <span className="text-rose-500 font-normal italic">Missing</span>}</td>
-                          <td className="py-2 px-3 text-slate-700">{row.lastName}</td>
-                          <td className="py-2 px-3 text-slate-700">{row.mobile || <span className="text-rose-500 font-normal italic">Missing</span>}</td>
-                          <td className="py-2 px-3 text-slate-500 truncate max-w-[150px]">{row.email || '-'}</td>
-                          <td className="py-2 px-3 text-slate-700 capitalize">{row.role || 'participant'}</td>
-                          <td className="py-2 px-3 text-right">
-                            {row.clientErrors && row.clientErrors.length > 0 ? (
-                              <Badge variant="destructive" className="text-[10px] py-0 px-1.5">
-                                Needs Fix
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] py-0 px-1.5">
-                                Ready
-                              </Badge>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
+                      {parsedRows.map((row, index) => {
+                        const hasErrors = row.clientErrors && row.clientErrors.length > 0;
+                        return (
+                          <tr
+                            key={row.rowNumber}
+                            className={`transition-colors ${
+                              hasErrors ? 'bg-rose-50/40 hover:bg-rose-50/70' : 'hover:bg-slate-50/80'
+                            }`}
+                          >
+                            <td className="py-2.5 px-3 font-mono text-slate-400 align-top">{index + 1}</td>
+                            <td className="py-2.5 px-3 font-medium text-slate-800 align-top">
+                              {row.firstName || <span className="text-rose-500 font-medium italic">Missing</span>}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-700 align-top">{row.lastName}</td>
+                            <td className="py-2.5 px-3 text-slate-700 align-top">
+                              {row.mobile || <span className="text-rose-500 font-medium italic">Missing</span>}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-600 truncate max-w-[140px] align-top">
+                              {row.email || <span className="text-slate-400">-</span>}
+                            </td>
+                            <td className="py-2.5 px-3 text-slate-700 capitalize align-top">{row.role || 'participant'}</td>
+                            <td className="py-2.5 px-3 text-right align-top">
+                              {hasErrors ? (
+                                <div className="flex flex-col items-end gap-1">
+                                  <Badge variant="destructive" className="text-[10px] py-0 px-1.5 font-semibold">
+                                    Needs Fix
+                                  </Badge>
+                                  <div className="text-[11px] text-rose-600 font-medium space-y-0.5 text-right">
+                                    {row.clientErrors!.map((err, i) => (
+                                      <div key={i} className="flex items-center justify-end gap-1">
+                                        <span>• {err}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] py-0 px-1.5"
+                                >
+                                  Ready
+                                </Badge>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
 
-            {/* Error Banner */}
             {parseError && (
               <div className="p-3 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800 flex items-center gap-2">
                 <XCircle className="h-4 w-4 text-rose-600 shrink-0" />
@@ -447,7 +473,7 @@ export function BulkUploadDialog({
             <Button
               type="button"
               onClick={handleUpload}
-              disabled={!file || parsedRows.length === 0 || uploading || parsing}
+              disabled={!file || readyRows.length === 0 || uploading || parsing}
               className="gap-1.5"
             >
               {uploading ? (
@@ -458,7 +484,7 @@ export function BulkUploadDialog({
               ) : (
                 <>
                   <Upload className="h-4 w-4" />
-                  Upload {parsedRows.length > 0 ? `${parsedRows.length} Users` : ''}
+                  Upload {readyRows.length > 0 ? `${readyRows.length} ${readyRows.length === 1 ? 'User' : 'Users'}` : 'Users'}
                 </>
               )}
             </Button>

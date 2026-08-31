@@ -390,6 +390,48 @@ describe('Users Routes', () => {
       expect(response.body.errors[0].errors).toContain('Mobile number must be a valid 8-digit Hong Kong number (e.g. 25409588 or +85225409588)');
     });
 
+    it('should allow multiple participants to share the same email address', async () => {
+      const response = await request(app)
+        .post('/api/users/bulk')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          users: [
+            { firstName: 'Alice', lastName: 'Family', mobile: '21112222', email: 'family@example.com', role: 'participant' },
+            { firstName: 'Bob', lastName: 'Family', mobile: '21113333', email: 'family@example.com', role: 'participant' }
+          ]
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.successful).toBe(2);
+      expect(response.body.failed).toBe(0);
+
+      const user1 = await User.findOne({ username: 'alice21112222' });
+      const user2 = await User.findOne({ username: 'bob21113333' });
+      expect(user1.email).toBe('family@example.com');
+      expect(user2.email).toBe('family@example.com');
+    });
+
+    it('should reject staff accounts with duplicate email in upload or existing staff/admin', async () => {
+      const response = await request(app)
+        .post('/api/users/bulk')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          users: [
+            // Matches existing adminUser email
+            { firstName: 'StaffOne', lastName: 'Test', mobile: '23334444', email: 'admin@example.com', role: 'staff' },
+            // Duplicate staff emails in same batch
+            { firstName: 'StaffTwo', lastName: 'Test', mobile: '24445555', email: 'duplicate.staff@example.com', role: 'staff' },
+            { firstName: 'StaffThree', lastName: 'Test', mobile: '25556666', email: 'duplicate.staff@example.com', role: 'staff' }
+          ]
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.successful).toBe(1);
+      expect(response.body.failed).toBe(2);
+      expect(response.body.errors[0].errors).toContain('Staff and admin email must be unique and is already in use by another staff/admin user');
+      expect(response.body.errors[1].errors).toContain('Staff and admin email must be unique and cannot be repeated in upload');
+    });
+
     it('should return 403 for participant users', async () => {
       const response = await request(app)
         .post('/api/users/bulk')
