@@ -42,6 +42,8 @@ function formatTimeHKT(date) {
   }) + ' HKT';
 }
 
+export const DEFAULT_REMINDER_REMARK = "No special remarks for this activity. We look forward to seeing you.";
+
 class ReminderService {
   constructor() {
     this.isRunning = false;
@@ -499,6 +501,11 @@ class ReminderService {
       message += `\n📞 Phone: ${event.staffContact.phone}`;
     }
     
+    const remarkText = (event.reminderRemarks && String(event.reminderRemarks).trim())
+      ? String(event.reminderRemarks).trim()
+      : DEFAULT_REMINDER_REMARK;
+    message += `\n📝 Remark: ${remarkText}`;
+
     message += `\n\nWe look forward to seeing you!`;
     
     return message;
@@ -512,7 +519,7 @@ class ReminderService {
   }
 
   // Create template variables for WhatsApp reminder template
-  // Multiple session template structure (9 variables):
+  // Multiple session template structure (10 variables):
   // Dear {{1}},
   // 📢 Event: {{2}}
   // 📋 Session: {{3}}
@@ -523,8 +530,9 @@ class ReminderService {
   // 📍 Location: {{7}}
   // 👤 Contact: {{8}}
   // 📞 Phone: {{9}}
+  // 📝 Remark: {{10}}
   //
-  // Single session template structure (8 variables - {{3}} removed, remaining numbering preserved):
+  // Single session template structure (9 variables - {{3}} removed, remaining numbering preserved):
   // Dear {{1}},
   // 📢 Event: {{2}}
   //
@@ -534,6 +542,7 @@ class ReminderService {
   // 📍 Location: {{7}}
   // 👤 Contact: {{8}}
   // 📞 Phone: {{9}}
+  // 📝 Remark: {{10}}
   createTemplateVariables(event, reminderHours, eventType, startDateTime, firstName, hasMultipleSessions = null) {
     const eventStartTime = startDateTime;
     const formattedDate = formatDateHKT(eventStartTime);
@@ -589,6 +598,10 @@ class ReminderService {
     const contactName = event.staffContact && event.staffContact.name ? event.staffContact.name : '';
     const contactPhone = event.staffContact && event.staffContact.phone ? event.staffContact.phone : '';
 
+    const remarkText = (event.reminderRemarks && String(event.reminderRemarks).trim())
+      ? String(event.reminderRemarks).trim()
+      : DEFAULT_REMINDER_REMARK;
+
     if (isMultiple) {
       return {
         "1": this.sanitizeContentVariable(firstNameText),
@@ -599,7 +612,8 @@ class ReminderService {
         "6": this.sanitizeContentVariable(timeText2),
         "7": this.sanitizeContentVariable(locationText),
         "8": this.sanitizeContentVariable(contactName),
-        "9": this.sanitizeContentVariable(contactPhone)
+        "9": this.sanitizeContentVariable(contactPhone),
+        "10": this.sanitizeContentVariable(remarkText)
       };
     } else {
       return {
@@ -610,7 +624,8 @@ class ReminderService {
         "6": this.sanitizeContentVariable(timeText2),
         "7": this.sanitizeContentVariable(locationText),
         "8": this.sanitizeContentVariable(contactName),
-        "9": this.sanitizeContentVariable(contactPhone)
+        "9": this.sanitizeContentVariable(contactPhone),
+        "10": this.sanitizeContentVariable(remarkText)
       };
     }
   }

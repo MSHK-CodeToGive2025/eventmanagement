@@ -15,7 +15,7 @@ export interface Event {
   location: {
     venue: string;
     address: string;
-    district: string;
+    district?: string;
     onlineEvent: boolean;
     meetingLink?: string;
   };
@@ -61,6 +61,7 @@ export interface Event {
   registeredCount?: number;
   reminderTimes?: number[];
   defaultReminderMode?: 'template' | 'custom';
+  reminderRemarks?: string;
   remindersSent?: number[];
   staffContact?: {
     name?: string;
@@ -77,7 +78,7 @@ export interface EventFormData {
   location: {
     venue: string;
     address: string;
-    district: string;
+    district?: string;
     onlineEvent: boolean;
     meetingLink?: string;
   };
@@ -102,10 +103,12 @@ export interface EventFormData {
   tags?: string[];
   reminderTimes?: number[];
   defaultReminderMode?: 'template' | 'custom';
+  reminderRemarks?: string;
   staffContact?: {
     name?: string;
     phone?: string;
   };
+  participants?: string[];
 }
 
 // Add auth token to requests

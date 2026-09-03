@@ -5,6 +5,7 @@ import * as z from "zod"
 import { Button } from "@/components/ui/button"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
@@ -96,6 +97,7 @@ const eventFormSchema = z.object({
   tags: z.array(z.string()).optional(),
   reminderTimes: z.array(z.number()).optional(),
   defaultReminderMode: z.literal('template'),
+  reminderRemarks: z.string().max(500, "Remarks cannot exceed 500 characters").optional(),
   staffContact: z.object({
     name: z.string().optional(),
     phone: z.string().optional(),
@@ -213,6 +215,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       tags: [],
       reminderTimes: [24], // Default to 24 hours before event
       defaultReminderMode: 'template',
+      reminderRemarks: "",
       staffContact: {
         name: "",
         phone: "",
@@ -273,6 +276,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
             tags: eventData.tags || [],
             reminderTimes: eventData.reminderTimes || [24],
             defaultReminderMode: 'template' as const,
+            reminderRemarks: eventData.reminderRemarks || "",
             staffContact: eventData.staffContact || {
               name: "",
               phone: "",
@@ -412,6 +416,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
 
       // Add default reminder mode
       formData.append('defaultReminderMode', data.defaultReminderMode);
+      formData.append('reminderRemarks', data.reminderRemarks || '');
 
       // Add staff contact information
       if (data.staffContact) {
@@ -1333,13 +1338,31 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
 
                 <FormField
                   control={form.control}
-                  name="defaultReminderMode"
-                  render={() => (
+                  name="reminderRemarks"
+                  render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-base font-medium">WhatsApp Reminders</FormLabel>
-                      <div className="rounded-lg border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
-                        Event reminders are sent using the event reminder template only (no custom message option).
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="text-base font-medium">WhatsApp Reminder Remarks (Optional)</FormLabel>
+                        <span className="text-xs text-muted-foreground">
+                          {(field.value || "").length} / 500
+                        </span>
                       </div>
+                      <FormControl>
+                        <Textarea
+                          placeholder="e.g., Please bring your HKID card and wear comfortable shoes."
+                          className="resize-none"
+                          rows={3}
+                          maxLength={500}
+                          disabled={isSubmitting}
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Custom remark to be included in the automated WhatsApp reminder template (Remark: &#123;&#123;10&#125;&#125;).
+                        If left blank, it will automatically default to: <em>"No special remarks for this activity. We look forward to seeing you."</em>
+                      </FormDescription>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />

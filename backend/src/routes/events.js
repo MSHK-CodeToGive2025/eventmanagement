@@ -393,6 +393,10 @@ router.post("/", auth, upload.single("image"), async (req, res) => {
       console.log("[EVENTS] No reminder times provided, will use default");
     }
 
+    if (req.body.reminderRemarks !== undefined) {
+      eventData.reminderRemarks = String(req.body.reminderRemarks).trim();
+    }
+
     const locationFromBody = buildLocationFromBody(req.body);
     if (locationFromBody) eventData.location = locationFromBody;
     const sessionsFromBody = buildSessionsFromBody(req.body);
@@ -565,6 +569,10 @@ router.put("/:id", auth, upload.single("image"), async (req, res) => {
       console.log(
         "[EVENTS] Update - No reminder times provided, keeping existing",
       );
+    }
+
+    if (req.body.reminderRemarks !== undefined) {
+      updateData.reminderRemarks = String(req.body.reminderRemarks).trim();
     }
 
     // Handle image removal

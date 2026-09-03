@@ -1,41 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import eventService, { authHeader } from '../../services/eventService';
-import { Event, EventFormData } from '../../services/eventService';
+import eventService, { authHeader, Event, EventFormData } from '../../services/eventService';
+import registrationService, { EventRegistration } from '../../services/registrationService';
+import { eventCategories } from '../../types/event-types';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+
+interface AdminEventFormData {
+  title: string;
+  description: string;
+  category: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  location: string;
+  capacity?: number;
+  reminderRemarks: string;
+}
 
 const EventAdminForm: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [event, setEvent] = useState<Event | null>(null);
-  const [formData, setFormData] = useState<EventFormData>({
+  const [registrations, setRegistrations] = useState<EventRegistration[]>([]);
+  const [formData, setFormData] = useState<AdminEventFormData>({
     title: '',
     description: '',
     category: '',
-    targetGroup: '',
-    location: {
-      venue: '',
-      address: '',
-      district: '',
-      onlineEvent: false,
-      meetingLink: ''
-    },
-    startDate: '',
-    endDate: '',
-    isPrivate: false,
-    status: 'Draft',
-    registrationFormId: '',
-    sessions: [],
+    date: '',
+    startTime: '',
+    endTime: '',
+    location: '',
     capacity: undefined,
-    tags: [],
-    reminderTimes: [24],
-    defaultReminderMode: 'template',
-    staffContact: {
-      name: '',
-      phone: ''
-    },
-    participants: []
+    reminderRemarks: '',
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -52,16 +49,35 @@ const EventAdminForm: React.FC = () => {
         if (id) {
           const eventData = await eventService.getEvent(id);
           setEvent(eventData);
+
+          const firstSession = eventData.sessions?.[0];
+          const dateStr = eventData.startDate
+            ? eventData.startDate.split('T')[0]
+            : (firstSession?.date ? firstSession.date.split('T')[0] : '');
+          const startTimeStr = firstSession?.startTime || '';
+          const endTimeStr = firstSession?.endTime || '';
+          const locationStr = typeof eventData.location === 'string'
+            ? eventData.location
+            : (eventData.location?.venue || eventData.location?.address || '');
+
           setFormData({
-            title: eventData.title,
-            description: eventData.description,
-            date: eventData.date.split('T')[0],
-            startTime: eventData.startTime,
-            endTime: eventData.endTime,
-            location: eventData.location,
-            category: eventData.category,
-            capacity: eventData.capacity,
+            title: eventData.title || '',
+            description: eventData.description || '',
+            date: dateStr,
+            startTime: startTimeStr,
+            endTime: endTimeStr,
+            location: locationStr,
+            category: eventData.category || '',
+            capacity: eventData.capacity ?? firstSession?.capacity,
+            reminderRemarks: eventData.reminderRemarks || '',
           });
+
+          try {
+            const regData = await registrationService.getEventRegistrations(id);
+            setRegistrations(regData);
+          } catch (regErr) {
+            console.error('Failed to fetch event registrations', regErr);
+          }
         }
       } catch (err) {
         setError('Failed to fetch event details');
@@ -75,9 +91,9 @@ const EventAdminForm: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev: EventFormData) => ({
+    setFormData((prev: AdminEventFormData) => ({
       ...prev,
-      [name]: name === 'capacity' ? parseInt(value) : value
+      [name]: name === 'capacity' ? (value === '' ? undefined : parseInt(value, 10)) : value
     }));
   };
 
@@ -89,6 +105,11 @@ const EventAdminForm: React.FC = () => {
 
     try {
       if (id) {
+        const trimmedMessage = whatsappMessage.trim();
+        if (!trimmedMessage) {
+          throw new Error('Please enter a message to send.');
+        }
+
         const response = await fetch(`${import.meta.env.VITE_API_URL}/events/${id}/send-whatsapp`, {
           method: 'POST',
           headers: {
@@ -96,8 +117,8 @@ const EventAdminForm: React.FC = () => {
             ...authHeader(),
           },
           body: JSON.stringify({ 
-            title: "", 
-            message: isTemplateMode ? "" : whatsappMessage,
+            title: formData.title || event?.title || "", 
+            message: trimmedMessage,
             useTemplate: isTemplateMode
           }),
         });
@@ -111,10 +132,7 @@ const EventAdminForm: React.FC = () => {
         const messageType = isTemplateMode ? 'Template' : 'Custom';
         setWhatsappSuccess(`${messageType} message sent successfully to ${data.successful} participants. ${data.failed > 0 ? `${data.failed} failed.` : ''}`);
         
-        // Clear custom message if using template mode
-        if (isTemplateMode) {
-          setWhatsappMessage('');
-        }
+        setWhatsappMessage('');
       }
     } catch (err) {
       setWhatsappError(err instanceof Error ? err.message : 'Failed to send WhatsApp message');
@@ -130,29 +148,81 @@ const EventAdminForm: React.FC = () => {
     setLoading(true);
 
     try {
-      if (id) {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/events/${id}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            ...authHeader(),
-          },
-          body: JSON.stringify({
-            ...formData,
-            defaultReminderMode: 'template'
-          }),
-        });
+      if (id && event) {
+        const locationObj = {
+          venue: formData.location,
+          address: formData.location,
+          district: event.location?.district || undefined,
+          onlineEvent: event.location?.onlineEvent ?? false,
+          meetingLink: event.location?.meetingLink || '',
+        };
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to update event');
-        }
+        const startDate = formData.date
+          ? new Date(`${formData.date}T${formData.startTime || '00:00'}`).toISOString()
+          : (event.startDate || new Date().toISOString());
 
+        const endDate = formData.date
+          ? new Date(`${formData.date}T${formData.endTime || '23:59'}`).toISOString()
+          : (event.endDate || new Date().toISOString());
+
+        const sessions = event.sessions && event.sessions.length > 0
+          ? event.sessions.map((session, index) => {
+              if (index === 0) {
+                return {
+                  ...session,
+                  date: formData.date || session.date,
+                  startTime: formData.startTime || session.startTime,
+                  endTime: formData.endTime || session.endTime,
+                  capacity: formData.capacity,
+                  location: {
+                    venue: formData.location,
+                    meetingLink: session.location?.meetingLink
+                  }
+                };
+              }
+              return session;
+            })
+          : [
+              {
+                title: formData.title || 'Main Session',
+                date: formData.date || new Date().toISOString().split('T')[0],
+                startTime: formData.startTime || '09:00',
+                endTime: formData.endTime || '10:00',
+                capacity: formData.capacity,
+                location: {
+                  venue: formData.location
+                }
+              }
+            ];
+
+        const payload: EventFormData = {
+          title: formData.title,
+          description: formData.description,
+          category: formData.category,
+          targetGroup: event.targetGroup || 'Other',
+          location: locationObj,
+          startDate,
+          endDate,
+          isPrivate: event.isPrivate ?? false,
+          status: event.status || 'Draft',
+          registrationFormId: event.registrationFormId || '',
+          capacity: formData.capacity,
+          sessions,
+          reminderRemarks: formData.reminderRemarks,
+          defaultReminderMode: 'template',
+          tags: event.tags,
+          reminderTimes: event.reminderTimes,
+          staffContact: event.staffContact,
+          participants: event.participants,
+        };
+
+        const updated = await eventService.updateEvent(id, payload);
+        setEvent(updated);
         setSuccess('Event updated successfully!');
-        setLoading(false);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to update event');
+    } finally {
       setLoading(false);
     }
   };
@@ -164,6 +234,11 @@ const EventAdminForm: React.FC = () => {
   if (!event) {
     return <div className="text-center text-red-500">Event not found</div>;
   }
+
+  const registeredList = registrations.filter((r) => r.status === 'registered');
+  const totalRegistered = registeredList.length || event.registeredCount || 0;
+  const currentCapacity = formData.capacity ?? event.capacity ?? event.sessions?.[0]?.capacity;
+  const availableSpots = currentCapacity !== undefined ? Math.max(0, currentCapacity - totalRegistered) : 'Unlimited';
 
   return (
     <div className="max-w-4xl mx-auto p-6">
@@ -205,17 +280,31 @@ const EventAdminForm: React.FC = () => {
               required
             >
               <option value="">Select a category</option>
-              <option value="workshop">Workshop</option>
-              <option value="seminar">Seminar</option>
-              <option value="conference">Conference</option>
-              <option value="social">Social</option>
+              {eventCategories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">WhatsApp Reminders</label>
-            <p className="mt-1 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-600">
-              Event reminders are sent using the event reminder template only.
+            <label htmlFor="reminderRemarks" className="block text-sm font-medium text-gray-700">
+              WhatsApp Reminder Remarks (Optional)
+            </label>
+            <textarea
+              id="reminderRemarks"
+              name="reminderRemarks"
+              value={formData.reminderRemarks || ''}
+              onChange={handleChange}
+              rows={3}
+              maxLength={500}
+              placeholder="e.g., Please bring your HKID card and wear comfortable shoes."
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Custom remark to include in the WhatsApp reminder template (Remark: &#123;&#123;10&#125;&#125;).
+              If left blank, it defaults to: <em>"No special remarks for this activity. We look forward to seeing you."</em>
             </p>
             <input type="hidden" name="defaultReminderMode" value="template" />
           </div>
@@ -273,7 +362,7 @@ const EventAdminForm: React.FC = () => {
             <input
               type="number"
               name="capacity"
-              value={formData.capacity}
+              value={formData.capacity ?? ''}
               onChange={handleChange}
               min="1"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -316,15 +405,15 @@ const EventAdminForm: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="text-sm font-medium text-gray-500">Total Registered</h3>
-            <p className="text-2xl font-semibold">{event.registeredParticipants.length}</p>
+            <p className="text-2xl font-semibold">{totalRegistered}</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="text-sm font-medium text-gray-500">Waitlist</h3>
-            <p className="text-2xl font-semibold">{event.waitlist.length}</p>
+            <p className="text-2xl font-semibold">0</p>
           </div>
           <div className="bg-white p-4 rounded-lg shadow">
             <h3 className="text-sm font-medium text-gray-500">Available Spots</h3>
-            <p className="text-2xl font-semibold">{event.availableSpots}</p>
+            <p className="text-2xl font-semibold">{availableSpots}</p>
           </div>
         </div>
       </div>
@@ -334,32 +423,30 @@ const EventAdminForm: React.FC = () => {
         <h2 className="text-xl font-semibold mb-4">Registered Participants</h2>
         <div className="bg-white shadow overflow-hidden sm:rounded-md">
           <ul className="divide-y divide-gray-200">
-            {event.registeredParticipants.map((participant) => (
-              <li key={typeof participant === 'string' ? participant : participant._id} className="px-4 py-4">
+            {registeredList.map((participant: EventRegistration) => (
+              <li key={participant._id} className="px-4 py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 truncate">
-                      {typeof participant === 'string' ? 'Loading...' : participant.name}
+                      {participant.attendee.firstName} {participant.attendee.lastName}
                     </p>
                     <p className="text-sm text-gray-500">
-                      {typeof participant === 'string' ? 'Loading...' : participant.email}
+                      {participant.attendee.email || 'No email provided'}
                     </p>
                   </div>
                   <div className="ml-4 flex-shrink-0">
                     <p className={`text-sm font-medium ${
-                      typeof participant === 'string' || !participant.phoneNumber 
+                      !participant.attendee.phone 
                         ? 'text-gray-500' 
                         : 'text-green-600'
                     }`}>
-                      {typeof participant === 'string' || !participant.phoneNumber 
-                        ? 'No phone number' 
-                        : participant.phoneNumber}
+                      {participant.attendee.phone || 'No phone number'}
                     </p>
                   </div>
                 </div>
               </li>
             ))}
-            {event.registeredParticipants.length === 0 && (
+            {registeredList.length === 0 && (
               <li className="px-4 py-4 text-center text-gray-500">
                 No registered participants yet
               </li>
@@ -402,43 +489,39 @@ const EventAdminForm: React.FC = () => {
             />
           </div>
 
-          {isTemplateMode ? (
-            /* Template Info */
+          {isTemplateMode && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h3 className="text-sm font-medium text-blue-900 mb-2">Using Twilio WhatsApp Template</h3>
-              <p className="text-sm text-blue-700 mb-3">
-                Messages will be sent using a pre-approved WhatsApp template with the following variables:
+              <p className="text-sm text-blue-700 mb-2">
+                Messages will be sent using the pre-approved WhatsApp event update template.
               </p>
-              <ul className="text-sm text-blue-700 list-disc list-inside space-y-1">
-                <li><strong>Variable 1:</strong> Event date (MM/DD/YYYY format)</li>
-                <li><strong>Variable 2:</strong> Event time (HH:MM AM/PM format)</li>
-              </ul>
-              <p className="text-sm text-blue-600 mt-3">
-                This approach ensures compliance with WhatsApp Business API policies and reduces messaging costs.
-              </p>
-            </div>
-          ) : (
-            /* Custom Message Input */
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Message</label>
-              <textarea
-                value={whatsappMessage}
-                onChange={(e) => setWhatsappMessage(e.target.value)}
-                rows={4}
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                placeholder="Enter your message here..."
-                required
-              />
-              <p className="mt-1 text-sm text-gray-500">
-                This message will be sent to all registered participants with phone numbers. Custom messages cost more but allow full control over content.
+              <p className="text-sm text-blue-600">
+                The message below will be included as the update message body (Variable 4).
               </p>
             </div>
           )}
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Message Content</label>
+            <textarea
+              value={whatsappMessage}
+              onChange={(e) => setWhatsappMessage(e.target.value)}
+              rows={4}
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+              placeholder="Enter your update message here (e.g., Please note the meeting point has moved to Room 204)..."
+              required
+            />
+            <p className="mt-1 text-sm text-gray-500">
+              {isTemplateMode
+                ? "This text will be inserted into the WhatsApp template as the message body."
+                : "This custom message will be sent to all registered participants with phone numbers."}
+            </p>
+          </div>
+
           <div className="flex justify-end">
             <button
               type="submit"
-              disabled={whatsappLoading || (!isTemplateMode && !whatsappMessage.trim())}
+              disabled={whatsappLoading || !whatsappMessage.trim()}
               className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
             >
               {whatsappLoading ? 'Sending...' : `Send ${isTemplateMode ? 'Template' : 'Custom'} Message`}

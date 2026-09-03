@@ -69,6 +69,13 @@ describe('ReminderService template building', () => {
       expect(vars['7']).toBe('Room A');
       expect(vars['8']).toBe('Jane Doe');
       expect(vars['9']).toBe('+852 1234 5678');
+      expect(vars['10']).toBe('No special remarks for this activity. We look forward to seeing you.');
+    });
+
+    it('returns custom remark for variable 10 when reminderRemarks is set', () => {
+      const eventWithRemark = { ...singleSessionEvent, reminderRemarks: 'Please bring your photo ID.' };
+      const vars = reminderService.createTemplateVariables(eventWithRemark, 1, 'session: Only Session', startDateTime, 'Alice');
+      expect(vars['10']).toBe('Please bring your photo ID.');
     });
 
     it('returns single session variables for main event without sessions', () => {
@@ -80,6 +87,7 @@ describe('ReminderService template building', () => {
       expect(vars['3']).toBeUndefined();
       expect(vars['4']).toBe('1 day');
       expect(vars['7']).toBe('Test Venue, Central and Western');
+      expect(vars['10']).toBe('No special remarks for this activity. We look forward to seeing you.');
     });
 
     it('handles missing staffContact in single session template', () => {
@@ -88,11 +96,12 @@ describe('ReminderService template building', () => {
       expect(vars['3']).toBeUndefined();
       expect(vars['8']).toBe(' '); // sanitized for Twilio
       expect(vars['9']).toBe(' ');
+      expect(vars['10']).toBe('No special remarks for this activity. We look forward to seeing you.');
     });
   });
 
-  describe('createTemplateVariables (multiple sessions - 9 variables)', () => {
-    it('returns all 9 variables including session title for variable 3', () => {
+  describe('createTemplateVariables (multiple sessions - 10 variables)', () => {
+    it('returns all 10 variables including session title for variable 3 and remarks for variable 10', () => {
       const eventType = 'session: Morning Session';
       const reminderHours = 2;
       const vars = reminderService.createTemplateVariables(multipleSessionsEvent, reminderHours, eventType, startDateTime, 'Alice');
@@ -109,11 +118,18 @@ describe('ReminderService template building', () => {
       expect(vars['7']).toBe('Room A');
       expect(vars['8']).toBe('Jane Doe');
       expect(vars['9']).toBe('+852 1234 5678');
+      expect(vars['10']).toBe('No special remarks for this activity. We look forward to seeing you.');
+    });
+
+    it('uses custom remarks in multiple sessions template when provided', () => {
+      const multiWithRemarks = { ...multipleSessionsEvent, reminderRemarks: 'Wear sportswear and sneakers.' };
+      const vars = reminderService.createTemplateVariables(multiWithRemarks, 2, 'session: Morning Session', startDateTime, 'Alice');
+      expect(vars['10']).toBe('Wear sportswear and sneakers.');
     });
   });
 
   describe('createReminderMessage (custom / event update message body)', () => {
-    it('includes event title and main event details', () => {
+    it('includes event title, main event details and default remark', () => {
       const msg = reminderService.createReminderMessage(singleSessionEvent, 1, 'main event', startDateTime);
       expect(msg).toContain('Single Session Event');
       expect(msg).toContain('1 hour');
@@ -122,6 +138,13 @@ describe('ReminderService template building', () => {
       expect(msg).toContain('Jane Doe');
       expect(msg).toContain('+852 1234 5678');
       expect(msg).toContain('Event Reminder');
+      expect(msg).toContain('No special remarks for this activity. We look forward to seeing you.');
+    });
+
+    it('includes custom remark when provided', () => {
+      const eventWithRemark = { ...singleSessionEvent, reminderRemarks: 'Arrive 10 minutes early.' };
+      const msg = reminderService.createReminderMessage(eventWithRemark, 1, 'main event', startDateTime);
+      expect(msg).toContain('Remark: Arrive 10 minutes early.');
     });
 
     it('includes session title for session reminder', () => {
