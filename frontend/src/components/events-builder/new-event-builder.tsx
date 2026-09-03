@@ -97,7 +97,7 @@ const eventFormSchema = z.object({
   tags: z.array(z.string()).optional(),
   reminderTimes: z.array(z.number()).optional(),
   defaultReminderMode: z.literal('template'),
-  reminderRemarks: z.string().max(500, "Remarks cannot exceed 500 characters").optional(),
+  reminderRemarks: z.string().max(200, "Remarks cannot exceed 200 characters").optional(),
   staffContact: z.object({
     name: z.string().optional(),
     phone: z.string().optional(),
@@ -1344,7 +1344,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                       <div className="flex items-center justify-between">
                         <FormLabel className="text-base font-medium">WhatsApp Reminder Remarks (Optional)</FormLabel>
                         <span className="text-xs text-muted-foreground">
-                          {(field.value || "").length} / 500
+                          {(field.value || "").length} / 200
                         </span>
                       </div>
                       <FormControl>
@@ -1352,7 +1352,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                           placeholder="e.g., Please bring your HKID card and wear comfortable shoes."
                           className="resize-none"
                           rows={3}
-                          maxLength={500}
+                          maxLength={200}
                           disabled={isSubmitting}
                           {...field}
                           value={field.value || ""}

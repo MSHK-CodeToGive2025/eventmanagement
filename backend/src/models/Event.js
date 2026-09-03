@@ -190,7 +190,7 @@ const eventSchema = new mongoose.Schema({
   reminderRemarks: {
     type: String,
     trim: true,
-    maxlength: 500,
+    maxlength: 200,
     default: ''
   },
   remindersSent: {

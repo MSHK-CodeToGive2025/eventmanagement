@@ -298,7 +298,7 @@ const EventAdminForm: React.FC = () => {
               value={formData.reminderRemarks || ''}
               onChange={handleChange}
               rows={3}
-              maxLength={500}
+              maxLength={200}
               placeholder="e.g., Please bring your HKID card and wear comfortable shoes."
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
