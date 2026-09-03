@@ -26,6 +26,7 @@ import {
 import {
   downloadEventRegistrationSampleTemplate,
   parseSpreadsheetFile,
+  exportClientErrorRows,
   type ParsedUserRow,
   type BulkUploadResponse
 } from '@/services/user-template-service';
@@ -210,10 +211,11 @@ export function BulkRegistrationDialog({
                 <div className="space-y-1.5">
                   <p className="font-semibold text-slate-700">Field Rules & Flexibility:</p>
                   <ul className="list-disc pl-4 space-y-1 text-slate-600">
-                    <li><strong className="text-slate-800">First Name:</strong> Required, letters only (no numbers).</li>
+                    <li><strong className="text-slate-800">First Name:</strong> Required, letters only (no numbers or special characters).</li>
                     <li><strong className="text-slate-800">Last Name:</strong> If person has no last name, enter <code className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded font-bold">Nil</code>.</li>
                     <li><strong className="text-slate-800">Mobile Number:</strong> Required 8-digit HK phone number.</li>
                     <li><strong className="text-slate-800">Email:</strong> Optional. Stored in lowercase.</li>
+                    <li><strong className="text-slate-800">Role:</strong> Only <code className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded">participant</code> accounts can be created via event registration. Entries with <code className="bg-rose-100 text-rose-700 px-1 py-0.5 rounded">Admin</code> or <code className="bg-rose-100 text-rose-700 px-1 py-0.5 rounded">Staff</code> roles will be rejected.</li>
                     <li><strong className="text-slate-800">Column Order & Names:</strong> Column sequence does not matter (e.g. Mobile or Email can be in any column). Header names are flexible and case-insensitive. Extra columns are safely ignored.</li>
                   </ul>
                 </div>
@@ -365,11 +367,21 @@ export function BulkRegistrationDialog({
                 </div>
 
                 {clientErrorCount > 0 && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                    <div>
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                    <div className="flex-1">
                       <span className="font-semibold">{clientErrorCount} row(s) have formatting issues.</span> All valid entries ({readyRows.length}) will be registered, and any failed entries will be excluded.
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[11px] bg-white border-amber-300 text-amber-800 gap-1 hover:bg-amber-100 shrink-0"
+                      onClick={() => exportClientErrorRows(parsedRows, 'events', 'csv')}
+                    >
+                      <Download className="h-3 w-3" />
+                      Download Error Entries
+                    </Button>
                   </div>
                 )}
 
@@ -383,12 +395,16 @@ export function BulkRegistrationDialog({
                         <th className="py-2.5 px-3">Last Name</th>
                         <th className="py-2.5 px-3">Mobile Number</th>
                         <th className="py-2.5 px-3">Email</th>
+                        {parsedRows.some(r => r.rawRole) && (
+                          <th className="py-2.5 px-3">Role</th>
+                        )}
                         <th className="py-2.5 px-3 text-right min-w-[180px]">Status & Validation</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {parsedRows.map((row, index) => {
                         const hasErrors = row.clientErrors && row.clientErrors.length > 0;
+                        const hasInvalidRole = row.rawRole && row.rawRole.toLowerCase() !== 'participant';
                         return (
                           <tr
                             key={row.rowNumber}
@@ -407,6 +423,11 @@ export function BulkRegistrationDialog({
                             <td className="py-2.5 px-3 text-slate-600 truncate max-w-[170px] align-top">
                               {row.email || <span className="text-slate-400">-</span>}
                             </td>
+                            {parsedRows.some(r => r.rawRole) && (
+                              <td className={`py-2.5 px-3 align-top capitalize ${hasInvalidRole ? 'text-rose-600 font-semibold' : 'text-slate-700'}`}>
+                                {row.rawRole || <span className="text-slate-400">-</span>}
+                              </td>
+                            )}
                             <td className="py-2.5 px-3 text-right align-top">
                               {hasErrors ? (
                                 <div className="flex flex-col items-end gap-1">

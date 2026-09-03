@@ -64,6 +64,7 @@ router.post('/bulk', auth, async (req, res) => {
     const skippedUsers = [];
     const errors = [];
     const seenStaffAdminEmails = new Set();
+    const seenStaffAdminMobiles = new Set();
 
     for (let i = 0; i < users.length; i++) {
       const row = users[i];
@@ -153,6 +154,35 @@ router.post('/bulk', auth, async (req, res) => {
           seenStaffAdminEmails.add(email);
         }
 
+        // Check mobile uniqueness: staff and admin mobile numbers must be unique and cannot be repeated
+        // Participant mobile numbers can be repeated
+        if (role === 'staff' || role === 'admin') {
+          if (seenStaffAdminMobiles.has(normalizedMobile)) {
+            errors.push({
+              row: rowNumber,
+              data: row,
+              errors: ['Staff and admin mobile number must be unique and cannot be repeated in upload']
+            });
+            continue;
+          }
+
+          const existingStaffAdminMobile = await User.findOne({
+            mobile: normalizedMobile,
+            role: { $in: ['admin', 'staff'] }
+          });
+
+          if (existingStaffAdminMobile) {
+            errors.push({
+              row: rowNumber,
+              data: row,
+              errors: ['Staff and admin mobile number must be unique and is already in use by another staff/admin user']
+            });
+            continue;
+          }
+
+          seenStaffAdminMobiles.add(normalizedMobile);
+        }
+
         // Generate unique credentials: [lowercase firstName][8-digit mobile]
         const { username, tempPassword } = await generateCredentials(firstName, phone8, User);
 
@@ -240,6 +270,17 @@ router.post('/', auth, validatePhoneNumberMiddleware, async (req, res) => {
       }
     }
 
+    // Staff and admin mobile numbers must be unique
+    if (mobile && (targetRole === 'admin' || targetRole === 'staff')) {
+      const existingMobileUser = await User.findOne({
+        mobile,
+        role: { $in: ['admin', 'staff'] }
+      });
+      if (existingMobileUser) {
+        return res.status(400).json({ message: 'Mobile number already exists for a staff or admin account' });
+      }
+    }
+
     const newUser = new User({
       username,
       password,
@@ -264,6 +305,8 @@ router.post('/', auth, validatePhoneNumberMiddleware, async (req, res) => {
         return res.status(400).json({ message: 'Username already exists' });
       } else if (field === 'email') {
         return res.status(400).json({ message: 'Email address already exists for a staff or admin account' });
+      } else if (field === 'mobile') {
+        return res.status(400).json({ message: 'Mobile number already exists for a staff or admin account' });
       } else {
         return res.status(400).json({ message: `${field} already exists` });
       }
@@ -306,6 +349,17 @@ router.put('/:id', auth, validatePhoneNumberMiddleware, async (req, res) => {
       });
       if (existingEmailUser) {
         return res.status(400).json({ message: 'Email address already exists for a staff or admin account' });
+      }
+    }
+
+    if (mobile && (finalRole === 'admin' || finalRole === 'staff')) {
+      const existingMobileUser = await User.findOne({
+        mobile,
+        _id: { $ne: req.params.id },
+        role: { $in: ['admin', 'staff'] }
+      });
+      if (existingMobileUser) {
+        return res.status(400).json({ message: 'Mobile number already exists for a staff or admin account' });
       }
     }
 

@@ -15,10 +15,7 @@ import {
   XCircle,
   AlertCircle,
   Download,
-  KeyRound,
-  FileSpreadsheet,
-  Users,
-  ShieldAlert
+  FileSpreadsheet
 } from 'lucide-react';
 import {
   type BulkUploadResponse,
@@ -106,58 +103,6 @@ export function BulkUploadResultDialog({
               <span>Failed</span>
             </div>
             <p className="text-2xl font-bold text-rose-700">{result.failed}</p>
-          </div>
-        </div>
-
-        {/* Quick Export Actions Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 p-3 bg-slate-100/70 rounded-lg mb-2">
-          <div className="text-xs text-slate-600 font-medium">
-            Export Reports:
-          </div>
-          <div className="flex items-center gap-2">
-            {successfulList.length > 0 && (
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-white hover:bg-emerald-50 border-emerald-300 text-emerald-800 text-xs gap-1.5"
-                  onClick={() => exportImportedCredentials(successfulList, 'xlsx', `${contextType}_credentials`)}
-                >
-                  <KeyRound className="h-3.5 w-3.5 text-emerald-600" />
-                  Credentials (.xlsx)
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-white hover:bg-emerald-50 border-emerald-300 text-emerald-800 text-xs"
-                  onClick={() => exportImportedCredentials(successfulList, 'csv', `${contextType}_credentials`)}
-                >
-                  .csv
-                </Button>
-              </div>
-            )}
-
-            {failedList.length > 0 && (
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-white hover:bg-rose-50 border-rose-300 text-rose-800 text-xs gap-1.5"
-                  onClick={() => exportFailedRowsReport(failedList, 'xlsx', `${contextType}_failed_entries`)}
-                >
-                  <Download className="h-3.5 w-3.5 text-rose-600" />
-                  Failed Rows (.xlsx)
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-white hover:bg-rose-50 border-rose-300 text-rose-800 text-xs"
-                  onClick={() => exportFailedRowsReport(failedList, 'csv', `${contextType}_failed_entries`)}
-                >
-                  .csv
-                </Button>
-              </div>
-            )}
           </div>
         </div>
 
@@ -267,6 +212,32 @@ export function BulkUploadResultDialog({
               </div>
             ) : (
               <div className="divide-y divide-slate-200">
+                <div className="bg-emerald-50/70 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200">
+                  <span className="text-emerald-800 font-medium">
+                    {successfulList.length} account(s) created successfully. Download the credentials to share with users.
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 text-[11px] bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-100 gap-1 px-2"
+                      onClick={() => exportImportedCredentials(successfulList, 'xlsx', `${contextType}_credentials`)}
+                    >
+                      <Download className="h-3 w-3" />
+                      Excel (.xlsx)
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 text-[11px] bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-100 gap-1 px-2"
+                      onClick={() => exportImportedCredentials(successfulList, 'csv', `${contextType}_credentials`)}
+                    >
+                      <Download className="h-3 w-3" />
+                      CSV (.csv)
+                    </Button>
+                  </div>
+                </div>
+
                 <div className="bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 grid grid-cols-12 gap-2">
                   <div className="col-span-3">Name</div>
                   <div className="col-span-3">Mobile & Email</div>

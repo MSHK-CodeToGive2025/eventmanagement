@@ -27,6 +27,7 @@ import {
 import {
   downloadUserSampleTemplate,
   parseSpreadsheetFile,
+  exportClientErrorRows,
   type ParsedUserRow,
   type BulkUploadResponse
 } from '@/services/user-template-service';
@@ -202,7 +203,7 @@ export function BulkUploadDialog({
                 <div className="space-y-1.5">
                   <p className="font-semibold text-slate-700">Column Rules & Flexibility:</p>
                   <ul className="list-disc pl-4 space-y-1 text-slate-600">
-                    <li><strong className="text-slate-800">First Name:</strong> Required, letters only (no numbers). Stored in Title Case.</li>
+                    <li><strong className="text-slate-800">First Name:</strong> Required, letters only (no numbers or special characters). Stored in Title Case.</li>
                     <li><strong className="text-slate-800">Last Name:</strong> If no last name, enter <code className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded font-bold">Nil</code> (or leave empty to default to "Nil").</li>
                     <li><strong className="text-slate-800">Mobile Number:</strong> Required 8-digit Hong Kong number. Automatically prefixed with <code className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded font-mono">+852</code>.</li>
                     <li><strong className="text-slate-800">Role:</strong> Defaults to <code className="bg-slate-200 text-slate-800 px-1 py-0.5 rounded">participant</code> if blank. {currentUserRole === 'staff' ? 'Staff can only create participants.' : 'Admins can specify participant or staff.'}</li>
@@ -377,11 +378,21 @@ export function BulkUploadDialog({
 
                 {/* Validation Warnings if any */}
                 {clientErrorCount > 0 && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                    <div>
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+                    <div className="flex-1">
                       <span className="font-semibold">{clientErrorCount} row(s) have formatting issues.</span> All valid entries ({readyRows.length}) will be imported, and any failed entries will be excluded.
                     </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-[11px] bg-white border-amber-300 text-amber-800 gap-1 hover:bg-amber-100 shrink-0"
+                      onClick={() => exportClientErrorRows(parsedRows, 'users', 'csv')}
+                    >
+                      <Download className="h-3 w-3" />
+                      Download Error Entries
+                    </Button>
                   </div>
                 )}
 

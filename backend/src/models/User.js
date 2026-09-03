@@ -72,10 +72,20 @@ userSchema.index(
   { email: 1 },
   {
     unique: true,
-    sparse: true,
     partialFilterExpression: {
       role: { $in: ['admin', 'staff'] },
       email: { $type: 'string', $gt: '' }
+    }
+  }
+);
+
+// Partial unique index: mobile numbers must be unique for admin and staff roles (participants can share mobile numbers)
+userSchema.index(
+  { mobile: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      role: { $in: ['admin', 'staff'] }
     }
   }
 );

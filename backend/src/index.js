@@ -10,6 +10,7 @@ import registrationFormRoutes from './routes/registrationForms.js';
 import whatsappRoutes from './routes/whatsapp.js';
 import corsOptions from './cors-config.js';
 import reminderService from './services/reminderService.js';
+import User from './models/User.js';
 
 dotenv.config();
 
@@ -33,8 +34,15 @@ app.use('/api/whatsapp', whatsappRoutes);
 
 // Database connection
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => {
+  .then(async () => {
     console.log('Connected to MongoDB');
+    
+    try {
+      await User.syncIndexes();
+      console.log('User indexes synchronized');
+    } catch (idxErr) {
+      console.warn('Warning syncing User indexes:', idxErr.message);
+    }
     
     // Start the reminder service after database connection is established
     reminderService.start();

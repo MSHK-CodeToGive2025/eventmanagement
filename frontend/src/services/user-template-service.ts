@@ -7,6 +7,7 @@ export interface ParsedUserRow {
   mobile: string;
   email?: string;
   role?: string;
+  rawRole?: string;
   clientErrors?: string[];
 }
 
@@ -212,7 +213,15 @@ export async function parseSpreadsheetFile(
     // Role handling: Event attendees are always participants
     let cleanRole = 'participant';
     if (contextType === 'events') {
-      cleanRole = 'participant';
+      // Event registrations only allow participant role
+      // If user explicitly specified a non-participant role, flag it as an error
+      if (role && role.trim()) {
+        const lower = role.trim().toLowerCase();
+        if (lower !== 'participant') {
+          // Store the raw role for display but keep cleanRole as participant
+          cleanRole = 'participant';
+        }
+      }
     } else if (role && role.trim()) {
       const lower = role.trim().toLowerCase();
       if (['participant', 'staff'].includes(lower)) {
@@ -223,15 +232,21 @@ export async function parseSpreadsheetFile(
     }
 
     // Basic client-side checks for preview badges
+    // Name regex: only Unicode letters, combining marks, apostrophes, hyphens, spaces
+    const nameRegex = /^[\p{L}\p{M}'\-\s]+$/u;
     const clientErrors: string[] = [];
     if (!firstName) {
       clientErrors.push('First Name is required');
     } else if (/\d/.test(firstName)) {
       clientErrors.push('First Name must contain only characters, no numbers');
+    } else if (!nameRegex.test(firstName)) {
+      clientErrors.push('First Name contains invalid characters (no special characters or symbols allowed)');
     }
 
     if (lastName !== 'Nil' && /\d/.test(lastName)) {
       clientErrors.push('Last Name must contain only characters, no numbers');
+    } else if (lastName !== 'Nil' && !nameRegex.test(lastName)) {
+      clientErrors.push('Last Name contains invalid characters (no special characters or symbols allowed)');
     }
 
     if (!mobile) {
@@ -253,8 +268,13 @@ export async function parseSpreadsheetFile(
       }
     }
 
-    // Role validation (for User Management uploads only)
-    if (contextType === 'users' && role && role.trim()) {
+    // Role validation
+    if (contextType === 'events' && role && role.trim()) {
+      const lower = role.trim().toLowerCase();
+      if (lower !== 'participant') {
+        clientErrors.push(`Invalid role '${role.trim()}' — event registrations only allow 'participant' role. Remove the Role column or set it to 'participant'`);
+      }
+    } else if (contextType === 'users' && role && role.trim()) {
       const lower = role.trim().toLowerCase();
       if (!['participant', 'staff'].includes(lower)) {
         clientErrors.push("Invalid role: must be 'participant' or 'staff'");
@@ -268,26 +288,50 @@ export async function parseSpreadsheetFile(
       mobile,
       email: email || undefined,
       role: cleanRole,
+      rawRole: role && role.trim() ? role.trim() : undefined,
       clientErrors: clientErrors.length > 0 ? clientErrors : undefined
     });
   });
 
-  // Second pass: Detect duplicate staff emails within the uploaded spreadsheet file
+  // Second pass: Detect duplicate staff emails and mobiles within the uploaded spreadsheet file
   const staffEmailCounts = new Map<string, number>();
+  const staffMobileCounts = new Map<string, number>();
+
   parsedRows.forEach((row) => {
-    if (row.role === 'staff' && row.email) {
-      const lowerEmail = row.email.toLowerCase();
-      staffEmailCounts.set(lowerEmail, (staffEmailCounts.get(lowerEmail) || 0) + 1);
+    if (row.role === 'staff') {
+      if (row.email) {
+        const lowerEmail = row.email.toLowerCase();
+        staffEmailCounts.set(lowerEmail, (staffEmailCounts.get(lowerEmail) || 0) + 1);
+      }
+      if (row.mobile) {
+        let cleanMobile = row.mobile.replace(/[\s\-\(\)]/g, '');
+        if (cleanMobile.startsWith('+852')) cleanMobile = cleanMobile.substring(4);
+        else if (cleanMobile.startsWith('852') && cleanMobile.length === 11) cleanMobile = cleanMobile.substring(3);
+        staffMobileCounts.set(cleanMobile, (staffMobileCounts.get(cleanMobile) || 0) + 1);
+      }
     }
   });
 
   parsedRows.forEach((row) => {
-    if (row.role === 'staff' && row.email) {
-      const lowerEmail = row.email.toLowerCase();
-      if ((staffEmailCounts.get(lowerEmail) || 0) > 1) {
-        row.clientErrors = row.clientErrors || [];
-        if (!row.clientErrors.includes('Duplicate email for staff role in file')) {
-          row.clientErrors.push('Duplicate email for staff role in file');
+    if (row.role === 'staff') {
+      if (row.email) {
+        const lowerEmail = row.email.toLowerCase();
+        if ((staffEmailCounts.get(lowerEmail) || 0) > 1) {
+          row.clientErrors = row.clientErrors || [];
+          if (!row.clientErrors.includes('Duplicate email for staff role in file')) {
+            row.clientErrors.push('Duplicate email for staff role in file');
+          }
+        }
+      }
+      if (row.mobile) {
+        let cleanMobile = row.mobile.replace(/[\s\-\(\)]/g, '');
+        if (cleanMobile.startsWith('+852')) cleanMobile = cleanMobile.substring(4);
+        else if (cleanMobile.startsWith('852') && cleanMobile.length === 11) cleanMobile = cleanMobile.substring(3);
+        if ((staffMobileCounts.get(cleanMobile) || 0) > 1) {
+          row.clientErrors = row.clientErrors || [];
+          if (!row.clientErrors.includes('Duplicate mobile number for staff role in file')) {
+            row.clientErrors.push('Duplicate mobile number for staff role in file');
+          }
         }
       }
     }
@@ -381,5 +425,65 @@ export function exportFailedRowsReport(
     XLSX.writeFile(workbook, `${filename}.csv`, { bookType: 'csv' });
   } else {
     XLSX.writeFile(workbook, `${filename}.xlsx`, { bookType: 'xlsx' });
+  }
+}
+
+/**
+ * Exports rows with client-side validation errors from the preview table,
+ * so users can fix formatting issues and re-upload.
+ * Includes original data and error reasons.
+ */
+export function exportClientErrorRows(
+  rows: ParsedUserRow[],
+  contextType: 'users' | 'events' = 'users',
+  format: 'xlsx' | 'csv' = 'csv',
+  filename?: string
+) {
+  const errorRows = rows.filter((r) => r.clientErrors && r.clientErrors.length > 0);
+  if (errorRows.length === 0) return;
+
+  const defaultFilename = contextType === 'events'
+    ? 'formatting_issues_event_attendees'
+    : 'formatting_issues_users';
+
+  const exportData = errorRows.map((r) => {
+    const base: Record<string, any> = {
+      'First Name': r.firstName || '',
+      'Last Name': r.lastName || '',
+      'Mobile Number': r.mobile || '',
+      'Email': r.email || '',
+    };
+
+    // Include Role column for user management context, or if rawRole was specified in events context
+    if (contextType === 'users') {
+      base['Role'] = r.role || 'participant';
+    } else if (r.rawRole) {
+      base['Role'] = r.rawRole;
+    }
+
+    base['Error Reason(s)'] = r.clientErrors!.join('; ');
+    return base;
+  });
+
+  const worksheet = XLSX.utils.json_to_sheet(exportData);
+
+  const hasRole = contextType === 'users' || errorRows.some((r) => r.rawRole);
+  worksheet['!cols'] = [
+    { wch: 15 }, // First Name
+    { wch: 15 }, // Last Name
+    { wch: 18 }, // Mobile
+    { wch: 28 }, // Email
+    ...(hasRole ? [{ wch: 14 }] : []), // Role (conditional)
+    { wch: 60 }  // Error Reason(s)
+  ];
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Formatting_Issues');
+
+  const finalFilename = filename || defaultFilename;
+  if (format === 'csv') {
+    XLSX.writeFile(workbook, `${finalFilename}.csv`, { bookType: 'csv' });
+  } else {
+    XLSX.writeFile(workbook, `${finalFilename}.xlsx`, { bookType: 'xlsx' });
   }
 }
