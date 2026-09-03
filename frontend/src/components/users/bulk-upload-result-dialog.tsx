@@ -128,14 +128,14 @@ export function BulkUploadResultDialog({
           </TabsList>
 
           {/* Failed Entries Tab */}
-          <TabsContent value="failed" className="flex-1 overflow-y-auto border rounded-md p-0">
+          <TabsContent value="failed" className="flex-1 overflow-y-auto overflow-x-auto border rounded-md p-0 custom-scrollbar">
             {failedList.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground text-sm flex flex-col items-center">
                 <CheckCircle2 className="h-8 w-8 text-emerald-500 mb-2" />
                 <span>No failed entries! All records were processed cleanly.</span>
               </div>
             ) : (
-              <div className="divide-y divide-slate-200">
+              <div className="divide-y divide-slate-200 min-w-[720px]">
                 <div className="bg-rose-50/70 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 border-b border-rose-200">
                   <span className="text-rose-800 font-medium">
                     {failedList.length} record(s) failed validation. Download the report with error reasons to correct and re-upload.
@@ -205,13 +205,13 @@ export function BulkUploadResultDialog({
           </TabsContent>
 
           {/* Successful Users Tab */}
-          <TabsContent value="success" className="flex-1 overflow-y-auto border rounded-md p-0">
+          <TabsContent value="success" className="flex-1 overflow-y-auto overflow-x-auto border rounded-md p-0 custom-scrollbar">
             {successfulList.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground text-sm">
                 No new accounts were created in this batch.
               </div>
             ) : (
-              <div className="divide-y divide-slate-200">
+              <div className="divide-y divide-slate-200 min-w-[720px]">
                 <div className="bg-emerald-50/70 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200">
                   <span className="text-emerald-800 font-medium">
                     {successfulList.length} account(s) created successfully. Download the credentials to share with users.
@@ -273,13 +273,13 @@ export function BulkUploadResultDialog({
           </TabsContent>
 
           {/* Skipped Records Tab */}
-          <TabsContent value="skipped" className="flex-1 overflow-y-auto border rounded-md p-0">
+          <TabsContent value="skipped" className="flex-1 overflow-y-auto overflow-x-auto border rounded-md p-0 custom-scrollbar">
             {skippedList.length === 0 ? (
               <div className="p-8 text-center text-muted-foreground text-sm">
                 No duplicate records were skipped.
               </div>
             ) : (
-              <div className="divide-y divide-slate-200">
+              <div className="divide-y divide-slate-200 min-w-[720px]">
                 <div className="bg-slate-50 px-4 py-2 text-xs font-semibold text-slate-600 grid grid-cols-12 gap-2">
                   <div className="col-span-1">Row</div>
                   <div className="col-span-5">Name & Mobile</div>

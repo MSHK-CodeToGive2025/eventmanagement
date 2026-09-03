@@ -21,7 +21,9 @@ import {
   XCircle,
   UserCheck,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import {
   downloadEventRegistrationSampleTemplate,
@@ -58,6 +60,36 @@ export function BulkRegistrationDialog({
   const [isDragOver, setIsDragOver] = useState(false);
   const [showSupportedHeaders, setShowSupportedHeaders] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTableScroll = () => {
+    const el = tableContainerRef.current;
+    if (!el) return;
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    setCanScrollLeft(scrollLeft > 4);
+    setCanScrollRight(scrollLeft < scrollWidth - clientWidth - 4);
+  };
+
+  useEffect(() => {
+    checkTableScroll();
+    const timer = setTimeout(checkTableScroll, 120);
+    window.addEventListener('resize', checkTableScroll);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', checkTableScroll);
+    };
+  }, [parsedRows]);
+
+  const scrollTable = (direction: 'left' | 'right') => {
+    if (!tableContainerRef.current) return;
+    const scrollAmount = 260;
+    tableContainerRef.current.scrollBy({
+      left: direction === 'left' ? -scrollAmount : scrollAmount,
+      behavior: 'smooth'
+    });
+  };
 
   const resetFormState = () => {
     setFile(null);
@@ -66,6 +98,8 @@ export function BulkRegistrationDialog({
     setUploading(false);
     setParseError(null);
     setShowSupportedHeaders(false);
+    setCanScrollLeft(false);
+    setCanScrollRight(false);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -150,7 +184,7 @@ export function BulkRegistrationDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent
-          className="max-w-3xl max-h-[90vh] flex flex-col p-6 overflow-hidden"
+          className="w-[95vw] max-w-4xl max-h-[90vh] flex flex-col p-6 overflow-hidden"
           onPointerDownOutside={(e) => e.preventDefault()}
           onInteractOutside={(e) => e.preventDefault()}
         >
@@ -386,76 +420,113 @@ export function BulkRegistrationDialog({
                 )}
 
                 {/* Parsed Rows Preview Table */}
-                <div className="border rounded-lg overflow-hidden max-h-64 overflow-y-auto">
-                  <table className="w-full text-xs text-left">
-                    <thead className="bg-slate-50 text-slate-600 font-semibold border-b sticky top-0 z-10">
-                      <tr>
-                        <th className="py-2.5 px-3 w-10">#</th>
-                        <th className="py-2.5 px-3">First Name</th>
-                        <th className="py-2.5 px-3">Last Name</th>
-                        <th className="py-2.5 px-3">Mobile Number</th>
-                        <th className="py-2.5 px-3">Email</th>
-                        {parsedRows.some(r => r.rawRole) && (
-                          <th className="py-2.5 px-3">Role</th>
-                        )}
-                        <th className="py-2.5 px-3 text-right min-w-[180px]">Status & Validation</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {parsedRows.map((row, index) => {
-                        const hasErrors = row.clientErrors && row.clientErrors.length > 0;
-                        const hasInvalidRole = row.rawRole && row.rawRole.toLowerCase() !== 'participant';
-                        return (
-                          <tr
-                            key={row.rowNumber}
-                            className={`transition-colors ${
-                              hasErrors ? 'bg-rose-50/40 hover:bg-rose-50/70' : 'hover:bg-slate-50/80'
-                            }`}
-                          >
-                            <td className="py-2.5 px-3 font-mono text-slate-400 align-top">{index + 1}</td>
-                            <td className="py-2.5 px-3 font-medium text-slate-800 align-top">
-                              {row.firstName || <span className="text-rose-500 font-medium italic">Missing</span>}
-                            </td>
-                            <td className="py-2.5 px-3 text-slate-700 align-top">{row.lastName}</td>
-                            <td className="py-2.5 px-3 text-slate-700 align-top">
-                              {row.mobile || <span className="text-rose-500 font-medium italic">Missing</span>}
-                            </td>
-                            <td className="py-2.5 px-3 text-slate-600 truncate max-w-[170px] align-top">
-                              {row.email || <span className="text-slate-400">-</span>}
-                            </td>
-                            {parsedRows.some(r => r.rawRole) && (
-                              <td className={`py-2.5 px-3 align-top capitalize ${hasInvalidRole ? 'text-rose-600 font-semibold' : 'text-slate-700'}`}>
-                                {row.rawRole || <span className="text-slate-400">-</span>}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs px-1">
+                    <span className="font-semibold text-slate-700">
+                      Attendee Entries Preview ({parsedRows.length})
+                    </span>
+                    <div className="flex items-center gap-1.5 bg-slate-100/90 border border-slate-200 rounded-lg px-2 py-1">
+                      <span className="text-[11px] text-slate-500 select-none">Horizontal Scroll:</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 rounded bg-white text-slate-700 shadow-sm border border-slate-200 hover:bg-slate-50 disabled:opacity-40"
+                        onClick={() => scrollTable('left')}
+                        disabled={!canScrollLeft}
+                        title="Scroll Left"
+                      >
+                        <ChevronLeft className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 rounded bg-white text-slate-700 shadow-sm border border-slate-200 hover:bg-slate-50 disabled:opacity-40"
+                        onClick={() => scrollTable('right')}
+                        disabled={!canScrollRight}
+                        title="Scroll Right"
+                      >
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div
+                    ref={tableContainerRef}
+                    onScroll={checkTableScroll}
+                    className="border rounded-lg overflow-x-auto overflow-y-auto max-h-64 custom-scrollbar"
+                  >
+                    <table className="w-full min-w-[780px] text-xs text-left">
+                      <thead className="bg-slate-50 text-slate-600 font-semibold border-b sticky top-0 z-10">
+                        <tr>
+                          <th className="py-2.5 px-3 w-10 min-w-[40px] sticky left-0 bg-slate-50 z-20">#</th>
+                          <th className="py-2.5 px-3 min-w-[120px]">First Name</th>
+                          <th className="py-2.5 px-3 min-w-[120px]">Last Name</th>
+                          <th className="py-2.5 px-3 min-w-[130px]">Mobile Number</th>
+                          <th className="py-2.5 px-3 min-w-[170px]">Email</th>
+                          {parsedRows.some(r => r.rawRole) && (
+                            <th className="py-2.5 px-3 min-w-[90px]">Role</th>
+                          )}
+                          <th className="py-2.5 px-3 text-right min-w-[240px]">Status & Validation</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {parsedRows.map((row, index) => {
+                          const hasErrors = row.clientErrors && row.clientErrors.length > 0;
+                          const hasInvalidRole = row.rawRole && row.rawRole.toLowerCase() !== 'participant';
+                          return (
+                            <tr
+                              key={row.rowNumber}
+                              className={`transition-colors ${
+                                hasErrors ? 'bg-rose-50/40 hover:bg-rose-50/70' : 'hover:bg-slate-50/80'
+                              }`}
+                            >
+                              <td className="py-2.5 px-3 font-mono text-slate-400 align-top sticky left-0 bg-white/95 z-10">{index + 1}</td>
+                              <td className="py-2.5 px-3 font-medium text-slate-800 align-top whitespace-nowrap min-w-[120px]">
+                                {row.firstName || <span className="text-rose-500 font-medium italic">Missing</span>}
                               </td>
-                            )}
-                            <td className="py-2.5 px-3 text-right align-top">
-                              {hasErrors ? (
-                                <div className="flex flex-col items-end gap-1">
-                                  <Badge variant="destructive" className="text-[10px] py-0 px-1.5 font-semibold">
-                                    Needs Fix
-                                  </Badge>
-                                  <div className="text-[11px] text-rose-600 font-medium space-y-0.5 text-right">
-                                    {row.clientErrors!.map((err, i) => (
-                                      <div key={i} className="flex items-center justify-end gap-1">
-                                        <span>• {err}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : (
-                                <Badge
-                                  variant="outline"
-                                  className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] py-0 px-1.5"
-                                >
-                                  Ready
-                                </Badge>
+                              <td className="py-2.5 px-3 text-slate-700 align-top whitespace-nowrap min-w-[120px]">{row.lastName}</td>
+                              <td className="py-2.5 px-3 text-slate-700 align-top whitespace-nowrap font-mono min-w-[130px]">
+                                {row.mobile || <span className="text-rose-500 font-medium italic">Missing</span>}
+                              </td>
+                              <td className="py-2.5 px-3 text-slate-600 truncate max-w-[190px] align-top min-w-[170px]">
+                                {row.email || <span className="text-slate-400">-</span>}
+                              </td>
+                              {parsedRows.some(r => r.rawRole) && (
+                                <td className={`py-2.5 px-3 align-top capitalize min-w-[90px] ${hasInvalidRole ? 'text-rose-600 font-semibold' : 'text-slate-700'}`}>
+                                  {row.rawRole || <span className="text-slate-400">-</span>}
+                                </td>
                               )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              <td className="py-2.5 px-3 text-right align-top min-w-[240px]">
+                                {hasErrors ? (
+                                  <div className="flex flex-col items-end gap-1">
+                                    <Badge variant="destructive" className="text-[10px] py-0 px-1.5 font-semibold">
+                                      Needs Fix
+                                    </Badge>
+                                    <div className="text-[11px] text-rose-600 font-medium space-y-0.5 text-right">
+                                      {row.clientErrors!.map((err, i) => (
+                                        <div key={i} className="flex items-center justify-end gap-1">
+                                          <span>• {err}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] py-0 px-1.5"
+                                  >
+                                    Ready
+                                  </Badge>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             )}
