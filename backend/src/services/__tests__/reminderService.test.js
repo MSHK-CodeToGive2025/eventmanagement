@@ -4,7 +4,10 @@
  * - Multiple session template (9-var: 1..9)
  * - Custom template message: createReminderMessage
  */
-import reminderService from '../reminderService.js';
+import { jest } from '@jest/globals';
+import reminderService, { setTwilioClientForTesting } from '../reminderService.js';
+import EventRegistration from '../../models/EventRegistration.js';
+import User from '../../models/User.js';
 
 describe('ReminderService template building', () => {
   const singleSessionEvent = {
@@ -171,6 +174,101 @@ describe('ReminderService template building', () => {
       const registration = { attendee: { firstName: 'Sarah\nChen' } };
       const vars = reminderService.createCustomReminderVariables(registration, singleSessionEvent);
       expect(vars).toEqual({ '1': 'Sarah Chen' });
+    });
+  });
+
+  describe('sendEventReminder custom template override vs default template', () => {
+    let twilioCalls = [];
+
+    beforeEach(() => {
+      twilioCalls = [];
+      setTwilioClientForTesting({
+        messages: {
+          create: (payload) => {
+            twilioCalls.push(payload);
+            return Promise.resolve({ sid: 'SM_MOCK_123' });
+          }
+        }
+      });
+      process.env.TWILIO_WHATSAPP_NUMBER = '+14155238886';
+      process.env.TWILIO_WHATSAPP_EVENT_REMINDER_SINGLE_SESSION_TEMPLATE_SID = 'HX_DEFAULT_SINGLE_SID';
+      jest.spyOn(User, 'find').mockReturnValue({
+        select: jest.fn().mockResolvedValue([])
+      });
+    });
+
+    afterEach(() => {
+      setTwilioClientForTesting(null);
+      jest.restoreAllMocks();
+    });
+
+    it('uses custom template SID and variable 1 when customReminderTemplateSid is set on event', async () => {
+      const customEvent = {
+        ...singleSessionEvent,
+        _id: 'event_custom_id_1',
+        customReminderTemplateSid: 'HX_ANNUAL_EVENT_CUSTOM_SID',
+        defaultReminderMode: 'template'
+      };
+
+      jest.spyOn(EventRegistration, 'find').mockResolvedValue([
+        {
+          attendee: { firstName: 'Sarah', phone: '+85291234567' },
+          status: 'registered'
+        }
+      ]);
+
+      await reminderService.sendEventReminder(customEvent, 24, 'main event', startDateTime, true);
+
+      expect(twilioCalls).toHaveLength(1);
+      expect(twilioCalls[0].contentSid).toBe('HX_ANNUAL_EVENT_CUSTOM_SID');
+      expect(JSON.parse(twilioCalls[0].contentVariables)).toEqual({ '1': 'Sarah' });
+      expect(twilioCalls[0].to).toBe('whatsapp:+85291234567');
+      expect(twilioCalls[0].from).toBe('whatsapp:+14155238886');
+    });
+
+    it('falls back to default template when customReminderTemplateSid is null', async () => {
+      const normalEvent = {
+        ...singleSessionEvent,
+        _id: 'event_normal_id_1',
+        customReminderTemplateSid: null,
+        defaultReminderMode: 'template'
+      };
+
+      jest.spyOn(EventRegistration, 'find').mockResolvedValue([
+        {
+          attendee: { firstName: 'Alice', phone: '+85298765432' },
+          status: 'registered'
+        }
+      ]);
+
+      await reminderService.sendEventReminder(normalEvent, 24, 'main event', startDateTime, true);
+
+      expect(twilioCalls).toHaveLength(1);
+      expect(twilioCalls[0].contentSid).toBe('HX_DEFAULT_SINGLE_SID');
+      const vars = JSON.parse(twilioCalls[0].contentVariables);
+      expect(vars['1']).toBe('Alice');
+      expect(vars['2']).toBe('Single Session Event');
+    });
+
+    it('falls back to default template when customReminderTemplateSid is whitespace only', async () => {
+      const whitespaceEvent = {
+        ...singleSessionEvent,
+        _id: 'event_space_id_1',
+        customReminderTemplateSid: '   ',
+        defaultReminderMode: 'template'
+      };
+
+      jest.spyOn(EventRegistration, 'find').mockResolvedValue([
+        {
+          attendee: { firstName: 'Bob', phone: '+85298765432' },
+          status: 'registered'
+        }
+      ]);
+
+      await reminderService.sendEventReminder(whitespaceEvent, 24, 'main event', startDateTime, true);
+
+      expect(twilioCalls).toHaveLength(1);
+      expect(twilioCalls[0].contentSid).toBe('HX_DEFAULT_SINGLE_SID');
     });
   });
 });

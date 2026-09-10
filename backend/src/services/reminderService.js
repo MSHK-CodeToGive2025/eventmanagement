@@ -679,4 +679,8 @@ class ReminderService {
 // Create singleton instance
 const reminderService = new ReminderService();
 
+export function setTwilioClientForTesting(client) {
+  twilioClient = client;
+}
+
 export default reminderService; 
