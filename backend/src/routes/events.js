@@ -397,6 +397,10 @@ router.post("/", auth, upload.single("image"), async (req, res) => {
       eventData.reminderRemarks = String(req.body.reminderRemarks).trim();
     }
 
+    if (req.body.customReminderTemplateSid !== undefined) {
+      eventData.customReminderTemplateSid = String(req.body.customReminderTemplateSid).trim() || null;
+    }
+
     const locationFromBody = buildLocationFromBody(req.body);
     if (locationFromBody) eventData.location = locationFromBody;
     const sessionsFromBody = buildSessionsFromBody(req.body);
@@ -573,6 +577,10 @@ router.put("/:id", auth, upload.single("image"), async (req, res) => {
 
     if (req.body.reminderRemarks !== undefined) {
       updateData.reminderRemarks = String(req.body.reminderRemarks).trim();
+    }
+
+    if (req.body.customReminderTemplateSid !== undefined) {
+      updateData.customReminderTemplateSid = String(req.body.customReminderTemplateSid).trim() || null;
     }
 
     // Handle image removal

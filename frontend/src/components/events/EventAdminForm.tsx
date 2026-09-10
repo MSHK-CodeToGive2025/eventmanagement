@@ -16,6 +16,7 @@ interface AdminEventFormData {
   location: string;
   capacity?: number;
   reminderRemarks: string;
+  customReminderTemplateSid: string;
 }
 
 const EventAdminForm: React.FC = () => {
@@ -33,6 +34,7 @@ const EventAdminForm: React.FC = () => {
     location: '',
     capacity: undefined,
     reminderRemarks: '',
+    customReminderTemplateSid: '',
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +72,7 @@ const EventAdminForm: React.FC = () => {
             category: eventData.category || '',
             capacity: eventData.capacity ?? firstSession?.capacity,
             reminderRemarks: eventData.reminderRemarks || '',
+            customReminderTemplateSid: eventData.customReminderTemplateSid || '',
           });
 
           try {
@@ -209,6 +212,7 @@ const EventAdminForm: React.FC = () => {
           capacity: formData.capacity,
           sessions,
           reminderRemarks: formData.reminderRemarks,
+          customReminderTemplateSid: formData.customReminderTemplateSid || undefined,
           defaultReminderMode: 'template',
           tags: event.tags,
           reminderTimes: event.reminderTimes,
@@ -307,6 +311,25 @@ const EventAdminForm: React.FC = () => {
               If left blank, it defaults to: <em>"No special remarks for this activity. We look forward to seeing you."</em>
             </p>
             <input type="hidden" name="defaultReminderMode" value="template" />
+          </div>
+
+          <div>
+            <label htmlFor="customReminderTemplateSid" className="block text-sm font-medium text-gray-700">
+              Custom WhatsApp Reminder Template SID (Optional)
+            </label>
+            <input
+              type="text"
+              id="customReminderTemplateSid"
+              name="customReminderTemplateSid"
+              value={formData.customReminderTemplateSid || ''}
+              onChange={handleChange}
+              placeholder="e.g., HXxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 font-mono text-sm"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              For special/flagship events (e.g., Annual Event) using a dedicated WhatsApp reminder template.
+              Leave blank to use the standard default reminder template.
+            </p>
           </div>
 
           <div>

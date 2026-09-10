@@ -62,6 +62,7 @@ export interface Event {
   reminderTimes?: number[];
   defaultReminderMode?: 'template' | 'custom';
   reminderRemarks?: string;
+  customReminderTemplateSid?: string;
   remindersSent?: number[];
   staffContact?: {
     name?: string;
@@ -104,6 +105,7 @@ export interface EventFormData {
   reminderTimes?: number[];
   defaultReminderMode?: 'template' | 'custom';
   reminderRemarks?: string;
+  customReminderTemplateSid?: string;
   staffContact?: {
     name?: string;
     phone?: string;

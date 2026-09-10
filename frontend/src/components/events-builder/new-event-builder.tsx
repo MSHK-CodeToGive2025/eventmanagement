@@ -98,6 +98,7 @@ const eventFormSchema = z.object({
   reminderTimes: z.array(z.number()).optional(),
   defaultReminderMode: z.literal('template'),
   reminderRemarks: z.string().max(200, "Remarks cannot exceed 200 characters").optional(),
+  customReminderTemplateSid: z.string().optional(),
   staffContact: z.object({
     name: z.string().optional(),
     phone: z.string().optional(),
@@ -216,6 +217,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       reminderTimes: [24], // Default to 24 hours before event
       defaultReminderMode: 'template',
       reminderRemarks: "",
+      customReminderTemplateSid: "",
       staffContact: {
         name: "",
         phone: "",
@@ -277,6 +279,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
             reminderTimes: eventData.reminderTimes || [24],
             defaultReminderMode: 'template' as const,
             reminderRemarks: eventData.reminderRemarks || "",
+            customReminderTemplateSid: eventData.customReminderTemplateSid || "",
             staffContact: eventData.staffContact || {
               name: "",
               phone: "",
@@ -417,6 +420,7 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
       // Add default reminder mode
       formData.append('defaultReminderMode', data.defaultReminderMode);
       formData.append('reminderRemarks', data.reminderRemarks || '');
+      formData.append('customReminderTemplateSid', data.customReminderTemplateSid || '');
 
       // Add staff contact information
       if (data.staffContact) {
@@ -1361,6 +1365,30 @@ export default function NewEventBuilder({ onClose, onSave, eventId, defaultValue
                       <FormDescription>
                         Custom remark to be included in the automated WhatsApp reminder template (Remark: &#123;&#123;10&#125;&#125;).
                         If left blank, it will automatically default to: <em>"No special remarks for this activity. We look forward to seeing you."</em>
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="customReminderTemplateSid"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-base font-medium">Custom WhatsApp Reminder Template SID (Optional)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="e.g., HXxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                          disabled={isSubmitting}
+                          {...field}
+                          value={field.value || ""}
+                          className="font-mono text-sm"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        For special/flagship events (e.g., Annual Event) using a dedicated WhatsApp reminder template.
+                        Leave blank to use the standard default reminder template.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

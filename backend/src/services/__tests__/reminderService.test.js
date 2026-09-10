@@ -153,4 +153,24 @@ describe('ReminderService template building', () => {
       expect(msg).toContain('session');
     });
   });
+
+  describe('createCustomReminderVariables (dedicated single-use event reminder template)', () => {
+    it('returns variable 1 with sanitized attendee first name', () => {
+      const registration = { attendee: { firstName: 'Sarah' } };
+      const vars = reminderService.createCustomReminderVariables(registration, singleSessionEvent);
+      expect(vars).toEqual({ '1': 'Sarah' });
+    });
+
+    it('handles missing or empty attendee first name with sanitized space', () => {
+      const registration = { attendee: {} };
+      const vars = reminderService.createCustomReminderVariables(registration, singleSessionEvent);
+      expect(vars).toEqual({ '1': ' ' });
+    });
+
+    it('sanitizes newlines in attendee name', () => {
+      const registration = { attendee: { firstName: 'Sarah\nChen' } };
+      const vars = reminderService.createCustomReminderVariables(registration, singleSessionEvent);
+      expect(vars).toEqual({ '1': 'Sarah Chen' });
+    });
+  });
 });

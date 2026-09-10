@@ -193,6 +193,11 @@ const eventSchema = new mongoose.Schema({
     maxlength: 200,
     default: ''
   },
+  customReminderTemplateSid: {
+    type: String,
+    trim: true,
+    default: null
+  },
   remindersSent: {
     type: [String], // Array of reminder keys (e.g., "main_24", "session_Session 1_24")
     default: []

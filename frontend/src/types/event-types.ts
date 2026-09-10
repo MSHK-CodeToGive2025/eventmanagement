@@ -64,6 +64,7 @@ export interface ZubinEvent {
   registeredCount?: number; // Registered count of the event
   reminderTimes?: number[]; // Array of hours before event start for reminders (e.g., [48, 24, 3])
   reminderRemarks?: string; // Optional custom remarks for WhatsApp reminder messages
+  customReminderTemplateSid?: string; // Optional custom WhatsApp template SID for event reminders (Phase 1 override)
   remindersSent?: number[]; // Array of hours for which reminders have already been sent
   staffContact?: StaffContact; // Staff contact information for the event
   participants?: {

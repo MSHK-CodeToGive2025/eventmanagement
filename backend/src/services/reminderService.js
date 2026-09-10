@@ -381,7 +381,22 @@ class ReminderService {
               : (process.env.TWILIO_WHATSAPP_EVENT_UPDATE_SINGLE_SESSION_TEMPLATE_SID || process.env.TWILIO_WHATSAPP_UPDATE_TEMPLATE_SID);
 
             // WhatsApp: only templates (no freeform body) to avoid 63016 outside 24h window.
-            if (useTemplate && reminderTemplateSid) {
+            const hasCustomReminder = Boolean(
+              event.customReminderTemplateSid &&
+              String(event.customReminderTemplateSid).trim()
+            );
+
+            if (hasCustomReminder) {
+              const customSid = String(event.customReminderTemplateSid).trim();
+              const templateVariables = this.createCustomReminderVariables(registration, event);
+              console.log(`[REMINDER SERVICE] Using custom event reminder template SID: ${customSid}`);
+              await twilioClient.messages.create({
+                from: ensureWhatsAppPrefix(process.env.TWILIO_WHATSAPP_NUMBER),
+                contentSid: customSid,
+                contentVariables: JSON.stringify(templateVariables),
+                to: `whatsapp:${formattedNumber}`
+              });
+            } else if (useTemplate && reminderTemplateSid) {
               const firstName = registration.attendee.firstName || '';
               const templateVariables = this.createTemplateVariables(event, reminderHours, eventType, startDateTime, firstName, hasMultipleSessions);
               console.log(`[REMINDER SERVICE] Using reminder template SID (${hasMultipleSessions ? 'multiple' : 'single'} session): ${reminderTemplateSid}`);
@@ -628,6 +643,14 @@ class ReminderService {
         "10": this.sanitizeContentVariable(remarkText)
       };
     }
+  }
+
+  // Create variables for custom event reminder template (e.g. Annual Event)
+  createCustomReminderVariables(registration, event) {
+    const firstName = registration?.attendee?.firstName || ' ';
+    return {
+      "1": this.sanitizeContentVariable(firstName)
+    };
   }
 
   // Mark reminder as sent
